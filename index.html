@@ -1,0 +1,1664 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1a1a2e">
+<title>宅配登記系統</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f5f4f0;
+  --surface: #ffffff;
+  --surface2: #f0ede6;
+  --border: #e0dbd0;
+  --text: #1a1a18;
+  --text2: #6b6860;
+  --accent: #c8622a;
+  --accent-light: #f0e8e0;
+  --accent2: #2a6bc8;
+  --success: #2a8c5a;
+  --success-light: #e0f0e8;
+  --danger: #c82a2a;
+  --danger-light: #f0e0e0;
+  --warning: #c87a2a;
+  --warning-light: #f0ece0;
+  --shadow: 0 2px 12px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.12);
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+body {
+  font-family: 'Noto Sans TC', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 15px;
+}
+
+/* ── SCREENS ── */
+.screen { display: none; min-height: 100vh; }
+.screen.active { display: flex; flex-direction: column; }
+
+/* ── LOGIN ── */
+#loginScreen {
+  background: linear-gradient(160deg, #1a1a2e 0%, #2a2a4e 50%, #3a2a3e 100%);
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.login-box {
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 20px;
+  padding: 40px 32px;
+  width: 100%;
+  max-width: 380px;
+}
+.login-logo {
+  text-align: center;
+  margin-bottom: 32px;
+}
+.login-logo .icon {
+  width: 64px; height: 64px;
+  background: linear-gradient(135deg, var(--accent), #e8823a);
+  border-radius: 16px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px;
+  margin: 0 auto 16px;
+  box-shadow: 0 8px 24px rgba(200,98,42,0.4);
+}
+.login-logo h1 { color: #fff; font-size: 20px; font-weight: 700; }
+.login-logo p { color: rgba(255,255,255,0.5); font-size: 13px; margin-top: 4px; }
+
+.login-field { margin-bottom: 16px; }
+.login-field label { display: block; color: rgba(255,255,255,0.6); font-size: 12px; margin-bottom: 6px; letter-spacing: 0.5px; }
+.login-field input {
+  width: 100%;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: var(--radius-sm);
+  color: #fff;
+  padding: 12px 14px;
+  font-size: 16px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.login-field input:focus { border-color: var(--accent); }
+.login-field input::placeholder { color: rgba(255,255,255,0.3); }
+
+.btn-login {
+  width: 100%;
+  background: linear-gradient(135deg, var(--accent), #e8823a);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  margin-top: 8px;
+  box-shadow: 0 4px 16px rgba(200,98,42,0.4);
+  transition: opacity 0.2s, transform 0.1s;
+}
+.btn-login:active { transform: scale(0.98); opacity: 0.9; }
+.login-error { color: #ff8080; font-size: 13px; text-align: center; margin-top: 12px; display: none; }
+
+/* ── TOP BAR ── */
+.topbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: var(--shadow);
+}
+.topbar-back {
+  width: 36px; height: 36px;
+  background: var(--surface2);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.topbar-title { font-weight: 700; font-size: 17px; flex: 1; }
+.topbar-sub { font-size: 12px; color: var(--text2); }
+.topbar-action {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* ── MAIN SCREEN ── */
+.main-header {
+  background: linear-gradient(135deg, #1a1a2e, #2a2a4e);
+  padding: 20px 16px 24px;
+  color: #fff;
+}
+.main-header .greeting { font-size: 13px; color: rgba(255,255,255,0.6); margin-bottom: 4px; }
+.main-header .name { font-size: 22px; font-weight: 700; }
+.main-header .store-tag {
+  display: inline-block;
+  background: rgba(255,255,255,0.15);
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  padding: 16px;
+  margin-top: -12px;
+}
+.stat-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 14px 12px;
+  text-align: center;
+  box-shadow: var(--shadow);
+}
+.stat-card .num { font-size: 24px; font-weight: 700; font-family: 'DM Mono', monospace; }
+.stat-card .label { font-size: 11px; color: var(--text2); margin-top: 2px; }
+.stat-card.accent .num { color: var(--accent); }
+.stat-card.blue .num { color: var(--accent2); }
+.stat-card.green .num { color: var(--success); }
+
+.section { padding: 0 16px 16px; }
+.section-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px;
+}
+.section-title { font-weight: 700; font-size: 16px; }
+.section-link { font-size: 13px; color: var(--accent); font-weight: 500; background: none; border: none; cursor: pointer; font-family: inherit; }
+
+.btn-new-order {
+  width: 100%;
+  background: linear-gradient(135deg, var(--accent), #e8823a);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  padding: 18px;
+  font-size: 17px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  box-shadow: 0 4px 16px rgba(200,98,42,0.35);
+  margin: 8px 16px 20px;
+  transition: transform 0.1s;
+}
+.btn-new-order:active { transform: scale(0.98); }
+
+/* ── ORDER CARDS ── */
+.order-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-bottom: 10px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: transform 0.1s;
+  border-left: 4px solid transparent;
+}
+.order-card:active { transform: scale(0.99); }
+.order-card.pending { border-left-color: var(--warning); }
+.order-card.submitted { border-left-color: var(--accent2); }
+.order-card.processing { border-left-color: var(--accent); }
+.order-card.shipped { border-left-color: var(--success); }
+.order-card.cancelled { border-left-color: #ccc; opacity: 0.6; }
+
+.order-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.order-no { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text2); }
+.status-badge {
+  font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 20px; white-space: nowrap;
+}
+.status-badge.pending { background: var(--warning-light); color: var(--warning); }
+.status-badge.submitted { background: #e0e8f8; color: var(--accent2); }
+.status-badge.processing { background: var(--accent-light); color: var(--accent); }
+.status-badge.shipped { background: var(--success-light); color: var(--success); }
+.status-badge.cancelled { background: #f0f0f0; color: #999; }
+
+.order-receiver { font-weight: 700; font-size: 16px; margin: 6px 0 2px; }
+.order-meta { font-size: 13px; color: var(--text2); }
+.order-items-preview { font-size: 13px; color: var(--text2); margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── FORM SCREEN ── */
+.form-body { flex: 1; padding: 16px; overflow-y: auto; }
+
+.form-section {
+  background: var(--surface);
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+.form-section-title {
+  padding: 12px 16px;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  color: var(--text2);
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 6px;
+}
+
+.form-row { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.form-row:last-child { border-bottom: none; }
+.form-label { font-size: 12px; color: var(--text2); margin-bottom: 6px; display: block; }
+.form-label .req { color: var(--danger); margin-left: 2px; }
+.form-input {
+  width: 100%;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 11px 13px;
+  font-size: 16px;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--surface);
+  outline: none;
+  transition: border-color 0.2s;
+}
+.form-input:focus { border-color: var(--accent); }
+.form-select {
+  width: 100%;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 11px 13px;
+  font-size: 16px;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--surface);
+  outline: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b6860' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+}
+.form-select:focus { border-color: var(--accent); }
+.form-textarea {
+  width: 100%;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 11px 13px;
+  font-size: 15px;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--surface);
+  outline: none;
+  resize: none;
+  min-height: 80px;
+}
+.form-textarea:focus { border-color: var(--accent); }
+
+/* Product Search */
+.product-search-wrap { position: relative; }
+.product-search-input {
+  width: 100%;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 11px 13px 11px 38px;
+  font-size: 16px;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--surface);
+  outline: none;
+}
+.product-search-input:focus { border-color: var(--accent); }
+.product-search-icon {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  font-size: 16px; pointer-events: none;
+}
+.product-dropdown {
+  position: absolute; top: 100%; left: 0; right: 0;
+  background: var(--surface);
+  border: 1.5px solid var(--accent);
+  border-top: none;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 200;
+  box-shadow: var(--shadow-lg);
+  display: none;
+}
+.product-option {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.product-option:last-child { border-bottom: none; }
+.product-option:hover, .product-option.highlighted { background: var(--accent-light); }
+.product-option .pname { font-weight: 500; font-size: 14px; }
+.product-option .pcode { font-size: 12px; color: var(--text2); font-family: 'DM Mono', monospace; }
+.product-option .pstock { font-size: 12px; font-weight: 700; }
+.product-option .pstock.ok { color: var(--success); }
+.product-option .pstock.low { color: var(--warning); }
+.product-option .pstock.none { color: var(--danger); }
+
+/* Item List */
+.item-list { padding: 8px 16px; }
+.item-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.item-row:last-child { border-bottom: none; }
+.item-info { flex: 1; min-width: 0; }
+.item-name { font-weight: 500; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item-code { font-size: 11px; color: var(--text2); font-family: 'DM Mono', monospace; }
+.item-stock { font-size: 11px; font-weight: 700; }
+.item-stock.ok { color: var(--success); }
+.item-stock.none { color: var(--danger); }
+.qty-control { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.qty-btn {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border);
+  background: var(--surface2);
+  font-size: 18px; line-height: 1;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  font-family: inherit; color: var(--text);
+}
+.qty-btn:active { background: var(--border); }
+.qty-num { font-family: 'DM Mono', monospace; font-size: 16px; font-weight: 700; min-width: 24px; text-align: center; }
+.item-delete { background: none; border: none; color: var(--danger); font-size: 20px; cursor: pointer; padding: 4px; flex-shrink: 0; }
+
+.add-product-btn {
+  width: 100%;
+  background: none;
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  margin: 8px 0;
+  transition: border-color 0.2s, background 0.2s;
+}
+.add-product-btn:hover { border-color: var(--accent); background: var(--accent-light); }
+
+.form-footer {
+  padding: 16px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -4px 16px rgba(0,0,0,0.06);
+}
+.btn-submit {
+  width: 100%;
+  background: linear-gradient(135deg, var(--accent), #e8823a);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  padding: 16px;
+  font-size: 17px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(200,98,42,0.35);
+  transition: opacity 0.2s, transform 0.1s;
+}
+.btn-submit:active { transform: scale(0.98); }
+.btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── ORDER DETAIL ── */
+.detail-body { flex: 1; padding: 16px; overflow-y: auto; }
+
+.detail-status-hero {
+  background: linear-gradient(135deg, #1a1a2e, #2a2a4e);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+  color: #fff;
+  text-align: center;
+}
+.detail-status-icon { font-size: 40px; margin-bottom: 8px; }
+.detail-status-text { font-size: 20px; font-weight: 700; }
+.detail-order-no { font-family: 'DM Mono', monospace; font-size: 13px; color: rgba(255,255,255,0.6); margin-top: 4px; }
+
+.detail-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+.detail-card-title {
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--text2);
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+}
+.detail-row {
+  padding: 12px 14px;
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  gap: 8px;
+}
+.detail-row:last-child { border-bottom: none; }
+.detail-row-label { font-size: 12px; color: var(--text2); min-width: 60px; flex-shrink: 0; padding-top: 1px; }
+.detail-row-value { font-size: 14px; font-weight: 500; flex: 1; word-break: break-all; }
+
+.tracking-box {
+  background: var(--success-light);
+  border: 1px solid var(--success);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin: 12px 14px;
+  display: flex; align-items: center; gap: 8px;
+}
+.tracking-box .tracking-num { font-family: 'DM Mono', monospace; font-size: 15px; font-weight: 700; color: var(--success); flex: 1; }
+.tracking-box .copy-btn {
+  background: var(--success);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* QR Code */
+.qr-section {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 12px;
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+.qr-section h3 { font-size: 14px; color: var(--text2); margin-bottom: 12px; }
+.qr-code-wrap {
+  display: inline-block;
+  padding: 12px;
+  background: #fff;
+  border-radius: 8px;
+  border: 2px solid var(--border);
+}
+.qr-hint { font-size: 12px; color: var(--text2); margin-top: 10px; }
+
+/* ── ADMIN SCREEN ── */
+.admin-tabs {
+  display: flex;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.admin-tab {
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text2);
+  cursor: pointer;
+  white-space: nowrap;
+  border-bottom: 2.5px solid transparent;
+  transition: color 0.2s;
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  font-family: inherit;
+}
+.admin-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+.filter-bar {
+  padding: 10px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex; gap: 8px; overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.filter-chip {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--text2);
+  font-family: inherit;
+  transition: all 0.15s;
+}
+.filter-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+.orders-list { padding: 12px 16px; flex: 1; overflow-y: auto; }
+
+/* Admin status update */
+.btn-status {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+  margin: 2px;
+}
+.btn-status.process { background: var(--accent-light); color: var(--accent); }
+.btn-status.ship { background: var(--success-light); color: var(--success); }
+.btn-status.cancel { background: var(--danger-light); color: var(--danger); }
+
+/* ── TOAST ── */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: #1a1a18;
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 24px;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 9999;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  white-space: nowrap;
+  max-width: calc(100vw - 32px);
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+.toast.success { background: var(--success); }
+.toast.error { background: var(--danger); }
+
+/* ── LOADING ── */
+.loading-overlay {
+  position: fixed; inset: 0;
+  background: rgba(255,255,255,0.85);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9998;
+  display: none;
+}
+.loading-overlay.show { display: flex; }
+.spinner {
+  width: 40px; height: 40px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── EMPTY STATE ── */
+.empty-state {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--text2);
+}
+.empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+.empty-state p { font-size: 15px; }
+
+/* ── MODAL ── */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 500;
+  display: none;
+  align-items: flex-end;
+}
+.modal-overlay.show { display: flex; }
+.modal-sheet {
+  background: var(--surface);
+  border-radius: 20px 20px 0 0;
+  padding: 20px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.modal-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
+.modal-input-row { margin-bottom: 12px; }
+.modal-input-row label { font-size: 12px; color: var(--text2); display: block; margin-bottom: 6px; }
+
+/* Utility */
+.text-center { text-align: center; }
+.mt-8 { margin-top: 8px; }
+.gap-8 { gap: 8px; }
+.flex { display: flex; }
+.items-center { align-items: center; }
+</style>
+</head>
+<body>
+
+<!-- Loading -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- ══════════════════════════════════════ -->
+<!-- LOGIN SCREEN                          -->
+<!-- ══════════════════════════════════════ -->
+<div class="screen active" id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="icon">📦</div>
+      <h1>宅配登記系統</h1>
+      <p>門市宅配訂單管理平台</p>
+    </div>
+    <div class="login-field">
+      <label>手機號碼</label>
+      <input type="tel" id="loginPhone" placeholder="請輸入手機號碼" inputmode="numeric">
+    </div>
+    <div class="login-field">
+      <label>密碼</label>
+      <input type="password" id="loginPassword" placeholder="請輸入密碼">
+    </div>
+    <button class="btn-login" onclick="doLogin()">登入</button>
+    <div class="login-error" id="loginError">帳號或密碼錯誤，請重試</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════ -->
+<!-- MAIN SCREEN (業務首頁)                 -->
+<!-- ══════════════════════════════════════ -->
+<div class="screen" id="mainScreen">
+  <div class="main-header">
+    <div class="greeting">👋 歡迎回來</div>
+    <div class="name" id="headerName">載入中...</div>
+    <div class="store-tag" id="headerStore">門市</div>
+    <div style="position:absolute;top:16px;right:16px;">
+      <button onclick="doLogout()" style="background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer;font-family:inherit;">登出</button>
+    </div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card accent">
+      <div class="num" id="statPending">0</div>
+      <div class="label">待處理</div>
+    </div>
+    <div class="stat-card blue">
+      <div class="num" id="statProcessing">0</div>
+      <div class="label">出貨中</div>
+    </div>
+    <div class="stat-card green">
+      <div class="num" id="statShipped">0</div>
+      <div class="label">已完成</div>
+    </div>
+  </div>
+
+  <button class="btn-new-order" onclick="showScreen('formScreen'); initForm()">
+    ＋ 新增宅配登記
+  </button>
+
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">我的訂單</span>
+      <button class="section-link" onclick="showScreen('adminScreen'); loadAdminOrders()">
+        全部查看 →
+      </button>
+    </div>
+    <div id="myOrdersList">
+      <div class="empty-state"><div class="icon">📋</div><p>尚無訂單</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════ -->
+<!-- FORM SCREEN (新增訂單)                 -->
+<!-- ══════════════════════════════════════ -->
+<div class="screen" id="formScreen">
+  <div class="topbar">
+    <button class="topbar-back" onclick="showScreen('mainScreen')">←</button>
+    <div>
+      <div class="topbar-title">新增宅配登記</div>
+      <div class="topbar-sub" id="formStoreName">門市</div>
+    </div>
+  </div>
+
+  <div class="form-body">
+    <!-- 收件資訊 -->
+    <div class="form-section">
+      <div class="form-section-title">👤 收件人資訊</div>
+      <div class="form-row">
+        <label class="form-label">收件人姓名 <span class="req">*</span></label>
+        <input class="form-input" id="receiverName" placeholder="請輸入收件人姓名" type="text">
+      </div>
+      <div class="form-row">
+        <label class="form-label">收件人電話 <span class="req">*</span></label>
+        <input class="form-input" id="receiverPhone" placeholder="請輸入手機號碼" type="tel" inputmode="numeric">
+      </div>
+      <!-- 地址區 -->
+      <div class="form-row">
+        <label class="form-label">縣市 <span class="req">*</span></label>
+        <select class="form-select" id="addrCity" onchange="onCityChange(this.value)">
+          <option value="">請選擇縣市</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label class="form-label">鄉鎮市區 <span class="req">*</span></label>
+        <select class="form-select" id="addrDistrict" onchange="onDistrictChange(this.value)" disabled>
+          <option value="">請先選縣市</option>
+        </select>
+      </div>
+      <div class="form-row" id="addrZipRow" style="display:none;">
+        <label class="form-label">郵遞區號</label>
+        <input class="form-input" id="addrZip" readonly style="background:var(--surface2);color:var(--text2);">
+      </div>
+      <div class="form-row" id="addrRoadRow" style="display:none;">
+        <label class="form-label">路/街名 <span class="req">*</span></label>
+        <div class="product-search-wrap" id="roadSearchWrap">
+          <span class="product-search-icon">🔍</span>
+          <input class="product-search-input" id="addrRoadInput"
+            placeholder="輸入關鍵字搜尋路街名..."
+            oninput="onRoadSearch(this.value)"
+            autocomplete="off">
+          <div class="product-dropdown" id="roadDropdown"></div>
+        </div>
+      </div>
+      <div class="form-row" id="addrDetailRow" style="display:none;">
+        <label class="form-label">門牌號碼 <span class="req">*</span></label>
+        <input class="form-input" id="addrDetail" placeholder="例：100號3樓">
+      </div>
+      <div class="form-row">
+        <label class="form-label">機號 <span class="req">*</span></label>
+        <select class="form-select" id="posTerminal">
+          <option value="001">001</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label class="form-label">POS交易序號</label>
+        <input class="form-input" id="posNo" placeholder="請輸入POS交易序號（選填）" inputmode="numeric">
+      </div>
+      <div class="form-row">
+        <label class="form-label">備註</label>
+        <textarea class="form-textarea" id="orderNote" placeholder="特殊要求、指定到貨日等（選填）"></textarea>
+      </div>
+    </div>
+
+    <!-- 品項 -->
+    <div class="form-section">
+      <div class="form-section-title">📦 訂購品項（最多5項）</div>
+      <div class="form-row">
+        <label class="form-label">搜尋商品</label>
+        <div class="product-search-wrap" id="productSearchWrap">
+          <span class="product-search-icon">🔍</span>
+          <input class="product-search-input" id="productSearch"
+            placeholder="輸入品名或品號搜尋..."
+            oninput="onProductSearch(this.value)"
+            autocomplete="off">
+          <div class="product-dropdown" id="productDropdown"></div>
+        </div>
+      </div>
+      <div class="item-list" id="itemList"></div>
+      <div style="padding:0 16px 12px;">
+        <div style="font-size:12px;color:var(--text2);" id="itemCountHint">已選 0 / 5 項</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-footer">
+    <button class="btn-submit" id="submitBtn" onclick="submitOrder()">確認送出登記</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════ -->
+<!-- ORDER DETAIL SCREEN                   -->
+<!-- ══════════════════════════════════════ -->
+<div class="screen" id="detailScreen">
+  <div class="topbar">
+    <button class="topbar-back" id="detailBack" onclick="showScreen('mainScreen')">←</button>
+    <div class="topbar-title">訂單詳情</div>
+  </div>
+  <div class="detail-body" id="detailBody"></div>
+</div>
+
+<!-- ══════════════════════════════════════ -->
+<!-- ADMIN SCREEN                          -->
+<!-- ══════════════════════════════════════ -->
+<div class="screen" id="adminScreen">
+  <div class="topbar">
+    <button class="topbar-back" onclick="showScreen('mainScreen')">←</button>
+    <div class="topbar-title">訂單管理</div>
+    <button class="topbar-action" onclick="exportCSV()">匯出CSV</button>
+  </div>
+  <div class="admin-tabs">
+    <button class="admin-tab active" onclick="setAdminTab('all',this)">全部</button>
+    <button class="admin-tab" onclick="setAdminTab('pending',this)">待處理</button>
+    <button class="admin-tab" onclick="setAdminTab('submitted',this)">已拋單</button>
+    <button class="admin-tab" onclick="setAdminTab('processing',this)">出貨中</button>
+    <button class="admin-tab" onclick="setAdminTab('shipped',this)">已完成</button>
+    <button class="admin-tab" onclick="setAdminTab('cancelled',this)">已取消</button>
+  </div>
+  <div class="orders-list" id="adminOrdersList"></div>
+</div>
+
+<!-- QR Token 公開查詢頁（嵌在同檔案） -->
+<div class="screen" id="publicScreen">
+  <div class="topbar">
+    <div class="topbar-title">📦 訂單查詢</div>
+  </div>
+  <div class="detail-body" id="publicBody"></div>
+</div>
+
+<script>
+// ════════════════════════════════════════
+// CONFIG
+// ════════════════════════════════════════
+const SUPABASE_URL = 'https://tlrfxsmrjueaqiectroe.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRscmZ4c21yanVlYXFpZWN0cm9lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1MjI3MjksImV4cCI6MjA5MjA5ODcyOX0.buW3x8ZTNHgaB8ZK14xL-unLsTFrcTVJFm3xYqV18CA';
+
+const sb = {
+  async get(table, params='') {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}${params}`, {
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' }
+    });
+    return r.json();
+  },
+  async post(table, body) {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+      method: 'POST',
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
+      body: JSON.stringify(body)
+    });
+    return r.json();
+  },
+  async patch(table, id, body) {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {
+      method: 'PATCH',
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
+      body: JSON.stringify(body)
+    });
+    return r.json();
+  }
+};
+
+// ════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════
+let currentUser = null;
+let currentStore = null;
+let allProducts = [];
+let formItems = [];
+let adminAllOrders = [];
+let adminCurrentTab = 'all';
+let searchDebounce = null;
+let roadDebounce = null;
+let selectedRoad = '';
+let selectedZip = '';
+
+// 機號設定：key=門市名稱, value=可用機號數量
+const STORE_TERMINALS = {
+  '富邦美術館-賣店': ['001','002','003'],
+};
+const DEFAULT_TERMINALS = ['001'];
+
+// ── 台灣縣市與行政區資料 ──
+const TW_DISTRICTS = {
+  '台北市':{'中正區':'100','大同區':'103','中山區':'104','松山區':'105','大安區':'106','萬華區':'108','信義區':'110','士林區':'111','北投區':'112','內湖區','114':'114','南港區':'115','文山區':'116'},
+  '基隆市':{'仁愛區':'200','信義區':'201','中正區':'202','中山區':'203','安樂區':'204','暖暖區':'205','七堵區':'206'},
+  '新北市':{'萬里區':'207','金山區':'208','板橋區':'220','汐止區':'221','深坑區':'222','石碇區':'223','瑞芳區':'224','平溪區':'226','雙溪區':'227','貢寮區':'228','新店區':'231','坪林區':'232','烏來區':'233','永和區':'234','中和區':'235','土城區':'236','三峽區':'237','樹林區':'238','鶯歌區':'239','三重區':'241','新莊區':'242','泰山區':'243','林口區':'244','蘆洲區':'247','五股區':'248','八里區':'249','淡水區':'251','三芝區':'252','石門區':'253'},
+  '桃園市':{'中壢區':'320','平鎮區':'324','龍潭區':'325','楊梅區':'326','新屋區':'327','觀音區':'328','桃園區':'330','龜山區':'333','八德區':'334','大溪區':'335','復興區':'336','大園區':'337','蘆竹區':'338'},
+  '新竹市':{'東區':'300','北區':'300','香山區':'300'},
+  '新竹縣':{'竹北市':'302','湖口鄉':'303','新豐鄉':'304','新埔鎮':'305','關西鎮':'306','芎林鄉':'307','寶山鄉':'308','竹東鎮':'310','五峰鄉':'311','橫山鄉':'312','尖石鄉':'313','北埔鄉':'314','峨眉鄉':'315'},
+  '苗栗縣':{'竹南鎮':'350','頭份市':'351','三灣鄉':'352','南庄鄉':'353','獅潭鄉':'354','後龍鎮':'356','通霄鎮':'357','苑裡鎮':'358','苗栗市':'360','造橋鄉':'361','頭屋鄉':'362','公館鄉':'363','大湖鄉':'364','泰安鄉':'365','銅鑼鄉':'366','三義鄉':'367','西湖鄉':'368','卓蘭鎮':'369'},
+  '台中市':{'中區':'400','東區':'401','南區':'402','西區':'403','北區':'404','北屯區':'406','西屯區':'407','南屯區':'408','太平區':'411','大里區':'412','霧峰區':'413','烏日區':'414','豐原區':'420','后里區':'421','石岡區':'422','東勢區':'423','和平區':'424','新社區':'426','潭子區':'427','大雅區':'428','神岡區':'429','大肚區':'432','沙鹿區':'433','龍井區':'434','梧棲區':'435','清水區':'436','大甲區':'437','外埔區':'438','大安區':'439'},
+  '彰化縣':{'彰化市':'500','芬園鄉':'502','花壇鄉':'503','秀水鄉':'504','鹿港鎮':'505','福興鄉':'506','線西鄉':'507','和美鎮':'508','伸港鄉':'509','員林市':'510','社頭鄉':'511','永靖鄉':'512','埔心鄉':'513','溪湖鎮':'514','大村鄉':'515','埔鹽鄉':'516','田中鎮':'520','北斗鎮':'521','田尾鄉':'522','埤頭鄉':'523','溪州鄉':'524','竹塘鄉':'525','二林鎮':'526','大城鄉':'527','芳苑鄉':'528','二水鄉':'530'},
+  '南投縣':{'南投市':'540','中寮鄉':'541','草屯鎮':'542','國姓鄉':'544','埔里鎮':'545','仁愛鄉':'546','名間鄉':'551','集集鎮':'552','水里鄉':'553','魚池鄉':'555','信義鄉':'556','竹山鎮':'557','鹿谷鄉':'558'},
+  '雲林縣':{'斗南鎮':'630','大埤鄉':'631','虎尾鎮':'632','土庫鎮':'633','褒忠鄉':'634','東勢鄉':'635','台西鄉':'636','崙背鄉':'637','麥寮鄉':'638','斗六市':'640','林內鄉':'643','古坑鄉':'646','莿桐鄉':'647','西螺鎮':'648','二崙鄉':'649','北港鎮':'651','水林鄉':'652','口湖鄉':'653','四湖鄉':'654','元長鄉':'655'},
+  '嘉義市':{'東區':'600','西區':'600'},
+  '嘉義縣':{'番路鄉':'602','梅山鄉':'603','竹崎鄉':'604','阿里山鄉':'605','中埔鄉':'606','大埔鄉':'607','水上鄉':'608','鹿草鄉':'611','太保市':'612','朴子市':'613','東石鄉':'614','六腳鄉':'615','新港鄉':'616','民雄鄉':'621','大林鎮':'622','溪口鄉':'623','義竹鄉':'624','布袋鎮':'625'},
+  '台南市':{'中西區':'700','東區':'701','南區':'702','北區':'704','安平區':'708','安南區':'709','永康區':'710','歸仁區':'711','新化區':'712','左鎮區':'713','玉井區':'714','楠西區':'715','南化區':'716','仁德區':'717','關廟區':'718','龍崎區':'719','官田區':'720','麻豆區':'721','佳里區':'722','西港區':'723','七股區':'724','將軍區':'725','學甲區':'726','北門區':'727','新營區':'730','後壁區':'731','白河區':'732','東山區':'733','六甲區':'734','下營區':'735','柳營區':'736','鹽水區':'737','善化區':'741','大內區':'742','山上區':'743','新市區':'744','安定區':'745'},
+  '高雄市':{'新興區':'800','前金區':'801','苓雅區':'802','鹽埕區':'803','鼓山區':'804','旗津區':'805','前鎮區':'806','三民區':'807','楠梓區':'811','小港區':'812','左營區':'813','仁武區':'814','大社區':'815','東沙群島':'817','南沙群島':'819','岡山區':'820','路竹區':'821','阿蓮區':'822','田寮區':'823','燕巢區':'824','橋頭區':'825','梓官區':'826','彌陀區':'827','永安區':'828','湖內區':'829','鳳山區':'830','大寮區':'831','林園區':'832','鳥松區':'833','大樹區':'840','旗山區':'842','美濃區':'843','六龜區':'844','內門區':'845','杉林區':'846','甲仙區':'847','桃源區':'848','那瑪夏區':'849','茂林區':'851','茄萣區':'852'},
+  '屏東縣':{'屏東市':'900','三地門鄉':'901','霧台鄉':'902','瑪家鄉':'903','九如鄉':'904','里港鄉':'905','高樹鄉':'906','鹽埔鄉':'907','長治鄉':'908','麟洛鄉':'909','竹田鄉':'911','內埔鄉':'912','萬丹鄉':'913','潮州鎮':'920','泰武鄉':'921','來義鄉':'922','萬巒鄉':'923','崁頂鄉':'924','新埤鄉':'925','南州鄉':'926','林邊鄉':'927','東港鎮':'928','琉球鄉':'929','佳冬鄉':'931','新園鄉':'932','枋寮鄉':'940','枋山鄉':'941','春日鄉':'942','獅子鄉':'943','車城鄉':'944','牡丹鄉':'945','恆春鎮':'946','滿州鄉':'947'},
+  '宜蘭縣':{'宜蘭市':'260','頭城鎮':'261','礁溪鄉':'262','壯圍鄉':'263','員山鄉':'264','羅東鎮':'265','三星鄉':'266','大同鄉':'267','五結鄉':'268','冬山鄉':'269','蘇澳鎮':'270','南澳鄉':'272'},
+  '花蓮縣':{'花蓮市':'970','新城鄉':'971','秀林鄉':'972','吉安鄉':'973','壽豐鄉':'974','鳳林鎮':'975','光復鄉':'976','豐濱鄉':'977','瑞穗鄉':'978','萬榮鄉':'979','玉里鎮':'981','卓溪鄉':'982','富里鄉':'983'},
+  '台東縣':{'台東市':'950','綠島鄉':'951','蘭嶼鄉':'952','延平鄉':'953','卑南鄉':'954','鹿野鄉':'955','關山鎮':'956','海端鄉':'957','池上鄉':'958','東河鄉':'959','成功鎮':'961','長濱鄉':'962','太麻里鄉':'963','金峰鄉':'964','大武鄉':'965','達仁鄉':'966'},
+};
+
+// 修正台北市區域資料
+TW_DISTRICTS['台北市'] = {
+  '中正區':'100','大同區':'103','中山區':'104','松山區':'105',
+  '大安區':'106','萬華區':'108','信義區':'110','士林區':'111',
+  '北投區':'112','內湖區':'114','南港區':'115','文山區':'116'
+};
+
+// ════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', async () => {
+  // Check if public QR view
+  const params = new URLSearchParams(location.search);
+  const token = params.get('token');
+  if (token) { return loadPublicOrder(token); }
+
+  const saved = localStorage.getItem('delivery_user');
+  if (saved) {
+    try {
+      const u = JSON.parse(saved);
+      await loginWithData(u);
+    } catch(e) { localStorage.removeItem('delivery_user'); }
+  }
+});
+
+// ════════════════════════════════════════
+// SCREEN
+// ════════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if (id === 'mainScreen') loadMyOrders();
+}
+
+// ════════════════════════════════════════
+// AUTH
+// ════════════════════════════════════════
+async function doLogin() {
+  const phone = document.getElementById('loginPhone').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  if (!phone || !password) return;
+  showLoading(true);
+  try {
+    const rows = await sb.get('staff', `?phone=eq.${encodeURIComponent(phone)}&is_active=eq.true&select=*,stores(name)`);
+    if (!rows || rows.length === 0 || rows[0].password !== password) {
+      document.getElementById('loginError').style.display = 'block';
+      showLoading(false); return;
+    }
+    const u = rows[0];
+    localStorage.setItem('delivery_user', JSON.stringify(u));
+    await loginWithData(u);
+  } catch(e) {
+    showToast('登入失敗，請稍後再試', 'error');
+  }
+  showLoading(false);
+}
+
+async function loginWithData(u) {
+  currentUser = u;
+  currentStore = u.stores;
+  document.getElementById('loginError').style.display = 'none';
+  document.getElementById('headerName').textContent = u.name;
+  document.getElementById('headerStore').textContent = currentStore?.name || '未指定門市';
+  document.getElementById('formStoreName').textContent = currentStore?.name || '';
+  initCitySelect();
+  showScreen('mainScreen');
+  loadMyOrders();
+  loadProducts();
+}
+
+function doLogout() {
+  localStorage.removeItem('delivery_user');
+  currentUser = null;
+  showScreen('loginScreen');
+}
+
+// ════════════════════════════════════════
+// PRODUCTS (from ibiza or static list)
+// ════════════════════════════════════════
+async function loadProducts() {
+  // 從 Supabase products 表載入（之後可換成 ibiza API）
+  try {
+    const rows = await sb.get('products', '?is_active=eq.true&order=product_name.asc&limit=2000');
+    if (Array.isArray(rows)) allProducts = rows;
+  } catch(e) { console.log('Products not loaded', e); }
+}
+
+function onProductSearch(val) {
+  clearTimeout(searchDebounce);
+  const dd = document.getElementById('productDropdown');
+  if (!val.trim()) { dd.style.display = 'none'; return; }
+  if (formItems.length >= 5) { showToast('最多只能選5項商品'); dd.style.display = 'none'; return; }
+  searchDebounce = setTimeout(() => renderDropdown(val.trim()), 200);
+}
+
+function renderDropdown(q) {
+  const dd = document.getElementById('productDropdown');
+  const lower = q.toLowerCase();
+  const filtered = allProducts.filter(p =>
+    p.product_name?.toLowerCase().includes(lower) ||
+    p.sku?.toLowerCase().includes(lower)
+  ).slice(0, 30);
+
+  if (!filtered.length) {
+    dd.innerHTML = `<div class="product-option"><div class="pname">找不到「${q}」相關商品</div></div>`;
+    dd.style.display = 'block'; return;
+  }
+
+  dd.innerHTML = filtered.map(p => {
+    const stock = p.stock ?? 0;
+    const stockClass = stock > 10 ? 'ok' : stock > 0 ? 'low' : 'none';
+    const stockText = stock > 0 ? `庫存 ${stock}` : '無庫存';
+    return `<div class="product-option" onclick="addItem('${p.sku}','${escHtml(p.product_name)}',${stock})">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div class="pname">${escHtml(p.product_name)}</div>
+          <div class="pcode">${p.sku}</div>
+        </div>
+        <div class="pstock ${stockClass}">${stockText}</div>
+      </div>
+    </div>`;
+  }).join('');
+  dd.style.display = 'block';
+}
+
+function addItem(sku, name, stock) {
+  if (formItems.find(i => i.sku === sku)) { showToast('此商品已加入'); closeDropdown(); return; }
+  if (formItems.length >= 5) { showToast('最多只能選5項商品'); closeDropdown(); return; }
+  if (stock <= 0) { showToast('此商品目前無庫存'); closeDropdown(); return; }
+  formItems.push({ sku, name, stock, qty: 1 });
+  renderItems();
+  closeDropdown();
+  document.getElementById('productSearch').value = '';
+}
+
+function closeDropdown() {
+  document.getElementById('productDropdown').style.display = 'none';
+}
+
+function renderItems() {
+  const list = document.getElementById('itemList');
+  document.getElementById('itemCountHint').textContent = `已選 ${formItems.length} / 5 項`;
+  if (!formItems.length) { list.innerHTML = ''; return; }
+  list.innerHTML = formItems.map((item, i) => `
+    <div class="item-row">
+      <div class="item-info">
+        <div class="item-name">${escHtml(item.name)}</div>
+        <div class="item-code">${item.sku}</div>
+        <div class="item-stock ${item.stock > 0 ? 'ok' : 'none'}">庫存 ${item.stock}</div>
+      </div>
+      <div class="qty-control">
+        <button class="qty-btn" onclick="changeQty(${i},-1)">−</button>
+        <span class="qty-num">${item.qty}</span>
+        <button class="qty-btn" onclick="changeQty(${i},1)">＋</button>
+      </div>
+      <button class="item-delete" onclick="removeItem(${i})">✕</button>
+    </div>
+  `).join('');
+}
+
+function changeQty(i, d) {
+  formItems[i].qty = Math.max(1, Math.min(formItems[i].stock, formItems[i].qty + d));
+  renderItems();
+}
+
+function removeItem(i) {
+  formItems.splice(i, 1);
+  renderItems();
+}
+
+// ════════════════════════════════════════
+// FORM INIT
+// ════════════════════════════════════════
+function initForm() {
+  formItems = [];
+  selectedRoad = '';
+  selectedZip = '';
+  ['receiverName','receiverPhone','addrRoadInput','addrDetail','posNo','orderNote','productSearch'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  // Reset address
+  const cityEl = document.getElementById('addrCity');
+  if (cityEl) cityEl.value = '';
+  const distEl = document.getElementById('addrDistrict');
+  if (distEl) { distEl.innerHTML = '<option value="">請先選縣市</option>'; distEl.disabled = true; }
+  document.getElementById('addrZipRow').style.display = 'none';
+  document.getElementById('addrRoadRow').style.display = 'none';
+  document.getElementById('addrDetailRow').style.display = 'none';
+
+  // 機號
+  initTerminalSelect();
+  renderItems();
+  closeDropdown();
+}
+
+function initCitySelect() {
+  const el = document.getElementById('addrCity');
+  if (!el) return;
+  el.innerHTML = '<option value="">請選擇縣市</option>' +
+    Object.keys(TW_DISTRICTS).map(c => `<option value="${c}">${c}</option>`).join('');
+}
+
+function initTerminalSelect() {
+  const storeName = currentStore?.name || '';
+  const terminals = STORE_TERMINALS[storeName] || DEFAULT_TERMINALS;
+  const el = document.getElementById('posTerminal');
+  if (!el) return;
+  el.innerHTML = terminals.map(t => `<option value="${t}">${t}</option>`).join('');
+  el.disabled = terminals.length <= 1;
+}
+
+function onCityChange(city) {
+  const distEl = document.getElementById('addrDistrict');
+  document.getElementById('addrZipRow').style.display = 'none';
+  document.getElementById('addrRoadRow').style.display = 'none';
+  document.getElementById('addrDetailRow').style.display = 'none';
+  selectedRoad = '';
+  if (!city || !TW_DISTRICTS[city]) {
+    distEl.innerHTML = '<option value="">請先選縣市</option>';
+    distEl.disabled = true;
+    return;
+  }
+  const dists = TW_DISTRICTS[city];
+  distEl.innerHTML = '<option value="">請選擇區域</option>' +
+    Object.keys(dists).map(d => `<option value="${d}">${d}</option>`).join('');
+  distEl.disabled = false;
+}
+
+function onDistrictChange(dist) {
+  const city = document.getElementById('addrCity').value;
+  if (!dist || !city) return;
+  const zip = TW_DISTRICTS[city]?.[dist] || '';
+  selectedZip = zip;
+  const zipEl = document.getElementById('addrZip');
+  if (zipEl) zipEl.value = zip;
+  document.getElementById('addrZipRow').style.display = 'block';
+  document.getElementById('addrRoadRow').style.display = 'block';
+  document.getElementById('addrDetailRow').style.display = 'block';
+  document.getElementById('addrRoadInput').value = '';
+  selectedRoad = '';
+}
+
+// 路名搜尋（政府開放資料 NLSC API）
+function onRoadSearch(val) {
+  clearTimeout(roadDebounce);
+  const dd = document.getElementById('roadDropdown');
+  if (!val.trim()) { dd.style.display = 'none'; selectedRoad = ''; return; }
+  selectedRoad = ''; // 清除已選
+  roadDebounce = setTimeout(() => fetchRoads(val.trim()), 300);
+}
+
+async function fetchRoads(q) {
+  const dd = document.getElementById('roadDropdown');
+  const city = document.getElementById('addrCity').value;
+  const dist = document.getElementById('addrDistrict').value;
+  if (!city || !dist) { dd.style.display = 'none'; return; }
+
+  dd.innerHTML = '<div class="product-option"><div class="pname">搜尋中...</div></div>';
+  dd.style.display = 'block';
+
+  try {
+    // 使用內政部地址門牌查詢 API
+    const url = `https://api.nlsc.gov.tw/other/ListRoadSectionStat/${encodeURIComponent(city)}/${encodeURIComponent(dist)}/${encodeURIComponent(q)}`;
+    const res = await fetch(url);
+    const text = await res.text();
+    const parser = new DOMParser();
+    const xml = parser.parseFromString(text, 'text/xml');
+    const items = xml.querySelectorAll('roadSectionStaItem');
+
+    if (!items.length) {
+      dd.innerHTML = `<div class="product-option"><div class="pname">找不到「${q}」相關路名</div></div>`;
+      return;
+    }
+
+    const roads = [];
+    items.forEach(item => {
+      const road = item.querySelector('ROADNAME')?.textContent?.trim();
+      if (road && !roads.includes(road)) roads.push(road);
+    });
+
+    dd.innerHTML = roads.slice(0, 20).map(r =>
+      `<div class="product-option" onclick="selectRoad('${escHtml(r)}')">
+        <div class="pname">${escHtml(r)}</div>
+      </div>`
+    ).join('');
+  } catch(e) {
+    // fallback：顯示輸入值讓使用者直接用
+    dd.innerHTML = `<div class="product-option" onclick="selectRoad('${escHtml(q)}')">
+      <div class="pname">使用：${escHtml(q)}</div>
+      <div class="pcode">（無法連線查詢，請確認路名正確）</div>
+    </div>`;
+  }
+}
+
+function selectRoad(road) {
+  selectedRoad = road;
+  document.getElementById('addrRoadInput').value = road;
+  document.getElementById('roadDropdown').style.display = 'none';
+  document.getElementById('addrDetail').focus();
+}
+
+function getFullAddress() {
+  const city = document.getElementById('addrCity').value;
+  const dist = document.getElementById('addrDistrict').value;
+  const zip = document.getElementById('addrZip').value;
+  const road = document.getElementById('addrRoadInput').value.trim();
+  const detail = document.getElementById('addrDetail').value.trim();
+  if (!city || !dist || !road || !detail) return '';
+  return `${zip} ${city}${dist}${road}${detail}`;
+}
+
+// ════════════════════════════════════════
+// SUBMIT ORDER
+// ════════════════════════════════════════
+async function submitOrder() {
+  const name = document.getElementById('receiverName').value.trim();
+  const phone = document.getElementById('receiverPhone').value.trim();
+  const address = getFullAddress();
+  const posNo = document.getElementById('posNo').value.trim();
+  const note = document.getElementById('orderNote').value.trim();
+  const terminal = document.getElementById('posTerminal').value;
+
+  if (!name) { showToast('請輸入收件人姓名', 'error'); return; }
+  if (!phone) { showToast('請輸入收件人電話', 'error'); return; }
+  if (!document.getElementById('addrCity').value) { showToast('請選擇縣市', 'error'); return; }
+  if (!document.getElementById('addrDistrict').value) { showToast('請選擇鄉鎮市區', 'error'); return; }
+  if (!document.getElementById('addrRoadInput').value.trim()) { showToast('請輸入路街名', 'error'); return; }
+  if (!document.getElementById('addrDetail').value.trim()) { showToast('請輸入門牌號碼', 'error'); return; }
+  if (!formItems.length) { showToast('請至少選擇一項商品', 'error'); return; }
+
+  showLoading(true);
+  try {
+    const orderNo = await generateOrderNo();
+    const orderData = {
+      order_no: orderNo,
+      store_id: currentUser.store_id,
+      staff_id: currentUser.id,
+      receiver_name: name,
+      receiver_phone: phone,
+      receiver_address: address,
+      pos_no: posNo || null,
+      pos_terminal: terminal,
+      note: note || null,
+      status: 'pending'
+    };
+
+    const newOrder = await sb.post('orders', orderData);
+    if (!newOrder || newOrder.error) throw new Error(newOrder?.message || '建立訂單失敗');
+
+    const orderId = Array.isArray(newOrder) ? newOrder[0].id : newOrder.id;
+
+    for (const item of formItems) {
+      await sb.post('order_items', {
+        order_id: orderId,
+        sku: item.sku,
+        product_name: item.name,
+        quantity: item.qty
+      });
+    }
+
+    showLoading(false);
+    showToast('訂單登記成功！', 'success');
+    showScreen('mainScreen');
+    setTimeout(() => openOrderDetail(orderId), 500);
+
+  } catch(e) {
+    showLoading(false);
+    showToast('送出失敗：' + e.message, 'error');
+  }
+}
+
+async function generateOrderNo() {
+  // 格式：1203-26041900001（民國年月日+5碼流水號）
+  const now = new Date();
+  const rocYear = String(now.getFullYear() - 1911).padStart(2,'0');
+  const mm = String(now.getMonth()+1).padStart(2,'0');
+  const dd2 = String(now.getDate()).padStart(2,'0');
+  const dateStr = `${rocYear}${mm}${dd2}`;
+
+  // 查今日最大流水號
+  try {
+    const prefix = `1203-${dateStr}`;
+    const rows = await sb.get('orders', `?order_no=like.${encodeURIComponent(prefix+'%')}&select=order_no&order=order_no.desc&limit=1`);
+    let seq = 1;
+    if (rows?.length) {
+      const last = rows[0].order_no;
+      const lastSeq = parseInt(last.slice(-5)) || 0;
+      seq = lastSeq + 1;
+    }
+    return `${prefix}${String(seq).padStart(5,'0')}`;
+  } catch(e) {
+    const rand = Math.floor(Math.random() * 90000) + 10000;
+    return `1203-${dateStr}${rand}`;
+  }
+}
+
+// ════════════════════════════════════════
+// LOAD MY ORDERS
+// ════════════════════════════════════════
+async function loadMyOrders() {
+  if (!currentUser) return;
+  try {
+    const orders = await sb.get('orders',
+      `?staff_id=eq.${currentUser.id}&order=created_at.desc&limit=20&select=*,order_items(*),stores(name)`
+    );
+    // Stats
+    const pending = orders.filter(o => o.status === 'pending' || o.status === 'submitted').length;
+    const processing = orders.filter(o => o.status === 'processing').length;
+    const shipped = orders.filter(o => o.status === 'shipped').length;
+    document.getElementById('statPending').textContent = pending;
+    document.getElementById('statProcessing').textContent = processing;
+    document.getElementById('statShipped').textContent = shipped;
+
+    renderOrderList(orders, 'myOrdersList');
+  } catch(e) { console.log(e); }
+}
+
+function renderOrderList(orders, containerId) {
+  const el = document.getElementById(containerId);
+  if (!orders?.length) {
+    el.innerHTML = `<div class="empty-state"><div class="icon">📋</div><p>尚無訂單</p></div>`;
+    return;
+  }
+  el.innerHTML = orders.map(o => {
+    const items = o.order_items || [];
+    const preview = items.map(i => `${i.product_name} x${i.quantity}`).join('、');
+    const statusMap = { pending:'待處理', submitted:'已拋單', processing:'出貨中', shipped:'已完成', cancelled:'已取消' };
+    return `<div class="order-card ${o.status}" onclick="openOrderDetail('${o.id}')">
+      <div class="order-card-top">
+        <div class="order-no">${o.order_no}</div>
+        <span class="status-badge ${o.status}">${statusMap[o.status]||o.status}</span>
+      </div>
+      <div class="order-receiver">${escHtml(o.receiver_name)}</div>
+      <div class="order-meta">${escHtml(o.receiver_phone)} · ${formatDate(o.created_at)}</div>
+      <div class="order-items-preview">${escHtml(preview)}</div>
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════
+// ORDER DETAIL
+// ════════════════════════════════════════
+async function openOrderDetail(orderId) {
+  showLoading(true);
+  try {
+    const orders = await sb.get('orders',
+      `?id=eq.${orderId}&select=*,order_items(*),stores(name),staff(name,phone)`
+    );
+    const o = orders?.[0];
+    if (!o) throw new Error('找不到訂單');
+    renderDetail(o, 'detailBody', false);
+    document.getElementById('detailBack').onclick = () => {
+      showScreen(currentUser?.role === 'admin' ? 'adminScreen' : 'mainScreen');
+    };
+    showScreen('detailScreen');
+  } catch(e) {
+    showToast('載入失敗', 'error');
+  }
+  showLoading(false);
+}
+
+function renderDetail(o, containerId, isPublic) {
+  const statusMap = { pending:'待處理', submitted:'已拋單', processing:'出貨中', shipped:'已完成', cancelled:'已取消' };
+  const statusIcon = { pending:'⏳', submitted:'📤', processing:'🚚', shipped:'✅', cancelled:'❌' };
+  const items = o.order_items || [];
+
+  const qrUrl = `${location.origin}${location.pathname}?token=${o.qr_token}`;
+
+  let adminBtns = '';
+  if (!isPublic && currentUser?.role === 'admin') {
+    adminBtns = `<div style="padding:12px 14px;border-top:1px solid var(--border);">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">更新狀態</div>
+      <div>
+        ${o.status === 'pending' ? `<button class="btn-status process" onclick="updateOrderStatus('${o.id}','submitted')">已拋單</button>` : ''}
+        ${(o.status==='submitted'||o.status==='pending') ? `<button class="btn-status ship" onclick="updateOrderStatus('${o.id}','processing')">出貨中</button>` : ''}
+        ${o.status==='processing' ? `<button class="btn-status ship" onclick="promptTracking('${o.id}')">輸入托運單號</button>` : ''}
+        ${o.status!=='cancelled'&&o.status!=='shipped' ? `<button class="btn-status cancel" onclick="updateOrderStatus('${o.id}','cancelled')">取消訂單</button>` : ''}
+      </div>
+    </div>`;
+  }
+
+  let trackingHtml = '';
+  if (o.tracking_number) {
+    trackingHtml = `<div class="tracking-box">
+      <span>🚚</span>
+      <span class="tracking-num">${escHtml(o.tracking_number)}</span>
+      <button class="copy-btn" onclick="copyText('${escHtml(o.tracking_number)}')">複製</button>
+    </div>`;
+  }
+
+  document.getElementById(containerId).innerHTML = `
+    <div class="detail-status-hero">
+      <div class="detail-status-icon">${statusIcon[o.status]||'📦'}</div>
+      <div class="detail-status-text">${statusMap[o.status]||o.status}</div>
+      <div class="detail-order-no">${o.order_no}</div>
+    </div>
+
+    ${trackingHtml}
+
+    <div class="detail-card">
+      <div class="detail-card-title">👤 收件資訊</div>
+      <div class="detail-row"><div class="detail-row-label">姓名</div><div class="detail-row-value">${escHtml(o.receiver_name)}</div></div>
+      <div class="detail-row"><div class="detail-row-label">電話</div><div class="detail-row-value">${escHtml(o.receiver_phone)}</div></div>
+      <div class="detail-row"><div class="detail-row-label">地址</div><div class="detail-row-value">${escHtml(o.receiver_address)}</div></div>
+      ${o.pos_no ? `<div class="detail-row"><div class="detail-row-label">POS序號</div><div class="detail-row-value">${escHtml(o.pos_no)}</div></div>` : ''}
+      ${o.note ? `<div class="detail-row"><div class="detail-row-label">備註</div><div class="detail-row-value">${escHtml(o.note)}</div></div>` : ''}
+    </div>
+
+    <div class="detail-card">
+      <div class="detail-card-title">📦 訂購品項</div>
+      ${items.map(i => `
+        <div class="detail-row">
+          <div class="detail-row-label">品項</div>
+          <div class="detail-row-value">
+            <div>${escHtml(i.product_name)}</div>
+            <div style="font-size:12px;color:var(--text2);font-family:'DM Mono',monospace;">${i.sku} × ${i.quantity}</div>
+          </div>
+        </div>`).join('')}
+      ${adminBtns}
+    </div>
+
+    <div class="detail-card">
+      <div class="detail-card-title">🏪 門市 / 業務資訊</div>
+      <div class="detail-row"><div class="detail-row-label">門市</div><div class="detail-row-value">${escHtml(o.stores?.name||'')}</div></div>
+      <div class="detail-row"><div class="detail-row-label">業務員</div><div class="detail-row-value">${escHtml(o.staff?.name||'')}</div></div>
+      <div class="detail-row"><div class="detail-row-label">業務電話</div><div class="detail-row-value">${escHtml(o.staff?.phone||'')}</div></div>
+      <div class="detail-row"><div class="detail-row-label">登記時間</div><div class="detail-row-value">${formatDate(o.created_at)}</div></div>
+    </div>
+
+    <div class="qr-section">
+      <h3>📱 客人憑證 QR Code</h3>
+      <div class="qr-code-wrap">
+        <canvas id="qrCanvas" width="180" height="180"></canvas>
+      </div>
+      <div class="qr-hint">讓客人掃描此 QR Code 即可查看訂單狀態</div>
+    </div>
+  `;
+
+  // Generate QR
+  generateQR(qrUrl, 'qrCanvas');
+}
+
+// ════════════════════════════════════════
+// PUBLIC ORDER VIEW
+// ════════════════════════════════════════
+async function loadPublicOrder(token) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('publicScreen').classList.add('active');
+  showLoading(true);
+  try {
+    const orders = await sb.get('orders',
+      `?qr_token=eq.${token}&select=*,order_items(*),stores(name),staff(name,phone)`
+    );
+    const o = orders?.[0];
+    if (!o) {
+      document.getElementById('publicBody').innerHTML = `<div class="empty-state"><div class="icon">❌</div><p>找不到此訂單</p></div>`;
+    } else {
+      renderDetail(o, 'publicBody', true);
+    }
+  } catch(e) {
+    document.getElementById('publicBody').innerHTML = `<div class="empty-state"><div class="icon">❌</div><p>載入失敗，請稍後再試</p></div>`;
+  }
+  showLoading(false);
+}
+
+// ════════════════════════════════════════
+// ADMIN
+// ════════════════════════════════════════
+async function loadAdminOrders() {
+  showLoading(true);
+  try {
+    const orders = await sb.get('orders',
+      `?order=created_at.desc&limit=200&select=*,order_items(*),stores(name),staff(name,phone)`
+    );
+    adminAllOrders = orders || [];
+    renderAdminOrders();
+  } catch(e) { showToast('載入失敗', 'error'); }
+  showLoading(false);
+}
+
+function setAdminTab(tab, el) {
+  adminCurrentTab = tab;
+  document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderAdminOrders();
+}
+
+function renderAdminOrders() {
+  const filtered = adminCurrentTab === 'all'
+    ? adminAllOrders
+    : adminAllOrders.filter(o => o.status === adminCurrentTab);
+  renderOrderList(filtered, 'adminOrdersList');
+  // Override click to go back to admin
+  document.querySelectorAll('#adminOrdersList .order-card').forEach(card => {
+    const origClick = card.getAttribute('onclick');
+    card.onclick = () => {
+      const id = origClick.match(/'([^']+)'/)?.[1];
+      if (id) {
+        document.getElementById('detailBack').onclick = () => showScreen('adminScreen');
+        openOrderDetail(id);
+      }
+    };
+  });
+}
+
+async function updateOrderStatus(orderId, status) {
+  showLoading(true);
+  try {
+    await sb.patch('orders', orderId, { status, updated_at: new Date().toISOString() });
+    showToast('狀態已更新', 'success');
+    await openOrderDetail(orderId);
+    loadAdminOrders();
+  } catch(e) { showToast('更新失敗', 'error'); }
+  showLoading(false);
+}
+
+async function promptTracking(orderId) {
+  const num = prompt('請輸入托運單號：');
+  if (!num) return;
+  showLoading(true);
+  try {
+    await sb.patch('orders', orderId, { tracking_number: num.trim(), status: 'shipped', updated_at: new Date().toISOString() });
+    showToast('托運單號已儲存', 'success');
+    await openOrderDetail(orderId);
+    loadAdminOrders();
+  } catch(e) { showToast('更新失敗', 'error'); }
+  showLoading(false);
+}
+
+// ════════════════════════════════════════
+// CSV EXPORT
+// ════════════════════════════════════════
+function exportCSV() {
+  if (!adminAllOrders.length) { showToast('沒有訂單可匯出'); return; }
+  const rows = [['訂單編號','狀態','門市','業務員','業務電話','收件人','收件電話','收件地址','POS序號','品項','品號','數量','備註','托運單號','建立時間']];
+  adminAllOrders.forEach(o => {
+    const items = o.order_items || [];
+    if (!items.length) {
+      rows.push([o.order_no, o.status, o.stores?.name, o.staff?.name, o.staff?.phone, o.receiver_name, o.receiver_phone, o.receiver_address, o.pos_no||'', '', '', '', o.note||'', o.tracking_number||'', formatDate(o.created_at)]);
+    } else {
+      items.forEach(item => {
+        rows.push([o.order_no, o.status, o.stores?.name, o.staff?.name, o.staff?.phone, o.receiver_name, o.receiver_phone, o.receiver_address, o.pos_no||'', item.product_name, item.sku, item.quantity, o.note||'', o.tracking_number||'', formatDate(o.created_at)]);
+      });
+    }
+  });
+  const csv = '\uFEFF' + rows.map(r => r.map(c => `"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = `宅配訂單_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+
+// ════════════════════════════════════════
+// QR CODE (pure JS, no library)
+// ════════════════════════════════════════
+function generateQR(text, canvasId) {
+  // Use a simple QR API image approach
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => ctx.drawImage(img, 0, 0, 180, 180);
+  img.onerror = () => {
+    ctx.fillStyle = '#f0f0f0';
+    ctx.fillRect(0,0,180,180);
+    ctx.fillStyle = '#666';
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('QR Code', 90, 85);
+    ctx.fillText('(需網路載入)', 90, 105);
+  };
+  img.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(text)}`;
+}
+
+// ════════════════════════════════════════
+// UTILS
+// ════════════════════════════════════════
+function showLoading(show) {
+  document.getElementById('loadingOverlay').classList.toggle('show', show);
+}
+
+let toastTimer;
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast show ${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function copyText(text) {
+  navigator.clipboard.writeText(text).then(() => showToast('已複製！', 'success'));
+}
+
+function escHtml(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function formatDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', e => {
+  if (!e.target.closest('#productSearchWrap')) closeDropdown();
+  if (!e.target.closest('#roadSearchWrap')) {
+    document.getElementById('roadDropdown').style.display = 'none';
+  }
+});
+
+// Enter key login
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.getElementById('loginScreen').classList.contains('active')) doLogin();
+});
+</script>
+</body>
+</html>
