@@ -1381,7 +1381,6 @@ function initTerminalSelect() {
 function onCityChange(city) {
   const distEl = document.getElementById('addrDistrict');
   document.getElementById('addrZipRow').style.display = 'none';
-  document.getElementById('addrRoadRow').style.display = 'none';
   document.getElementById('addrDetailRow').style.display = 'none';
   selectedRoad = '';
   if (!city || !TW_DISTRICTS[city]) {
@@ -1403,80 +1402,22 @@ function onDistrictChange(dist) {
   const zipEl = document.getElementById('addrZip');
   if (zipEl) zipEl.value = zip;
   document.getElementById('addrZipRow').style.display = 'block';
-  document.getElementById('addrRoadRow').style.display = 'block';
   document.getElementById('addrDetailRow').style.display = 'block';
-  document.getElementById('addrRoadInput').value = '';
-  selectedRoad = '';
+  // 清空詳細地址
+  const detailEl = document.getElementById('addrDetail');
+  if (detailEl) detailEl.value = '';
+  const detailHint = document.getElementById('detailHint');
+  if (detailHint) { detailHint.textContent = '都市：竹光路100號3樓｜農村：1鄰100號'; detailHint.className = 'field-hint'; }
 }
 
-// 路名搜尋（政府開放資料 NLSC API）
-function onRoadSearch(val) {
-  clearTimeout(roadDebounce);
-  const dd = document.getElementById('roadDropdown');
-  if (!val.trim()) { dd.style.display = 'none'; selectedRoad = ''; return; }
-  selectedRoad = ''; // 清除已選
-  roadDebounce = setTimeout(() => fetchRoads(val.trim()), 300);
-}
-
-async function fetchRoads(q) {
-  const dd = document.getElementById('roadDropdown');
-  const city = document.getElementById('addrCity').value;
-  const dist = document.getElementById('addrDistrict').value;
-  if (!city || !dist) { dd.style.display = 'none'; return; }
-
-  dd.innerHTML = '<div class="product-option"><div class="pname">搜尋中...</div></div>';
-  dd.style.display = 'block';
-
-  try {
-    // 使用內政部地址門牌查詢 API
-    const url = `https://api.nlsc.gov.tw/other/ListRoadSectionStat/${encodeURIComponent(city)}/${encodeURIComponent(dist)}/${encodeURIComponent(q)}`;
-    const res = await fetch(url);
-    const text = await res.text();
-    const parser = new DOMParser();
-    const xml = parser.parseFromString(text, 'text/xml');
-    const items = xml.querySelectorAll('roadSectionStaItem');
-
-    if (!items.length) {
-      dd.innerHTML = `<div class="product-option"><div class="pname">找不到「${q}」相關路名</div></div>`;
-      return;
-    }
-
-    const roads = [];
-    items.forEach(item => {
-      const road = item.querySelector('ROADNAME')?.textContent?.trim();
-      if (road && !roads.includes(road)) roads.push(road);
-    });
-
-    dd.innerHTML = roads.slice(0, 20).map(r =>
-      `<div class="product-option" onclick="selectRoad('${escHtml(r)}')">
-        <div class="pname">${escHtml(r)}</div>
-      </div>`
-    ).join('');
-  } catch(e) {
-    // fallback：顯示輸入值讓使用者直接用
-    dd.innerHTML = `<div class="product-option" onclick="selectRoad('${escHtml(q)}')">
-      <div class="pname">使用：${escHtml(q)}</div>
-      <div class="pcode">（無法連線查詢，請確認路名正確）</div>
-    </div>`;
-  }
-}
-
-function selectRoad(road) {
-  selectedRoad = road;
-  document.getElementById('addrRoadInput').value = road;
-  document.getElementById('roadDropdown').style.display = 'none';
-  document.getElementById('addrDetail').focus();
-}
 
 function getFullAddress() {
   const city = document.getElementById('addrCity').value;
   const dist = document.getElementById('addrDistrict').value;
   const zip = document.getElementById('addrZip').value;
-  const road = document.getElementById('addrRoadInput').value.trim();
   const detail = document.getElementById('addrDetail').value.trim();
   if (!city || !dist || !detail) return '';
-  // 路名選填：有填就加，沒填直接接門牌
-  return `${zip} ${city}${dist}${road}${detail}`;
+  return `${zip} ${city}${dist}${detail}`;
 }
 
 // ════════════════════════════════════════
@@ -1492,7 +1433,6 @@ async function submitOrder() {
   const posNo = document.getElementById('posNo').value.trim();
   const note = document.getElementById('orderNote').value.trim();
   const terminal = document.getElementById('posTerminal').value;
-  const road = document.getElementById('addrRoadInput').value.trim();
   const detail = document.getElementById('addrDetail').value.trim();
   const address = getFullAddress();
 
@@ -1503,10 +1443,8 @@ async function submitOrder() {
   if (!receiverPhone || receiverPhone.length !== 10 || receiverPhone[0] !== '0') { showToast('收件人電話格式不正確', 'error'); return; }
   if (!document.getElementById('addrCity').value) { showToast('請選擇縣市', 'error'); return; }
   if (!document.getElementById('addrDistrict').value) { showToast('請選擇鄉鎮市區', 'error'); return; }
-  if (!road && !detail) { showToast('請輸入路街名或門牌資訊', 'error'); return; }
-  if (road && /^\d+$/.test(road)) { showToast('路名不能只有數字，請確認', 'error'); return; }
-  if (!detail) { showToast('請輸入門牌號碼', 'error'); return; }
-  if (!detail.includes('號')) { showToast('門牌號碼必須包含「號」字', 'error'); return; }
+  if (!detail) { showToast('請輸入詳細地址', 'error'); return; }
+  if (!detail.includes('號')) { showToast('地址必須包含「號」字', 'error'); return; }
   if (!posNo || posNo.length !== 5) { showToast('POS序號請輸入5碼數字', 'error'); return; }
   if (!formItems.length) { showToast('請至少選擇一項商品', 'error'); return; }
 
@@ -2026,9 +1964,6 @@ function formatDate(iso) {
 // Close dropdown when clicking outside
 document.addEventListener('click', e => {
   if (!e.target.closest('#productSearchWrap')) closeDropdown();
-  if (!e.target.closest('#roadSearchWrap')) {
-    document.getElementById('roadDropdown').style.display = 'none';
-  }
 });
 
 // Enter key login
@@ -2049,15 +1984,6 @@ document.addEventListener('keydown', e => {
 
   // select 不攔（讓原生下拉正常運作）
   if (tag === 'SELECT') return;
-
-  // 路街名搜尋dropdown開著時，Enter選第一個
-  if (target.id === 'addrRoadInput') {
-    const dd = document.getElementById('roadDropdown');
-    if (dd.style.display !== 'none') {
-      const first = dd.querySelector('.product-option');
-      if (first) { first.click(); e.preventDefault(); return; }
-    }
-  }
 
   // 商品搜尋dropdown開著時，Enter選第一個
   if (target.id === 'productSearch') {
