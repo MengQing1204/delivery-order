@@ -1183,11 +1183,11 @@ async function renderDropdownWithStock(q) {
   const dd = document.getElementById('productDropdown');
   const lower = q.toLowerCase();
 
-  // 先用本地品項清單篩選
+  // 先用本地品項清單篩選，最多顯示50筆
   const filtered = allProducts.filter(p =>
     p.product_name?.toLowerCase().includes(lower) ||
     p.sku?.toLowerCase().includes(lower)
-  ).slice(0, 20);
+  ).slice(0, 50);
 
   if (!filtered.length) {
     dd.innerHTML = `<div class="product-option"><div class="pname">找不到「${escHtml(q)}」相關商品</div></div>`;
@@ -1195,40 +1195,41 @@ async function renderDropdownWithStock(q) {
     return;
   }
 
-  // 先顯示載入中
-  dd.innerHTML = filtered.map(p => `
-    <div class="product-option" style="opacity:0.5">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <div>
-          <div class="pname">${escHtml(p.product_name)}</div>
-          <div class="pcode">${p.sku}</div>
+  // 先顯示品項（不等庫存，讓業務先看到結果）
+  const renderList = (stockMap, loading) => {
+    dd.innerHTML = filtered.map(p => {
+      const stock = stockMap[p.sku];
+      let stockClass, stockText, disabled;
+      if (loading || stock === undefined) {
+        // 庫存查詢中或失敗：顯示「?」但可以選
+        stockClass = '';
+        stockText = loading ? '查詢中...' : '庫存未知';
+        disabled = '';
+      } else {
+        stockClass = stock > 10 ? 'ok' : stock > 0 ? 'low' : 'none';
+        stockText = stock > 0 ? `可用 ${stock}` : '無庫存';
+        disabled = stock <= 0 ? 'style="opacity:0.5;pointer-events:none;"' : '';
+      }
+      return `<div class="product-option" onclick="addItem('${escHtml(p.sku)}','${escHtml(p.product_name)}',${stock ?? 1})" ${disabled}>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div class="pname">${escHtml(p.product_name)}</div>
+            <div class="pcode">${p.sku}</div>
+          </div>
+          <div class="pstock ${stockClass}" style="font-size:11px;white-space:nowrap;">${stockText}</div>
         </div>
-        <div class="pstock" style="color:var(--text2);font-size:11px;">查詢中...</div>
-      </div>
-    </div>`).join('');
-  dd.style.display = 'block';
+      </div>`;
+    }).join('');
+    dd.style.display = 'block';
+  };
 
-  // 查 ibiza 即時庫存
+  // 先顯示載入中版本
+  renderList({}, true);
+
+  // 背景查 ibiza 庫存，查到後更新
   const skus = filtered.map(p => p.sku);
   const stockMap = await ibizaGetStock(skus);
-
-  // 更新顯示（加入即時庫存）
-  dd.innerHTML = filtered.map(p => {
-    const stock = stockMap[p.sku] ?? 0;
-    const stockClass = stock > 10 ? 'ok' : stock > 0 ? 'low' : 'none';
-    const stockText = stock > 0 ? `可用 ${stock}` : '無庫存';
-    const disabled = stock <= 0 ? 'style="opacity:0.5;pointer-events:none;"' : '';
-    return `<div class="product-option" onclick="addItem('${escHtml(p.sku)}','${escHtml(p.product_name)}',${stock})" ${disabled}>
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <div>
-          <div class="pname">${escHtml(p.product_name)}</div>
-          <div class="pcode">${p.sku}</div>
-        </div>
-        <div class="pstock ${stockClass}">${stockText}</div>
-      </div>
-    </div>`;
-  }).join('');
-  dd.style.display = 'block';
+  renderList(stockMap, false);
 }
 
 function addItem(sku, name, stock) {
