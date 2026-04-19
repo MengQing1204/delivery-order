@@ -649,6 +649,40 @@ body {
 .gap-8 { gap: 8px; }
 .flex { display: flex; }
 .items-center { align-items: center; }
+
+/* Same buyer checkbox */
+.same-buyer-label {
+  display: flex; align-items: center; gap: 10px;
+  cursor: pointer; padding: 4px 0;
+  font-size: 15px; font-weight: 500;
+  user-select: none;
+}
+.checkbox-wrap {
+  width: 24px; height: 24px;
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s;
+  background: var(--surface);
+}
+.checkbox-wrap.checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.checkbox-inner { display: none; }
+.checkbox-wrap.checked .checkbox-inner {
+  display: block;
+  width: 6px; height: 10px;
+  border: 2px solid #fff;
+  border-top: none; border-left: none;
+  transform: rotate(45deg) translateY(-1px);
+}
+
+/* Field hint */
+.field-hint { font-size: 12px; margin-top: 4px; }
+.field-hint.error { color: var(--danger); }
+.field-hint.ok { color: var(--success); }
 </style>
 </head>
 <body>
@@ -742,18 +776,48 @@ body {
   </div>
 
   <div class="form-body">
-    <!-- 收件資訊 -->
+
+    <!-- 訂購人資訊 -->
     <div class="form-section">
-      <div class="form-section-title">👤 收件人資訊</div>
+      <div class="form-section-title">🧾 訂購人資訊</div>
       <div class="form-row">
-        <label class="form-label">收件人姓名 <span class="req">*</span></label>
-        <input class="form-input" id="receiverName" placeholder="請輸入收件人姓名" type="text">
+        <label class="form-label">訂購人姓名 <span class="req">*</span></label>
+        <input class="form-input" id="buyerName" placeholder="請輸入訂購人姓名" type="text">
       </div>
       <div class="form-row">
-        <label class="form-label">收件人電話 <span class="req">*</span></label>
-        <input class="form-input" id="receiverPhone" placeholder="請輸入手機號碼" type="tel" inputmode="numeric">
+        <label class="form-label">訂購人電話 <span class="req">*</span></label>
+        <input class="form-input" id="buyerPhone" placeholder="請輸入10碼手機號碼" type="tel" inputmode="numeric" maxlength="10" oninput="validatePhone(this)">
+        <div class="field-hint" id="buyerPhoneHint"></div>
       </div>
-      <!-- 地址區 -->
+    </div>
+
+    <!-- 收件人資訊 -->
+    <div class="form-section">
+      <div class="form-section-title">📦 收件人資訊</div>
+
+      <!-- 與訂購人相同勾選 -->
+      <div class="form-row">
+        <label class="same-buyer-label" onclick="toggleSameBuyer()">
+          <div class="checkbox-wrap" id="sameBuyerCheck">
+            <div class="checkbox-inner"></div>
+          </div>
+          <span>收件人與訂購人相同</span>
+        </label>
+      </div>
+
+      <div id="receiverFields">
+        <div class="form-row">
+          <label class="form-label">收件人姓名 <span class="req">*</span></label>
+          <input class="form-input" id="receiverName" placeholder="請輸入收件人姓名" type="text">
+        </div>
+        <div class="form-row">
+          <label class="form-label">收件人電話 <span class="req">*</span></label>
+          <input class="form-input" id="receiverPhone" placeholder="請輸入10碼手機號碼" type="tel" inputmode="numeric" maxlength="10" oninput="validatePhone(this)">
+          <div class="field-hint" id="receiverPhoneHint"></div>
+        </div>
+      </div>
+
+      <!-- 地址 -->
       <div class="form-row">
         <label class="form-label">縣市 <span class="req">*</span></label>
         <select class="form-select" id="addrCity" onchange="onCityChange(this.value)">
@@ -768,22 +832,32 @@ body {
       </div>
       <div class="form-row" id="addrZipRow" style="display:none;">
         <label class="form-label">郵遞區號</label>
-        <input class="form-input" id="addrZip" readonly style="background:var(--surface2);color:var(--text2);">
+        <input class="form-input" id="addrZip" readonly style="background:var(--surface2);color:var(--accent);font-weight:700;">
       </div>
       <div class="form-row" id="addrRoadRow" style="display:none;">
-        <label class="form-label">路/街名 <span class="req">*</span></label>
+        <label class="form-label">路／街名 <span class="req">*</span></label>
         <div class="product-search-wrap" id="roadSearchWrap">
           <span class="product-search-icon">🔍</span>
           <input class="product-search-input" id="addrRoadInput"
-            placeholder="輸入關鍵字搜尋路街名..."
+            placeholder="輸入路街名關鍵字（例：和平）"
             oninput="onRoadSearch(this.value)"
             autocomplete="off">
           <div class="product-dropdown" id="roadDropdown"></div>
         </div>
+        <div class="field-hint" id="roadHint" style="color:var(--text2);font-size:12px;margin-top:4px;">請輸入路名開頭關鍵字搜尋</div>
       </div>
       <div class="form-row" id="addrDetailRow" style="display:none;">
         <label class="form-label">門牌號碼 <span class="req">*</span></label>
         <input class="form-input" id="addrDetail" placeholder="例：100號3樓">
+      </div>
+    </div>
+
+    <!-- 訂單資訊 -->
+    <div class="form-section">
+      <div class="form-section-title">🏪 訂單資訊</div>
+      <div class="form-row">
+        <label class="form-label">門市</label>
+        <input class="form-input" id="storeDisplay" readonly style="background:var(--surface2);color:var(--text);font-weight:700;">
       </div>
       <div class="form-row">
         <label class="form-label">機號 <span class="req">*</span></label>
@@ -792,8 +866,8 @@ body {
         </select>
       </div>
       <div class="form-row">
-        <label class="form-label">POS交易序號</label>
-        <input class="form-input" id="posNo" placeholder="請輸入POS交易序號（選填）" inputmode="numeric">
+        <label class="form-label">POS交易序號 <span class="req">*</span></label>
+        <input class="form-input" id="posNo" placeholder="請輸入POS交易序號" inputmode="numeric">
       </div>
       <div class="form-row">
         <label class="form-label">備註</label>
@@ -1111,10 +1185,30 @@ function initForm() {
   formItems = [];
   selectedRoad = '';
   selectedZip = '';
-  ['receiverName','receiverPhone','addrRoadInput','addrDetail','posNo','orderNote','productSearch'].forEach(id => {
+  sameBuyer = false;
+
+  ['buyerName','buyerPhone','receiverName','receiverPhone',
+   'addrRoadInput','addrDetail','posNo','orderNote','productSearch'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
+
+  // hints
+  ['buyerPhoneHint','receiverPhoneHint','roadHint'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.textContent = id === 'roadHint' ? '請輸入路名開頭關鍵字搜尋' : ''; el.className = 'field-hint'; }
+  });
+
+  // 門市顯示
+  const storeDisplay = document.getElementById('storeDisplay');
+  if (storeDisplay) storeDisplay.value = currentStore?.name || '未指定門市';
+
+  // 勾選框重置
+  const check = document.getElementById('sameBuyerCheck');
+  if (check) check.classList.remove('checked');
+  const rf = document.getElementById('receiverFields');
+  if (rf) rf.style.display = 'block';
+
   // Reset address
   const cityEl = document.getElementById('addrCity');
   if (cityEl) cityEl.value = '';
@@ -1124,10 +1218,42 @@ function initForm() {
   document.getElementById('addrRoadRow').style.display = 'none';
   document.getElementById('addrDetailRow').style.display = 'none';
 
-  // 機號
   initTerminalSelect();
   renderItems();
   closeDropdown();
+}
+
+// ════════════════════════════════════════
+// SAME BUYER TOGGLE
+// ════════════════════════════════════════
+let sameBuyer = false;
+function toggleSameBuyer() {
+  sameBuyer = !sameBuyer;
+  const check = document.getElementById('sameBuyerCheck');
+  const rf = document.getElementById('receiverFields');
+  check.classList.toggle('checked', sameBuyer);
+  if (sameBuyer) {
+    rf.style.display = 'none';
+    // 帶入訂購人資料
+    document.getElementById('receiverName').value = document.getElementById('buyerName').value;
+    document.getElementById('receiverPhone').value = document.getElementById('buyerPhone').value;
+  } else {
+    rf.style.display = 'block';
+  }
+}
+
+// ════════════════════════════════════════
+// PHONE VALIDATION
+// ════════════════════════════════════════
+function validatePhone(input) {
+  const val = input.value.replace(/\D/g,'');
+  input.value = val;
+  const hintId = input.id === 'buyerPhone' ? 'buyerPhoneHint' : 'receiverPhoneHint';
+  const hint = document.getElementById(hintId);
+  if (!hint) return;
+  if (val.length === 0) { hint.textContent = ''; hint.className = 'field-hint'; }
+  else if (val.length < 10) { hint.textContent = `還需輸入 ${10 - val.length} 碼`; hint.className = 'field-hint error'; }
+  else if (val.length === 10) { hint.textContent = '✓ 格式正確'; hint.className = 'field-hint ok'; }
 }
 
 function initCitySelect() {
@@ -1250,19 +1376,24 @@ function getFullAddress() {
 // SUBMIT ORDER
 // ════════════════════════════════════════
 async function submitOrder() {
-  const name = document.getElementById('receiverName').value.trim();
-  const phone = document.getElementById('receiverPhone').value.trim();
-  const address = getFullAddress();
+  const buyerName = document.getElementById('buyerName').value.trim();
+  const buyerPhone = document.getElementById('buyerPhone').value.trim();
+  const receiverName = sameBuyer ? buyerName : document.getElementById('receiverName').value.trim();
+  const receiverPhone = sameBuyer ? buyerPhone : document.getElementById('receiverPhone').value.trim();
   const posNo = document.getElementById('posNo').value.trim();
   const note = document.getElementById('orderNote').value.trim();
   const terminal = document.getElementById('posTerminal').value;
+  const address = getFullAddress();
 
-  if (!name) { showToast('請輸入收件人姓名', 'error'); return; }
-  if (!phone) { showToast('請輸入收件人電話', 'error'); return; }
+  if (!buyerName) { showToast('請輸入訂購人姓名', 'error'); return; }
+  if (!buyerPhone || buyerPhone.length !== 10) { showToast('訂購人電話請輸入10碼', 'error'); return; }
+  if (!receiverName) { showToast('請輸入收件人姓名', 'error'); return; }
+  if (!receiverPhone || receiverPhone.length !== 10) { showToast('收件人電話請輸入10碼', 'error'); return; }
   if (!document.getElementById('addrCity').value) { showToast('請選擇縣市', 'error'); return; }
   if (!document.getElementById('addrDistrict').value) { showToast('請選擇鄉鎮市區', 'error'); return; }
   if (!document.getElementById('addrRoadInput').value.trim()) { showToast('請輸入路街名', 'error'); return; }
   if (!document.getElementById('addrDetail').value.trim()) { showToast('請輸入門牌號碼', 'error'); return; }
+  if (!posNo) { showToast('請輸入POS交易序號', 'error'); return; }
   if (!formItems.length) { showToast('請至少選擇一項商品', 'error'); return; }
 
   showLoading(true);
@@ -1272,10 +1403,12 @@ async function submitOrder() {
       order_no: orderNo,
       store_id: currentUser.store_id,
       staff_id: currentUser.id,
-      receiver_name: name,
-      receiver_phone: phone,
+      buyer_name: buyerName,
+      buyer_phone: buyerPhone,
+      receiver_name: receiverName,
+      receiver_phone: receiverPhone,
       receiver_address: address,
-      pos_no: posNo || null,
+      pos_no: posNo,
       pos_terminal: terminal,
       note: note || null,
       status: 'pending'
@@ -1283,7 +1416,6 @@ async function submitOrder() {
 
     const newOrder = await sb.post('orders', orderData);
     if (!newOrder || newOrder.error) throw new Error(newOrder?.message || '建立訂單失敗');
-
     const orderId = Array.isArray(newOrder) ? newOrder[0].id : newOrder.id;
 
     for (const item of formItems) {
@@ -1299,7 +1431,6 @@ async function submitOrder() {
     showToast('訂單登記成功！', 'success');
     showScreen('mainScreen');
     setTimeout(() => openOrderDetail(orderId), 500);
-
   } catch(e) {
     showLoading(false);
     showToast('送出失敗：' + e.message, 'error');
