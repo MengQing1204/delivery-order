@@ -835,20 +835,19 @@ body {
         <input class="form-input" id="addrZip" readonly style="background:var(--surface2);color:var(--accent);font-weight:700;">
       </div>
       <div class="form-row" id="addrRoadRow" style="display:none;">
-        <label class="form-label">路／街名 <span class="req">*</span></label>
-        <div class="product-search-wrap" id="roadSearchWrap">
-          <span class="product-search-icon">🔍</span>
-          <input class="product-search-input" id="addrRoadInput"
-            placeholder="輸入路街名關鍵字（例：和平）"
-            oninput="onRoadSearch(this.value)"
-            autocomplete="off">
-          <div class="product-dropdown" id="roadDropdown"></div>
-        </div>
-        <div class="field-hint" id="roadHint" style="color:var(--text2);font-size:12px;margin-top:4px;">請輸入路名開頭關鍵字搜尋</div>
+        <label class="form-label">路／街名 <span style="color:var(--text2);font-size:11px;">（選填）</span></label>
+        <input class="form-input" id="addrRoadInput"
+          placeholder="例：竹光路、中山北路二段（農村可留空）"
+          oninput="validateRoad(this)"
+          autocomplete="off">
+        <div class="field-hint" id="roadHint">農村／偏遠地區無路名可留空，直接填門牌</div>
       </div>
       <div class="form-row" id="addrDetailRow" style="display:none;">
         <label class="form-label">門牌號碼 <span class="req">*</span></label>
-        <input class="form-input" id="addrDetail" placeholder="例：100號3樓">
+        <input class="form-input" id="addrDetail"
+          placeholder="例：100號3樓 或 蒜頭1鄰100號"
+          oninput="validateDetail(this)">
+        <div class="field-hint" id="detailHint">必須包含「號」字｜都市：100號3樓｜農村：1鄰100號</div>
       </div>
     </div>
 
@@ -866,8 +865,10 @@ body {
         </select>
       </div>
       <div class="form-row">
-        <label class="form-label">POS交易序號 <span class="req">*</span></label>
-        <input class="form-input" id="posNo" placeholder="請輸入POS交易序號" inputmode="numeric">
+        <label class="form-label">POS交易序號 <span class="req">*</span>（5碼數字）</label>
+        <input class="form-input" id="posNo" placeholder="請輸入5碼POS交易序號"
+          inputmode="numeric" maxlength="5" oninput="validatePosNo(this)">
+        <div class="field-hint" id="posNoHint"></div>
       </div>
       <div class="form-row">
         <label class="form-label">備註</label>
@@ -938,6 +939,33 @@ body {
     <div class="topbar-title">📦 訂單查詢</div>
   </div>
   <div class="detail-body" id="publicBody"></div>
+</div>
+
+<!-- 送出確認視窗 -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal-sheet">
+    <div class="modal-title">📋 請確認訂單內容</div>
+    <div id="confirmContent"></div>
+    <div style="display:flex;gap:10px;margin-top:16px;">
+      <button onclick="closeConfirm()" style="flex:1;padding:14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:15px;font-family:inherit;background:var(--surface);cursor:pointer;">返回修改</button>
+      <button onclick="doSubmitOrder()" style="flex:2;padding:14px;background:linear-gradient(135deg,var(--accent),#e8823a);color:#fff;border:none;border-radius:var(--radius);font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;">✓ 確認送出</button>
+    </div>
+  </div>
+</div>
+
+<!-- 重複POS警告視窗 -->
+<div class="modal-overlay" id="dupModal">
+  <div class="modal-sheet">
+    <div style="text-align:center;margin-bottom:16px;">
+      <div style="font-size:40px;">⚠️</div>
+      <div style="font-size:18px;font-weight:700;color:var(--danger);margin-top:8px;">重複POS序號警告</div>
+    </div>
+    <div id="dupContent" style="background:var(--danger-light);border-radius:var(--radius-sm);padding:14px;margin-bottom:16px;font-size:14px;"></div>
+    <div style="display:flex;gap:10px;">
+      <button onclick="closeDup()" style="flex:1;padding:14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:15px;font-family:inherit;background:var(--surface);cursor:pointer;">返回修改</button>
+      <button onclick="ignoreAndConfirm()" style="flex:1;padding:14px;background:var(--warning);color:#fff;border:none;border-radius:var(--radius);font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;">忽略繼續送出</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -1194,10 +1222,14 @@ function initForm() {
   });
 
   // hints
-  ['buyerPhoneHint','receiverPhoneHint','roadHint'].forEach(id => {
+  ['buyerPhoneHint','receiverPhoneHint','posNoHint'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) { el.textContent = id === 'roadHint' ? '請輸入路名開頭關鍵字搜尋' : ''; el.className = 'field-hint'; }
+    if (el) { el.textContent = ''; el.className = 'field-hint'; }
   });
+  const roadHint = document.getElementById('roadHint');
+  if (roadHint) { roadHint.textContent = '農村／偏遠地區無路名可留空，直接填門牌'; roadHint.className = 'field-hint'; }
+  const detailHint = document.getElementById('detailHint');
+  if (detailHint) { detailHint.textContent = '必須包含「號」字，例：100號、100號2樓'; detailHint.className = 'field-hint'; }
 
   // 門市顯示
   const storeDisplay = document.getElementById('storeDisplay');
@@ -1251,9 +1283,59 @@ function validatePhone(input) {
   const hintId = input.id === 'buyerPhone' ? 'buyerPhoneHint' : 'receiverPhoneHint';
   const hint = document.getElementById(hintId);
   if (!hint) return;
-  if (val.length === 0) { hint.textContent = ''; hint.className = 'field-hint'; }
-  else if (val.length < 10) { hint.textContent = `還需輸入 ${10 - val.length} 碼`; hint.className = 'field-hint error'; }
-  else if (val.length === 10) { hint.textContent = '✓ 格式正確'; hint.className = 'field-hint ok'; }
+  if (val.length === 0) { hint.textContent = ''; hint.className = 'field-hint'; return; }
+  if (val[0] !== '0') { hint.textContent = '⚠ 電話號碼第一碼必須是0'; hint.className = 'field-hint error'; return; }
+  if (val.length >= 2 && val[1] !== '9' && !['02','03','04','05','06','07','08'].includes(val.slice(0,2))) {
+    hint.textContent = '⚠ 請輸入有效的手機（09）或市話區碼'; hint.className = 'field-hint error'; return;
+  }
+  if (val.length < 10) { hint.textContent = `還需輸入 ${10 - val.length} 碼`; hint.className = 'field-hint error'; }
+  else { hint.textContent = '✓ 格式正確'; hint.className = 'field-hint ok'; }
+}
+
+// ════════════════════════════════════════
+// ROAD VALIDATION（選填）
+// ════════════════════════════════════════
+function validateRoad(input) {
+  const val = input.value.trim();
+  const hint = document.getElementById('roadHint');
+  if (!hint) return;
+  if (!val) {
+    hint.textContent = '農村／偏遠地區無路名可留空，直接填門牌';
+    hint.className = 'field-hint';
+    return;
+  }
+  if (/^\d+$/.test(val)) {
+    hint.textContent = '⚠ 路名不能只有數字，請確認是否正確';
+    hint.className = 'field-hint error';
+    return;
+  }
+  hint.textContent = '✓';
+  hint.className = 'field-hint ok';
+}
+
+// ════════════════════════════════════════
+// DETAIL VALIDATION
+// ════════════════════════════════════════
+function validateDetail(input) {
+  const val = input.value.trim();
+  const hint = document.getElementById('detailHint');
+  if (!hint) return;
+  if (!val) { hint.textContent = '必須包含「號」字，例：100號、100號2樓'; hint.className = 'field-hint'; return; }
+  if (!val.includes('號')) { hint.textContent = '⚠ 請確認門牌含「號」字，例：100號3樓'; hint.className = 'field-hint error'; return; }
+  hint.textContent = '✓'; hint.className = 'field-hint ok';
+}
+
+// ════════════════════════════════════════
+// POS NO VALIDATION
+// ════════════════════════════════════════
+function validatePosNo(input) {
+  const val = input.value.replace(/\D/g,'');
+  input.value = val;
+  const hint = document.getElementById('posNoHint');
+  if (!hint) return;
+  if (!val) { hint.textContent = ''; hint.className = 'field-hint'; return; }
+  if (val.length < 5) { hint.textContent = `還需輸入 ${5 - val.length} 碼（共5碼）`; hint.className = 'field-hint error'; }
+  else { hint.textContent = '✓ 格式正確'; hint.className = 'field-hint ok'; }
 }
 
 function initCitySelect() {
@@ -1368,13 +1450,16 @@ function getFullAddress() {
   const zip = document.getElementById('addrZip').value;
   const road = document.getElementById('addrRoadInput').value.trim();
   const detail = document.getElementById('addrDetail').value.trim();
-  if (!city || !dist || !road || !detail) return '';
+  if (!city || !dist || !detail) return '';
+  // 路名選填：有填就加，沒填直接接門牌
   return `${zip} ${city}${dist}${road}${detail}`;
 }
 
 // ════════════════════════════════════════
-// SUBMIT ORDER
+// SUBMIT ORDER（加防呆確認）
 // ════════════════════════════════════════
+let pendingOrderData = null;
+
 async function submitOrder() {
   const buyerName = document.getElementById('buyerName').value.trim();
   const buyerPhone = document.getElementById('buyerPhone').value.trim();
@@ -1383,19 +1468,108 @@ async function submitOrder() {
   const posNo = document.getElementById('posNo').value.trim();
   const note = document.getElementById('orderNote').value.trim();
   const terminal = document.getElementById('posTerminal').value;
+  const road = document.getElementById('addrRoadInput').value.trim();
+  const detail = document.getElementById('addrDetail').value.trim();
   const address = getFullAddress();
 
+  // 基本驗證
   if (!buyerName) { showToast('請輸入訂購人姓名', 'error'); return; }
-  if (!buyerPhone || buyerPhone.length !== 10) { showToast('訂購人電話請輸入10碼', 'error'); return; }
+  if (!buyerPhone || buyerPhone.length !== 10 || buyerPhone[0] !== '0') { showToast('訂購人電話格式不正確', 'error'); return; }
   if (!receiverName) { showToast('請輸入收件人姓名', 'error'); return; }
-  if (!receiverPhone || receiverPhone.length !== 10) { showToast('收件人電話請輸入10碼', 'error'); return; }
+  if (!receiverPhone || receiverPhone.length !== 10 || receiverPhone[0] !== '0') { showToast('收件人電話格式不正確', 'error'); return; }
   if (!document.getElementById('addrCity').value) { showToast('請選擇縣市', 'error'); return; }
   if (!document.getElementById('addrDistrict').value) { showToast('請選擇鄉鎮市區', 'error'); return; }
-  if (!document.getElementById('addrRoadInput').value.trim()) { showToast('請輸入路街名', 'error'); return; }
-  if (!document.getElementById('addrDetail').value.trim()) { showToast('請輸入門牌號碼', 'error'); return; }
-  if (!posNo) { showToast('請輸入POS交易序號', 'error'); return; }
+  if (!road && !detail) { showToast('請輸入路街名或門牌資訊', 'error'); return; }
+  if (road && /^\d+$/.test(road)) { showToast('路名不能只有數字，請確認', 'error'); return; }
+  if (!detail) { showToast('請輸入門牌號碼', 'error'); return; }
+  if (!detail.includes('號')) { showToast('門牌號碼必須包含「號」字', 'error'); return; }
+  if (!posNo || posNo.length !== 5) { showToast('POS序號請輸入5碼數字', 'error'); return; }
   if (!formItems.length) { showToast('請至少選擇一項商品', 'error'); return; }
 
+  // 儲存待送資料
+  pendingOrderData = { buyerName, buyerPhone, receiverName, receiverPhone, address, posNo, terminal, note };
+
+  // 先檢查重複POS序號
+  showLoading(true);
+  try {
+    const today = new Date();
+    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
+    const dups = await sb.get('orders',
+      `?store_id=eq.${currentUser.store_id}&pos_no=eq.${posNo}&pos_terminal=eq.${terminal}&created_at=gte.${startOfDay}&select=order_no,receiver_name,created_at`
+    );
+    showLoading(false);
+
+    if (dups && dups.length > 0) {
+      // 有重複，跳出警告
+      const dup = dups[0];
+      document.getElementById('dupContent').innerHTML = `
+        <div style="font-weight:700;margin-bottom:8px;">此門市今日已有相同POS序號的訂單：</div>
+        <div>訂單編號：${escHtml(dup.order_no)}</div>
+        <div>收件人：${escHtml(dup.receiver_name)}</div>
+        <div>登記時間：${formatDate(dup.created_at)}</div>
+        <div style="margin-top:8px;color:var(--danger);">機號 ${terminal}，POS序號 ${posNo}</div>
+      `;
+      document.getElementById('dupModal').classList.add('show');
+      return;
+    }
+  } catch(e) {
+    showLoading(false);
+  }
+
+  // 無重複，跳出確認視窗
+  showConfirmModal();
+}
+
+function showConfirmModal() {
+  const d = pendingOrderData;
+  const itemsHtml = formItems.map(i =>
+    `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);">
+      <span>${escHtml(i.name)}</span>
+      <span style="font-weight:700;">×${i.qty}</span>
+    </div>`
+  ).join('');
+
+  document.getElementById('confirmContent').innerHTML = `
+    <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:14px;margin-bottom:12px;">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">📦 收件資訊</div>
+      <div style="font-size:16px;font-weight:700;">${escHtml(d.receiverName)}</div>
+      <div style="font-size:14px;margin-top:4px;">${escHtml(d.receiverPhone)}</div>
+      <div style="font-size:14px;margin-top:6px;color:var(--accent);font-weight:500;">${escHtml(d.address)}</div>
+    </div>
+    <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:14px;margin-bottom:12px;">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">🧾 訂購人</div>
+      <div style="font-size:15px;font-weight:700;">${escHtml(d.buyerName)}　${escHtml(d.buyerPhone)}</div>
+    </div>
+    <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:14px;margin-bottom:12px;">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">📋 訂單資訊</div>
+      <div>門市：${escHtml(currentStore?.name||'')}</div>
+      <div>機號：${escHtml(d.terminal)}　POS序號：${escHtml(d.posNo)}</div>
+      ${d.note ? `<div>備註：${escHtml(d.note)}</div>` : ''}
+    </div>
+    <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:14px;">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">🛍 訂購品項</div>
+      ${itemsHtml}
+    </div>
+  `;
+  document.getElementById('confirmModal').classList.add('show');
+}
+
+function closeConfirm() {
+  document.getElementById('confirmModal').classList.remove('show');
+}
+
+function closeDup() {
+  document.getElementById('dupModal').classList.remove('show');
+}
+
+function ignoreAndConfirm() {
+  document.getElementById('dupModal').classList.remove('show');
+  showConfirmModal();
+}
+
+async function doSubmitOrder() {
+  closeConfirm();
+  const d = pendingOrderData;
   showLoading(true);
   try {
     const orderNo = await generateOrderNo();
@@ -1403,14 +1577,14 @@ async function submitOrder() {
       order_no: orderNo,
       store_id: currentUser.store_id,
       staff_id: currentUser.id,
-      buyer_name: buyerName,
-      buyer_phone: buyerPhone,
-      receiver_name: receiverName,
-      receiver_phone: receiverPhone,
-      receiver_address: address,
-      pos_no: posNo,
-      pos_terminal: terminal,
-      note: note || null,
+      buyer_name: d.buyerName,
+      buyer_phone: d.buyerPhone,
+      receiver_name: d.receiverName,
+      receiver_phone: d.receiverPhone,
+      receiver_address: d.address,
+      pos_no: d.posNo,
+      pos_terminal: d.terminal,
+      note: d.note || null,
       status: 'pending'
     };
 
@@ -1419,12 +1593,7 @@ async function submitOrder() {
     const orderId = Array.isArray(newOrder) ? newOrder[0].id : newOrder.id;
 
     for (const item of formItems) {
-      await sb.post('order_items', {
-        order_id: orderId,
-        sku: item.sku,
-        product_name: item.name,
-        quantity: item.qty
-      });
+      await sb.post('order_items', { order_id: orderId, sku: item.sku, product_name: item.name, quantity: item.qty });
     }
 
     showLoading(false);
@@ -1782,6 +1951,82 @@ document.addEventListener('click', e => {
 // Enter key login
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && document.getElementById('loginScreen').classList.contains('active')) doLogin();
+});
+
+// Enter 跳欄位（表單填寫時）
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  if (!document.getElementById('formScreen').classList.contains('active')) return;
+
+  const target = e.target;
+  const tag = target.tagName;
+
+  // textarea 不跳（讓使用者換行）
+  if (tag === 'TEXTAREA') return;
+
+  // select 不攔（讓原生下拉正常運作）
+  if (tag === 'SELECT') return;
+
+  // 路街名搜尋dropdown開著時，Enter選第一個
+  if (target.id === 'addrRoadInput') {
+    const dd = document.getElementById('roadDropdown');
+    if (dd.style.display !== 'none') {
+      const first = dd.querySelector('.product-option');
+      if (first) { first.click(); e.preventDefault(); return; }
+    }
+  }
+
+  // 商品搜尋dropdown開著時，Enter選第一個
+  if (target.id === 'productSearch') {
+    const dd = document.getElementById('productDropdown');
+    if (dd.style.display !== 'none') {
+      const first = dd.querySelector('.product-option');
+      if (first) { first.click(); e.preventDefault(); return; }
+    }
+    return;
+  }
+
+  // 欄位跳轉順序
+  const ORDER = [
+    'buyerName', 'buyerPhone',
+    'receiverName', 'receiverPhone',
+    'addrCity', 'addrDistrict',
+    'addrRoadInput', 'addrDetail',
+    'posTerminal', 'posNo',
+    'orderNote', 'productSearch'
+  ];
+
+  const idx = ORDER.indexOf(target.id);
+  if (idx === -1) return;
+
+  e.preventDefault();
+
+  // 找下一個可用欄位
+  for (let i = idx + 1; i < ORDER.length; i++) {
+    const nextId = ORDER[i];
+    const nextEl = document.getElementById(nextId);
+    if (!nextEl) continue;
+
+    // 跳過隱藏的收件人欄位（勾選與訂購人相同時）
+    if ((nextId === 'receiverName' || nextId === 'receiverPhone') && sameBuyer) continue;
+
+    // 跳過還沒顯示的地址欄位
+    if (nextId === 'addrRoadInput') {
+      const row = document.getElementById('addrRoadRow');
+      if (!row || row.style.display === 'none') continue;
+    }
+    if (nextId === 'addrDetail') {
+      const row = document.getElementById('addrDetailRow');
+      if (!row || row.style.display === 'none') continue;
+    }
+
+    nextEl.focus();
+    // select 自動打開
+    if (nextEl.tagName === 'SELECT') {
+      try { nextEl.click(); } catch(err) {}
+    }
+    break;
+  }
 });
 </script>
 </body>
