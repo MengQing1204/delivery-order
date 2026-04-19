@@ -1129,10 +1129,42 @@ function doLogout() {
 }
 
 // ════════════════════════════════════════
-// PRODUCTS (from ibiza or static list)
+// IBIZA API
+// ════════════════════════════════════════
+const IBIZA_URL = 'https://api.gowarehouse.asia/admin_api/v2';
+const IBIZA_TOKEN = 'Bearer mlhEv4DxhA7LtCJ7y3c-HpFvoFL3MdV_E6oBzJc8tR4';
+
+async function ibizaGet(path) {
+  const r = await fetch(`${IBIZA_URL}${path}`, {
+    headers: { 'Authorization': IBIZA_TOKEN, 'Content-Type': 'application/json' }
+  });
+  return r.json();
+}
+
+// 查詢多個SKU的即時庫存，回傳 { sku: available_quantity }
+async function ibizaGetStock(skus) {
+  try {
+    const skuStr = skus.join(',');
+    const data = await ibizaGet(`/stocks?skus=${encodeURIComponent(skuStr)}`);
+    if (!data.success || !data.data) return {};
+    const result = {};
+    data.data.forEach(item => {
+      const sku = item.sku;
+      const avail = item.available_quantity ?? 0;
+      // 同一SKU可能有多個批次，累加available_quantity
+      result[sku] = (result[sku] || 0) + avail;
+    });
+    return result;
+  } catch(e) {
+    console.log('ibiza stock error', e);
+    return {};
+  }
+}
+
+// ════════════════════════════════════════
+// PRODUCTS（從 Supabase 載入品項清單，搜尋時再查 ibiza 庫存）
 // ════════════════════════════════════════
 async function loadProducts() {
-  // 從 Supabase products 表載入（之後可換成 ibiza API）
   try {
     const rows = await sb.get('products', '?is_active=eq.true&order=product_name.asc&limit=2000');
     if (Array.isArray(rows)) allProducts = rows;
@@ -1144,27 +1176,49 @@ function onProductSearch(val) {
   const dd = document.getElementById('productDropdown');
   if (!val.trim()) { dd.style.display = 'none'; return; }
   if (formItems.length >= 5) { showToast('最多只能選5項商品'); dd.style.display = 'none'; return; }
-  searchDebounce = setTimeout(() => renderDropdown(val.trim()), 200);
+  searchDebounce = setTimeout(() => renderDropdownWithStock(val.trim()), 300);
 }
 
-function renderDropdown(q) {
+async function renderDropdownWithStock(q) {
   const dd = document.getElementById('productDropdown');
   const lower = q.toLowerCase();
+
+  // 先用本地品項清單篩選
   const filtered = allProducts.filter(p =>
     p.product_name?.toLowerCase().includes(lower) ||
     p.sku?.toLowerCase().includes(lower)
-  ).slice(0, 30);
+  ).slice(0, 20);
 
   if (!filtered.length) {
-    dd.innerHTML = `<div class="product-option"><div class="pname">找不到「${q}」相關商品</div></div>`;
-    dd.style.display = 'block'; return;
+    dd.innerHTML = `<div class="product-option"><div class="pname">找不到「${escHtml(q)}」相關商品</div></div>`;
+    dd.style.display = 'block';
+    return;
   }
 
+  // 先顯示載入中
+  dd.innerHTML = filtered.map(p => `
+    <div class="product-option" style="opacity:0.5">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div class="pname">${escHtml(p.product_name)}</div>
+          <div class="pcode">${p.sku}</div>
+        </div>
+        <div class="pstock" style="color:var(--text2);font-size:11px;">查詢中...</div>
+      </div>
+    </div>`).join('');
+  dd.style.display = 'block';
+
+  // 查 ibiza 即時庫存
+  const skus = filtered.map(p => p.sku);
+  const stockMap = await ibizaGetStock(skus);
+
+  // 更新顯示（加入即時庫存）
   dd.innerHTML = filtered.map(p => {
-    const stock = p.stock ?? 0;
+    const stock = stockMap[p.sku] ?? 0;
     const stockClass = stock > 10 ? 'ok' : stock > 0 ? 'low' : 'none';
-    const stockText = stock > 0 ? `庫存 ${stock}` : '無庫存';
-    return `<div class="product-option" onclick="addItem('${p.sku}','${escHtml(p.product_name)}',${stock})">
+    const stockText = stock > 0 ? `可用 ${stock}` : '無庫存';
+    const disabled = stock <= 0 ? 'style="opacity:0.5;pointer-events:none;"' : '';
+    return `<div class="product-option" onclick="addItem('${escHtml(p.sku)}','${escHtml(p.product_name)}',${stock})" ${disabled}>
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <div>
           <div class="pname">${escHtml(p.product_name)}</div>
