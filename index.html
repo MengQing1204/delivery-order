@@ -753,12 +753,21 @@ body {
   <div class="section">
     <div class="section-header">
       <span class="section-title">我的訂單</span>
-      <button class="section-link" onclick="showScreen('adminScreen'); loadAdminOrders()">
-        全部查看 →
-      </button>
+      <button class="section-link" onclick="showAllMyOrders()">全部查看 →</button>
+    </div>
+    <!-- 搜尋欄 -->
+    <div style="position:relative;margin-bottom:12px;">
+      <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;">🔍</span>
+      <input type="text" id="myOrderSearch"
+        style="width:100%;border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px 10px 36px;font-size:15px;font-family:inherit;outline:none;"
+        placeholder="搜尋客人姓名或電話..."
+        oninput="searchMyOrders(this.value)">
     </div>
     <div id="myOrdersList">
       <div class="empty-state"><div class="icon">📋</div><p>尚無訂單</p></div>
+    </div>
+    <div id="myOrdersLoadMore" style="display:none;text-align:center;padding:12px;">
+      <button onclick="loadMoreMyOrders()" style="background:none;border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:10px 24px;font-size:14px;font-family:inherit;color:var(--text2);cursor:pointer;">載入更多</button>
     </div>
   </div>
 </div>
@@ -834,27 +843,26 @@ body {
         <label class="form-label">郵遞區號</label>
         <input class="form-input" id="addrZip" readonly style="background:var(--surface2);color:var(--accent);font-weight:700;">
       </div>
-      <div class="form-row" id="addrRoadRow" style="display:none;">
-        <label class="form-label">路／街名 <span style="color:var(--text2);font-size:11px;">（選填）</span></label>
-        <input class="form-input" id="addrRoadInput"
-          placeholder="例：竹光路、中山北路二段（農村可留空）"
-          oninput="validateRoad(this)"
-          autocomplete="off">
-        <div class="field-hint" id="roadHint">農村／偏遠地區無路名可留空，直接填門牌</div>
-      </div>
       <div class="form-row" id="addrDetailRow" style="display:none;">
-        <label class="form-label">門牌號碼 <span class="req">*</span></label>
+        <label class="form-label">詳細地址 <span class="req">*</span></label>
         <input class="form-input" id="addrDetail"
-          placeholder="例：100號3樓 或 蒜頭1鄰100號"
+          placeholder="路街名＋門牌，例：竹光路100號3樓 或 蒜頭1鄰100號"
           oninput="validateDetail(this)">
-        <div class="field-hint" id="detailHint">必須包含「號」字｜都市：100號3樓｜農村：1鄰100號</div>
+        <div class="field-hint" id="detailHint">都市：竹光路100號3樓｜農村：1鄰100號</div>
       </div>
     </div>
 
     <!-- 訂單資訊 -->
     <div class="form-section">
       <div class="form-section-title">🏪 訂單資訊</div>
-      <div class="form-row">
+      <!-- 管理員才顯示門市選擇 -->
+      <div class="form-row" id="adminStoreRow" style="display:none;">
+        <label class="form-label">門市 <span class="req">*</span></label>
+        <select class="form-select" id="formStoreSelect">
+          <option value="">請選擇門市</option>
+        </select>
+      </div>
+      <div class="form-row" id="staffStoreRow">
         <label class="form-label">門市</label>
         <input class="form-input" id="storeDisplay" readonly style="background:var(--surface2);color:var(--text);font-weight:700;">
       </div>
@@ -1216,24 +1224,31 @@ function initForm() {
   sameBuyer = false;
 
   ['buyerName','buyerPhone','receiverName','receiverPhone',
-   'addrRoadInput','addrDetail','posNo','orderNote','productSearch'].forEach(id => {
+   'addrDetail','posNo','orderNote','productSearch'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
 
-  // hints
+  // hints 重置
   ['buyerPhoneHint','receiverPhoneHint','posNoHint'].forEach(id => {
     const el = document.getElementById(id);
     if (el) { el.textContent = ''; el.className = 'field-hint'; }
   });
-  const roadHint = document.getElementById('roadHint');
-  if (roadHint) { roadHint.textContent = '農村／偏遠地區無路名可留空，直接填門牌'; roadHint.className = 'field-hint'; }
   const detailHint = document.getElementById('detailHint');
-  if (detailHint) { detailHint.textContent = '必須包含「號」字，例：100號、100號2樓'; detailHint.className = 'field-hint'; }
+  if (detailHint) { detailHint.textContent = '都市：竹光路100號3樓｜農村：1鄰100號'; detailHint.className = 'field-hint'; }
 
-  // 門市顯示
-  const storeDisplay = document.getElementById('storeDisplay');
-  if (storeDisplay) storeDisplay.value = currentStore?.name || '未指定門市';
+  // 管理員顯示門市選擇，一般業務顯示固定門市
+  const isAdmin = currentUser?.role === 'admin';
+  const adminRow = document.getElementById('adminStoreRow');
+  const staffRow = document.getElementById('staffStoreRow');
+  if (adminRow) adminRow.style.display = isAdmin ? 'block' : 'none';
+  if (staffRow) staffRow.style.display = isAdmin ? 'none' : 'block';
+  if (isAdmin) {
+    loadStoresSelect();
+  } else {
+    const storeDisplay = document.getElementById('storeDisplay');
+    if (storeDisplay) storeDisplay.value = currentStore?.name || '';
+  }
 
   // 勾選框重置
   const check = document.getElementById('sameBuyerCheck');
@@ -1247,8 +1262,22 @@ function initForm() {
   const distEl = document.getElementById('addrDistrict');
   if (distEl) { distEl.innerHTML = '<option value="">請先選縣市</option>'; distEl.disabled = true; }
   document.getElementById('addrZipRow').style.display = 'none';
-  document.getElementById('addrRoadRow').style.display = 'none';
   document.getElementById('addrDetailRow').style.display = 'none';
+
+  initTerminalSelect();
+  renderItems();
+  closeDropdown();
+}
+
+async function loadStoresSelect() {
+  try {
+    const stores = await sb.get('stores', '?is_active=eq.true&order=name.asc');
+    const sel = document.getElementById('formStoreSelect');
+    if (!sel || !stores?.length) return;
+    sel.innerHTML = '<option value="">請選擇門市</option>' +
+      stores.map(s => `<option value="${s.id}">${escHtml(s.name)}</option>`).join('');
+  } catch(e) { console.log(e); }
+}
 
   initTerminalSelect();
   renderItems();
@@ -1486,8 +1515,18 @@ async function submitOrder() {
   if (!posNo || posNo.length !== 5) { showToast('POS序號請輸入5碼數字', 'error'); return; }
   if (!formItems.length) { showToast('請至少選擇一項商品', 'error'); return; }
 
+  // 取得門市ID
+  const storeId = currentUser?.role === 'admin'
+    ? document.getElementById('formStoreSelect')?.value
+    : currentUser.store_id;
+  const storeName = currentUser?.role === 'admin'
+    ? document.getElementById('formStoreSelect')?.options[document.getElementById('formStoreSelect').selectedIndex]?.text
+    : currentStore?.name || '';
+
+  if (!storeId) { showToast('請選擇門市', 'error'); return; }
+
   // 儲存待送資料
-  pendingOrderData = { buyerName, buyerPhone, receiverName, receiverPhone, address, posNo, terminal, note };
+  pendingOrderData = { buyerName, buyerPhone, receiverName, receiverPhone, address, posNo, terminal, note, storeId, storeName };
 
   // 先檢查重複POS序號
   showLoading(true);
@@ -1542,7 +1581,7 @@ function showConfirmModal() {
     </div>
     <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:14px;margin-bottom:12px;">
       <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">📋 訂單資訊</div>
-      <div>門市：${escHtml(currentStore?.name||'')}</div>
+      <div>門市：${escHtml(d.storeName||currentStore?.name||'')}</div>
       <div>機號：${escHtml(d.terminal)}　POS序號：${escHtml(d.posNo)}</div>
       ${d.note ? `<div>備註：${escHtml(d.note)}</div>` : ''}
     </div>
@@ -1575,7 +1614,7 @@ async function doSubmitOrder() {
     const orderNo = await generateOrderNo();
     const orderData = {
       order_no: orderNo,
-      store_id: currentUser.store_id,
+      store_id: d.storeId,
       staff_id: currentUser.id,
       buyer_name: d.buyerName,
       buyer_phone: d.buyerPhone,
@@ -1632,24 +1671,72 @@ async function generateOrderNo() {
 }
 
 // ════════════════════════════════════════
-// LOAD MY ORDERS
+// LOAD MY ORDERS（支援搜尋 + 全部歷史）
 // ════════════════════════════════════════
+let allMyOrders = [];
+let myOrdersOffset = 0;
+const MY_ORDERS_PAGE = 20;
+
 async function loadMyOrders() {
   if (!currentUser) return;
   try {
+    // 載入全部訂單（分批，先取前100筆統計用）
     const orders = await sb.get('orders',
-      `?staff_id=eq.${currentUser.id}&order=created_at.desc&limit=20&select=*,order_items(*),stores(name)`
+      `?staff_id=eq.${currentUser.id}&order=created_at.desc&limit=500&select=*,order_items(*),stores(name)`
     );
-    // Stats
-    const pending = orders.filter(o => o.status === 'pending' || o.status === 'submitted').length;
-    const processing = orders.filter(o => o.status === 'processing').length;
-    const shipped = orders.filter(o => o.status === 'shipped').length;
+    allMyOrders = orders || [];
+
+    // Stats（全部歷史統計）
+    const pending = allMyOrders.filter(o => o.status === 'pending' || o.status === 'submitted').length;
+    const processing = allMyOrders.filter(o => o.status === 'processing').length;
+    const shipped = allMyOrders.filter(o => o.status === 'shipped').length;
     document.getElementById('statPending').textContent = pending;
     document.getElementById('statProcessing').textContent = processing;
     document.getElementById('statShipped').textContent = shipped;
 
-    renderOrderList(orders, 'myOrdersList');
+    myOrdersOffset = 0;
+    renderMyOrdersPage();
   } catch(e) { console.log(e); }
+}
+
+function renderMyOrdersPage(filtered) {
+  const list = filtered || allMyOrders;
+  const page = list.slice(0, myOrdersOffset + MY_ORDERS_PAGE);
+  renderOrderList(page, 'myOrdersList');
+  const loadMore = document.getElementById('myOrdersLoadMore');
+  if (loadMore) loadMore.style.display = list.length > myOrdersOffset + MY_ORDERS_PAGE ? 'block' : 'none';
+}
+
+function loadMoreMyOrders() {
+  myOrdersOffset += MY_ORDERS_PAGE;
+  const q = document.getElementById('myOrderSearch')?.value.trim() || '';
+  if (q) searchMyOrders(q);
+  else renderMyOrdersPage();
+}
+
+function searchMyOrders(q) {
+  myOrdersOffset = 0;
+  if (!q.trim()) { renderMyOrdersPage(); return; }
+  const lower = q.toLowerCase();
+  const filtered = allMyOrders.filter(o =>
+    o.receiver_name?.toLowerCase().includes(lower) ||
+    o.buyer_name?.toLowerCase().includes(lower) ||
+    o.receiver_phone?.includes(q) ||
+    o.buyer_phone?.includes(q) ||
+    o.order_no?.toLowerCase().includes(lower) ||
+    o.tracking_number?.includes(q)
+  );
+  renderMyOrdersPage(filtered);
+}
+
+async function showAllMyOrders() {
+  showScreen('adminScreen');
+  // 管理員看全部，業務只看自己的
+  if (currentUser?.role === 'admin') {
+    loadAdminOrders();
+  } else {
+    loadAdminOrders(currentUser.id);
+  }
 }
 
 function renderOrderList(orders, containerId) {
@@ -1803,11 +1890,12 @@ async function loadPublicOrder(token) {
 // ════════════════════════════════════════
 // ADMIN
 // ════════════════════════════════════════
-async function loadAdminOrders() {
+async function loadAdminOrders(staffIdFilter) {
   showLoading(true);
   try {
+    const filter = staffIdFilter ? `&staff_id=eq.${staffIdFilter}` : '';
     const orders = await sb.get('orders',
-      `?order=created_at.desc&limit=200&select=*,order_items(*),stores(name),staff(name,phone)`
+      `?order=created_at.desc&limit=500${filter}&select=*,order_items(*),stores(name),staff(name,phone)`
     );
     adminAllOrders = orders || [];
     renderAdminOrders();
@@ -1991,8 +2079,8 @@ document.addEventListener('keydown', e => {
     'buyerName', 'buyerPhone',
     'receiverName', 'receiverPhone',
     'addrCity', 'addrDistrict',
-    'addrRoadInput', 'addrDetail',
-    'posTerminal', 'posNo',
+    'addrDetail',
+    'formStoreSelect', 'posTerminal', 'posNo',
     'orderNote', 'productSearch'
   ];
 
@@ -2011,13 +2099,15 @@ document.addEventListener('keydown', e => {
     if ((nextId === 'receiverName' || nextId === 'receiverPhone') && sameBuyer) continue;
 
     // 跳過還沒顯示的地址欄位
-    if (nextId === 'addrRoadInput') {
-      const row = document.getElementById('addrRoadRow');
-      if (!row || row.style.display === 'none') continue;
-    }
     if (nextId === 'addrDetail') {
       const row = document.getElementById('addrDetailRow');
       if (!row || row.style.display === 'none') continue;
+    }
+    // 跳過管理員/業務各自隱藏的門市欄位
+    if (nextId === 'formStoreSelect' && currentUser?.role !== 'admin') continue;
+    if (nextId === 'posTerminal') {
+      const el2 = document.getElementById(nextId);
+      if (el2 && el2.options.length <= 1) continue; // 只有一個選項不需要選
     }
 
     nextEl.focus();
