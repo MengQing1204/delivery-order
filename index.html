@@ -345,10 +345,10 @@ body {
 .product-dropdown {
   position: absolute; top: 100%; left: 0; right: 0;
   background: var(--surface);
-  border: 1.5px solid var(--accent);
+  border: 1.5px solid var(--accent2);
   border-top: none;
   border-radius: 0 0 var(--radius-sm) var(--radius-sm);
-  max-height: 220px;
+  max-height: 360px;
   overflow-y: auto;
   z-index: 200;
   box-shadow: var(--shadow-lg);
@@ -969,7 +969,20 @@ body {
   </div>
 </div>
 
-<!-- 重複POS警告視窗 -->
+<!-- 取消訂單視窗 -->
+<div class="modal-overlay" id="cancelModal">
+  <div class="modal-sheet">
+    <div class="modal-title">❌ 取消訂單</div>
+    <div style="margin-bottom:16px;font-size:14px;color:var(--text2);">請說明取消原因（必填）</div>
+    <div class="modal-input-row">
+      <textarea id="cancelReason" class="form-textarea" placeholder="例：客人改變心意、商品缺貨..." style="min-height:100px;"></textarea>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:16px;">
+      <button onclick="closeCancelModal()" style="flex:1;padding:14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:15px;font-family:inherit;background:var(--surface);cursor:pointer;">返回</button>
+      <button onclick="doCancel()" style="flex:1;padding:14px;background:var(--danger);color:#fff;border:none;border-radius:var(--radius);font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;">確認取消</button>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="dupModal">
   <div class="modal-sheet">
     <div style="text-align:center;margin-bottom:16px;">
@@ -994,7 +1007,13 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const sb = {
   async get(table, params='') {
     const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}${params}`, {
-      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' }
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        'Range-Unit': 'items',
+        'Range': '0-9999'
+      }
     });
     return r.json();
   },
@@ -1790,12 +1809,25 @@ function renderDetail(o, containerId, isPublic) {
   if (!isPublic && currentUser?.role === 'admin') {
     adminBtns = `<div style="padding:12px 14px;border-top:1px solid var(--border);">
       <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">更新狀態</div>
-      <div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;">
         ${o.status === 'pending' ? `<button class="btn-status process" onclick="updateOrderStatus('${o.id}','submitted')">已拋單</button>` : ''}
         ${(o.status==='submitted'||o.status==='pending') ? `<button class="btn-status ship" onclick="updateOrderStatus('${o.id}','processing')">出貨中</button>` : ''}
         ${o.status==='processing' ? `<button class="btn-status ship" onclick="promptTracking('${o.id}')">輸入托運單號</button>` : ''}
-        ${o.status!=='cancelled'&&o.status!=='shipped' ? `<button class="btn-status cancel" onclick="updateOrderStatus('${o.id}','cancelled')">取消訂單</button>` : ''}
+        ${o.status==='processing'||o.status==='submitted' ? `<button class="btn-status ship" onclick="updateOrderStatus('${o.id}','shipped')">已完成</button>` : ''}
       </div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:8px;margin-top:12px;">訂單操作</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;">
+        ${o.status!=='shipped'&&o.status!=='cancelled' ? `<button class="btn-status process" onclick="editOrder('${o.id}')">✏️ 修改備註</button>` : ''}
+        ${o.status!=='cancelled'&&o.status!=='shipped' ? `<button class="btn-status cancel" onclick="showCancelModal('${o.id}')">❌ 取消訂單</button>` : ''}
+        <button class="btn-status cancel" style="background:#1a1a18;color:#fff;" onclick="deleteOrder('${o.id}')">🗑️ 刪除訂單</button>
+      </div>
+      ${o.cancel_reason ? `<div style="margin-top:10px;padding:8px 10px;background:var(--danger-light);border-radius:6px;font-size:13px;color:var(--danger);">取消原因：${escHtml(o.cancel_reason)}</div>` : ''}
+    </div>`;
+  } else if (!isPublic && o.status!=='cancelled'&&o.status!=='shipped') {
+    // 業務也可以取消自己的訂單
+    adminBtns = `<div style="padding:12px 14px;border-top:1px solid var(--border);">
+      <button class="btn-status cancel" onclick="showCancelModal('${o.id}')">❌ 取消訂單</button>
+      ${o.cancel_reason ? `<div style="margin-top:8px;font-size:13px;color:var(--danger);">取消原因：${escHtml(o.cancel_reason)}</div>` : ''}
     </div>`;
   }
 
@@ -1931,6 +1963,86 @@ async function updateOrderStatus(orderId, status) {
     showToast('狀態已更新', 'success');
     await openOrderDetail(orderId);
     loadAdminOrders();
+  } catch(e) { showToast('更新失敗', 'error'); }
+  showLoading(false);
+}
+
+// ════════════════════════════════════════
+// 取消訂單
+// ════════════════════════════════════════
+let cancelOrderId = null;
+
+function showCancelModal(orderId) {
+  cancelOrderId = orderId;
+  document.getElementById('cancelReason').value = '';
+  document.getElementById('cancelModal').classList.add('show');
+}
+
+function closeCancelModal() {
+  document.getElementById('cancelModal').classList.remove('show');
+  cancelOrderId = null;
+}
+
+async function doCancel() {
+  const reason = document.getElementById('cancelReason').value.trim();
+  if (!reason) { showToast('請填寫取消原因', 'error'); return; }
+  closeCancelModal();
+  showLoading(true);
+  try {
+    await sb.patch('orders', cancelOrderId, {
+      status: 'cancelled',
+      cancel_reason: reason,
+      updated_at: new Date().toISOString()
+    });
+    showToast('訂單已取消', 'success');
+    await openOrderDetail(cancelOrderId);
+    loadAdminOrders();
+    loadMyOrders();
+  } catch(e) { showToast('操作失敗', 'error'); }
+  showLoading(false);
+}
+
+// ════════════════════════════════════════
+// 刪除訂單（管理員限定）
+// ════════════════════════════════════════
+async function deleteOrder(orderId) {
+  if (!confirm('確定要永久刪除此訂單？此動作無法復原！')) return;
+  showLoading(true);
+  try {
+    // 先刪品項
+    await fetch(`${SUPABASE_URL}/rest/v1/order_items?order_id=eq.${orderId}`, {
+      method: 'DELETE',
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+    });
+    // 再刪訂單
+    await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${orderId}`, {
+      method: 'DELETE',
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+    });
+    showToast('訂單已刪除', 'success');
+    showScreen(currentUser?.role === 'admin' ? 'adminScreen' : 'mainScreen');
+    loadAdminOrders();
+    loadMyOrders();
+  } catch(e) { showToast('刪除失敗', 'error'); }
+  showLoading(false);
+}
+
+// ════════════════════════════════════════
+// 修改備註
+// ════════════════════════════════════════
+async function editOrder(orderId) {
+  const orders = await sb.get('orders', `?id=eq.${orderId}&select=note`);
+  const current = orders?.[0]?.note || '';
+  const newNote = prompt('修改備註：', current);
+  if (newNote === null) return;
+  showLoading(true);
+  try {
+    await sb.patch('orders', orderId, {
+      note: newNote.trim() || null,
+      updated_at: new Date().toISOString()
+    });
+    showToast('備註已更新', 'success');
+    await openOrderDetail(orderId);
   } catch(e) { showToast('更新失敗', 'error'); }
   showLoading(false);
 }
