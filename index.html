@@ -1129,34 +1129,21 @@ function doLogout() {
 }
 
 // ════════════════════════════════════════
-// IBIZA API
+// IBIZA 即時庫存查詢（透過 Supabase Edge Function）
 // ════════════════════════════════════════
-const IBIZA_URL = 'https://wms-api.ibiza.com.tw/admin_api/v2';
-const IBIZA_TOKEN = 'Bearer mlhEv4DxhA7LtCJ7y3c-HpFvoFL3MdV_E6oBzJc8tR4';
+const STOCK_QUERY_URL = 'https://tlrfxsmrjueaqiectroe.supabase.co/functions/v1/ibiza-stock-query';
 
-async function ibizaGet(path) {
-  const r = await fetch(`${IBIZA_URL}${path}`, {
-    headers: { 'Authorization': IBIZA_TOKEN, 'Content-Type': 'application/json' }
-  });
-  return r.json();
-}
-
-// 查詢多個SKU的即時庫存，回傳 { sku: available_quantity }
 async function ibizaGetStock(skus) {
   try {
-    const skuStr = skus.join(',');
-    const data = await ibizaGet(`/stocks?skus=${encodeURIComponent(skuStr)}`);
-    if (!data.success || !data.data) return {};
-    const result = {};
-    data.data.forEach(item => {
-      const sku = item.sku;
-      const avail = item.available_quantity ?? 0;
-      // 同一SKU可能有多個批次，累加available_quantity
-      result[sku] = (result[sku] || 0) + avail;
+    const res = await fetch(STOCK_QUERY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ skus })
     });
-    return result;
+    if (!res.ok) return {};
+    return await res.json();
   } catch(e) {
-    console.log('ibiza stock error', e);
+    console.log('ibiza stock query error', e);
     return {};
   }
 }
