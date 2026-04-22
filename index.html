@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
@@ -35,15 +36,15 @@
   --topbar-sub: #F0E8C8;
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+- { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
 body {
-  font-family: 'Noto Sans TC', sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
-  font-size: 16px;
-  line-height: 1.7;
+font-family: ‘Noto Sans TC’, sans-serif;
+background: var(–bg);
+color: var(–text);
+min-height: 100vh;
+font-size: 16px;
+line-height: 1.7;
 }
 
 /* ── SCREENS ── */
@@ -52,32 +53,32 @@ body {
 
 /* ── LOGIN ── */
 #loginScreen {
-  background: linear-gradient(160deg, #1A3A28 0%, #2A5240 50%, #3A6A52 100%);
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
+background: linear-gradient(160deg, #1A3A28 0%, #2A5240 50%, #3A6A52 100%);
+align-items: center;
+justify-content: center;
+padding: 24px;
 }
 .login-box {
-  background: rgba(255,255,255,0.06);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 20px;
-  padding: 40px 32px;
-  width: 100%;
-  max-width: 380px;
+background: rgba(255,255,255,0.06);
+backdrop-filter: blur(20px);
+border: 1px solid rgba(255,255,255,0.12);
+border-radius: 20px;
+padding: 40px 32px;
+width: 100%;
+max-width: 380px;
 }
 .login-logo {
-  text-align: center;
-  margin-bottom: 32px;
+text-align: center;
+margin-bottom: 32px;
 }
 .login-logo .icon {
-  width: 64px; height: 64px;
-  background: linear-gradient(135deg, var(--accent), #e8823a);
-  border-radius: 16px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 28px;
-  margin: 0 auto 16px;
-  box-shadow: 0 8px 24px rgba(200,98,42,0.4);
+width: 64px; height: 64px;
+background: linear-gradient(135deg, var(–accent), #e8823a);
+border-radius: 16px;
+display: flex; align-items: center; justify-content: center;
+font-size: 28px;
+margin: 0 auto 16px;
+box-shadow: 0 8px 24px rgba(200,98,42,0.4);
 }
 .login-logo h1 { color: #fff; font-size: 20px; font-weight: 700; }
 .login-logo p { color: rgba(255,255,255,0.5); font-size: 13px; margin-top: 4px; }
@@ -85,354 +86,354 @@ body {
 .login-field { margin-bottom: 16px; }
 .login-field label { display: block; color: rgba(255,255,255,0.6); font-size: 12px; margin-bottom: 6px; letter-spacing: 0.5px; }
 .login-field input {
-  width: 100%;
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.15);
-  border-radius: var(--radius-sm);
-  color: #fff;
-  padding: 12px 14px;
-  font-size: 16px;
-  font-family: inherit;
-  outline: none;
-  transition: border-color 0.2s;
+width: 100%;
+background: rgba(255,255,255,0.08);
+border: 1px solid rgba(255,255,255,0.15);
+border-radius: var(–radius-sm);
+color: #fff;
+padding: 12px 14px;
+font-size: 16px;
+font-family: inherit;
+outline: none;
+transition: border-color 0.2s;
 }
-.login-field input:focus { border-color: var(--accent); }
+.login-field input:focus { border-color: var(–accent); }
 .login-field input::placeholder { color: rgba(255,255,255,0.3); }
 
 .btn-login {
-  width: 100%;
-  background: var(--accent);
-  color: #1a1a10;
-  border: none;
-  border-radius: var(--radius-sm);
-  padding: 16px;
-  font-size: 17px;
-  font-weight: 700;
-  font-family: inherit;
-  cursor: pointer;
-  margin-top: 8px;
-  box-shadow: 0 4px 16px rgba(196,164,74,0.4);
-  transition: opacity 0.2s, transform 0.1s;
+width: 100%;
+background: var(–accent);
+color: #1a1a10;
+border: none;
+border-radius: var(–radius-sm);
+padding: 16px;
+font-size: 17px;
+font-weight: 700;
+font-family: inherit;
+cursor: pointer;
+margin-top: 8px;
+box-shadow: 0 4px 16px rgba(196,164,74,0.4);
+transition: opacity 0.2s, transform 0.1s;
 }
 .btn-login:active { transform: scale(0.98); opacity: 0.9; }
 .login-error { color: #ff8080; font-size: 13px; text-align: center; margin-top: 12px; display: none; }
 
 /* ── TOP BAR ── */
 .topbar {
-  background: var(--topbar-bg);
-  border-bottom: 1px solid rgba(0,0,0,0.1);
-  padding: 12px 16px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  box-shadow: var(--shadow);
+background: var(–topbar-bg);
+border-bottom: 1px solid rgba(0,0,0,0.1);
+padding: 12px 16px;
+display: flex;
+align-items: center;
+gap: 12px;
+position: sticky;
+top: 0;
+z-index: 100;
+box-shadow: var(–shadow);
 }
 .topbar-back {
-  width: 38px; height: 38px;
-  background: rgba(255,255,255,0.15);
-  border: none;
-  border-radius: 50%;
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 20px;
-  flex-shrink: 0;
-  color: #fff;
+width: 38px; height: 38px;
+background: rgba(255,255,255,0.15);
+border: none;
+border-radius: 50%;
+cursor: pointer;
+display: flex; align-items: center; justify-content: center;
+font-size: 20px;
+flex-shrink: 0;
+color: #fff;
 }
-.topbar-title { font-weight: 700; font-size: 18px; flex: 1; color: var(--topbar-title); }
-.topbar-sub { font-size: 13px; color: var(--topbar-sub); }
+.topbar-title { font-weight: 700; font-size: 18px; flex: 1; color: var(–topbar-title); }
+.topbar-sub { font-size: 13px; color: var(–topbar-sub); }
 .topbar-action {
-  background: var(--accent);
-  color: #1a1a10;
-  border: none;
-  border-radius: var(--radius-sm);
-  padding: 8px 14px;
-  font-size: 14px;
-  font-weight: 700;
-  font-family: inherit;
-  cursor: pointer;
-  white-space: nowrap;
+background: var(–accent);
+color: #1a1a10;
+border: none;
+border-radius: var(–radius-sm);
+padding: 8px 14px;
+font-size: 14px;
+font-weight: 700;
+font-family: inherit;
+cursor: pointer;
+white-space: nowrap;
 }
 
 /* ── MAIN SCREEN ── */
 .main-header {
-  background: var(--topbar-bg);
-  padding: 20px 16px 24px;
-  color: #fff;
+background: var(–topbar-bg);
+padding: 20px 16px 24px;
+color: #fff;
 }
-.main-header .greeting { font-size: 14px; color: var(--topbar-sub); margin-bottom: 4px; }
-.main-header .name { font-size: 24px; font-weight: 700; color: var(--topbar-title); }
+.main-header .greeting { font-size: 14px; color: var(–topbar-sub); margin-bottom: 4px; }
+.main-header .name { font-size: 24px; font-weight: 700; color: var(–topbar-title); }
 .main-header .store-tag {
-  display: inline-block;
-  background: rgba(255,255,255,0.15);
-  border-radius: 20px;
-  padding: 4px 12px;
-  font-size: 13px;
-  margin-top: 8px;
-  color: var(--topbar-sub);
+display: inline-block;
+background: rgba(255,255,255,0.15);
+border-radius: 20px;
+padding: 4px 12px;
+font-size: 13px;
+margin-top: 8px;
+color: var(–topbar-sub);
 }
 
 .stats-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  padding: 16px;
-  margin-top: -12px;
+display: grid;
+grid-template-columns: repeat(3, 1fr);
+gap: 10px;
+padding: 16px;
+margin-top: -12px;
 }
 .stat-card {
-  background: var(--surface);
-  border-radius: var(--radius);
-  padding: 14px 12px;
-  text-align: center;
-  box-shadow: var(--shadow);
+background: var(–surface);
+border-radius: var(–radius);
+padding: 14px 12px;
+text-align: center;
+box-shadow: var(–shadow);
 }
-.stat-card .num { font-size: 28px; font-weight: 700; font-family: 'DM Mono', monospace; }
-.stat-card .label { font-size: 13px; color: var(--text2); margin-top: 4px; font-weight: 500; }
-.stat-card.accent .num { color: var(--accent); }
-.stat-card.blue .num { color: var(--accent2); }
-.stat-card.green .num { color: var(--success); }
+.stat-card .num { font-size: 28px; font-weight: 700; font-family: ‘DM Mono’, monospace; }
+.stat-card .label { font-size: 13px; color: var(–text2); margin-top: 4px; font-weight: 500; }
+.stat-card.accent .num { color: var(–accent); }
+.stat-card.blue .num { color: var(–accent2); }
+.stat-card.green .num { color: var(–success); }
 
 .section { padding: 0 16px 16px; }
 .section-header {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 12px;
+display: flex; align-items: center; justify-content: space-between;
+margin-bottom: 12px;
 }
 .section-title { font-weight: 700; font-size: 17px; }
-.section-link { font-size: 14px; color: var(--accent2); font-weight: 600; background: none; border: none; cursor: pointer; font-family: inherit; }
+.section-link { font-size: 14px; color: var(–accent2); font-weight: 600; background: none; border: none; cursor: pointer; font-family: inherit; }
 
 .btn-new-order {
-  width: 100%;
-  background: var(--accent);
-  color: #1a1a10;
-  border: none;
-  border-radius: var(--radius);
-  padding: 20px;
-  font-size: 18px;
-  font-weight: 700;
-  font-family: inherit;
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  box-shadow: 0 4px 16px rgba(196,164,74,0.35);
-  margin: 8px 16px 20px;
-  transition: transform 0.1s;
+width: 100%;
+background: var(–accent);
+color: #1a1a10;
+border: none;
+border-radius: var(–radius);
+padding: 20px;
+font-size: 18px;
+font-weight: 700;
+font-family: inherit;
+cursor: pointer;
+display: flex; align-items: center; justify-content: center; gap: 8px;
+box-shadow: 0 4px 16px rgba(196,164,74,0.35);
+margin: 8px 16px 20px;
+transition: transform 0.1s;
 }
 .btn-new-order:active { transform: scale(0.98); }
 
 /* ── ORDER CARDS ── */
 .order-card {
-  background: var(--surface);
-  border-radius: var(--radius);
-  padding: 14px;
-  margin-bottom: 10px;
-  box-shadow: var(--shadow);
-  cursor: pointer;
-  transition: transform 0.1s;
-  border-left: 4px solid transparent;
+background: var(–surface);
+border-radius: var(–radius);
+padding: 14px;
+margin-bottom: 10px;
+box-shadow: var(–shadow);
+cursor: pointer;
+transition: transform 0.1s;
+border-left: 4px solid transparent;
 }
 .order-card:active { transform: scale(0.99); }
-.order-card.pending { border-left-color: var(--warning); }
-.order-card.submitted { border-left-color: var(--accent2); }
-.order-card.processing { border-left-color: var(--accent); }
-.order-card.shipped { border-left-color: var(--success); }
+.order-card.pending { border-left-color: var(–warning); }
+.order-card.submitted { border-left-color: var(–accent2); }
+.order-card.processing { border-left-color: var(–accent); }
+.order-card.shipped { border-left-color: var(–success); }
 .order-card.cancelled { border-left-color: #ccc; opacity: 0.6; }
 
 .order-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
-.order-no { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text2); }
+.order-no { font-family: ‘DM Mono’, monospace; font-size: 12px; color: var(–text2); }
 .status-badge {
-  font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 20px; white-space: nowrap;
+font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 20px; white-space: nowrap;
 }
-.status-badge.pending { background: var(--warning-light); color: var(--warning); }
-.status-badge.submitted { background: #e0e8f8; color: var(--accent2); }
-.status-badge.processing { background: var(--accent-light); color: var(--accent); }
-.status-badge.shipped { background: var(--success-light); color: var(--success); }
+.status-badge.pending { background: var(–warning-light); color: var(–warning); }
+.status-badge.submitted { background: #e0e8f8; color: var(–accent2); }
+.status-badge.processing { background: var(–accent-light); color: var(–accent); }
+.status-badge.shipped { background: var(–success-light); color: var(–success); }
 .status-badge.cancelled { background: #f0f0f0; color: #999; }
 
 .order-receiver { font-weight: 700; font-size: 16px; margin: 6px 0 2px; }
-.order-meta { font-size: 13px; color: var(--text2); }
-.order-items-preview { font-size: 13px; color: var(--text2); margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.order-meta { font-size: 13px; color: var(–text2); }
+.order-items-preview { font-size: 13px; color: var(–text2); margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ── FORM SCREEN ── */
 .form-body { flex: 1; padding: 16px; overflow-y: auto; }
 
 .form-section {
-  background: var(--surface);
-  border-radius: var(--radius);
-  margin-bottom: 16px;
-  overflow: hidden;
-  box-shadow: var(--shadow);
+background: var(–surface);
+border-radius: var(–radius);
+margin-bottom: 16px;
+overflow: hidden;
+box-shadow: var(–shadow);
 }
 .form-section-title {
-  padding: 12px 16px;
-  font-weight: 700;
-  font-size: 13px;
-  letter-spacing: 0.5px;
-  color: var(--text2);
-  background: var(--surface2);
-  border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; gap: 6px;
+padding: 12px 16px;
+font-weight: 700;
+font-size: 13px;
+letter-spacing: 0.5px;
+color: var(–text2);
+background: var(–surface2);
+border-bottom: 1px solid var(–border);
+display: flex; align-items: center; gap: 6px;
 }
 
-.form-row { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.form-row { padding: 12px 16px; border-bottom: 1px solid var(–border); }
 .form-row:last-child { border-bottom: none; }
-.form-label { font-size: 14px; color: var(--text2); margin-bottom: 6px; display: block; font-weight: 600; }
-.form-label .req { color: var(--danger); margin-left: 2px; }
+.form-label { font-size: 14px; color: var(–text2); margin-bottom: 6px; display: block; font-weight: 600; }
+.form-label .req { color: var(–danger); margin-left: 2px; }
 .form-input {
-  width: 100%;
-  border: 2px solid #3A5A48;
-  border-radius: var(--radius-sm);
-  padding: 13px 14px;
-  font-size: 17px;
-  font-family: inherit;
-  color: var(--text);
-  background: var(--surface);
-  outline: none;
-  transition: border-color 0.2s;
-  line-height: 1.5;
+width: 100%;
+border: 2px solid #3A5A48;
+border-radius: var(–radius-sm);
+padding: 13px 14px;
+font-size: 17px;
+font-family: inherit;
+color: var(–text);
+background: var(–surface);
+outline: none;
+transition: border-color 0.2s;
+line-height: 1.5;
 }
-.form-input:focus { border-color: var(--accent); }
+.form-input:focus { border-color: var(–accent); }
 .form-select {
-  width: 100%;
-  border: 2px solid #3A5A48;
-  border-radius: var(--radius-sm);
-  padding: 13px 14px;
-  font-size: 17px;
-  font-family: inherit;
-  color: var(--text);
-  background: var(--surface);
-  outline: none;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'%3E%3Cpath d='M1 1l6 6 6-6' stroke='%233A5A48' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 14px center;
+width: 100%;
+border: 2px solid #3A5A48;
+border-radius: var(–radius-sm);
+padding: 13px 14px;
+font-size: 17px;
+font-family: inherit;
+color: var(–text);
+background: var(–surface);
+outline: none;
+appearance: none;
+background-image: url(“data:image/svg+xml,%3Csvg xmlns=‘http://www.w3.org/2000/svg’ width=‘14’ height=‘9’ viewBox=‘0 0 14 9’%3E%3Cpath d=‘M1 1l6 6 6-6’ stroke=’%233A5A48’ stroke-width=‘2’ fill=‘none’ stroke-linecap=‘round’/%3E%3C/svg%3E”);
+background-repeat: no-repeat;
+background-position: right 14px center;
 }
-.form-select:focus { border-color: var(--accent); }
+.form-select:focus { border-color: var(–accent); }
 .form-textarea {
-  width: 100%;
-  border: 2px solid #3A5A48;
-  border-radius: var(--radius-sm);
-  padding: 13px 14px;
-  font-size: 16px;
-  font-family: inherit;
-  color: var(--text);
-  background: var(--surface);
-  outline: none;
-  resize: none;
-  min-height: 90px;
-  line-height: 1.7;
+width: 100%;
+border: 2px solid #3A5A48;
+border-radius: var(–radius-sm);
+padding: 13px 14px;
+font-size: 16px;
+font-family: inherit;
+color: var(–text);
+background: var(–surface);
+outline: none;
+resize: none;
+min-height: 90px;
+line-height: 1.7;
 }
-.form-textarea:focus { border-color: var(--accent); }
+.form-textarea:focus { border-color: var(–accent); }
 
 /* Product Search */
 .product-search-wrap { position: relative; }
 .product-search-input {
-  width: 100%;
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 11px 13px 11px 38px;
-  font-size: 16px;
-  font-family: inherit;
-  color: var(--text);
-  background: var(--surface);
-  outline: none;
+width: 100%;
+border: 1.5px solid var(–border);
+border-radius: var(–radius-sm);
+padding: 11px 13px 11px 38px;
+font-size: 16px;
+font-family: inherit;
+color: var(–text);
+background: var(–surface);
+outline: none;
 }
-.product-search-input:focus { border-color: var(--accent); }
+.product-search-input:focus { border-color: var(–accent); }
 .product-search-icon {
-  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
-  font-size: 16px; pointer-events: none;
+position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+font-size: 16px; pointer-events: none;
 }
 .product-dropdown {
-  position: absolute; top: 100%; left: 0; right: 0;
-  background: var(--surface);
-  border: 1.5px solid var(--accent2);
-  border-top: none;
-  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
-  max-height: 360px;
-  overflow-y: auto;
-  z-index: 200;
-  box-shadow: var(--shadow-lg);
-  display: none;
+position: absolute; top: 100%; left: 0; right: 0;
+background: var(–surface);
+border: 1.5px solid var(–accent2);
+border-top: none;
+border-radius: 0 0 var(–radius-sm) var(–radius-sm);
+max-height: 360px;
+overflow-y: auto;
+z-index: 200;
+box-shadow: var(–shadow-lg);
+display: none;
 }
 .product-option {
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--border);
-  cursor: pointer;
-  transition: background 0.15s;
+padding: 12px 14px;
+border-bottom: 1px solid var(–border);
+cursor: pointer;
+transition: background 0.15s;
 }
 .product-option:last-child { border-bottom: none; }
-.product-option:hover, .product-option.highlighted { background: var(--accent-light); }
+.product-option:hover, .product-option.highlighted { background: var(–accent-light); }
 .product-option .pname { font-weight: 500; font-size: 14px; }
-.product-option .pcode { font-size: 12px; color: var(--text2); font-family: 'DM Mono', monospace; }
+.product-option .pcode { font-size: 12px; color: var(–text2); font-family: ‘DM Mono’, monospace; }
 .product-option .pstock { font-size: 12px; font-weight: 700; }
-.product-option .pstock.ok { color: var(--success); }
-.product-option .pstock.low { color: var(--warning); }
-.product-option .pstock.none { color: var(--danger); }
+.product-option .pstock.ok { color: var(–success); }
+.product-option .pstock.low { color: var(–warning); }
+.product-option .pstock.none { color: var(–danger); }
 
 /* Item List */
 .item-list { padding: 8px 16px; }
 .item-row {
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border);
+display: flex; align-items: center; gap: 10px;
+padding: 10px 0;
+border-bottom: 1px solid var(–border);
 }
 .item-row:last-child { border-bottom: none; }
 .item-info { flex: 1; min-width: 0; }
 .item-name { font-weight: 500; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.item-code { font-size: 11px; color: var(--text2); font-family: 'DM Mono', monospace; }
+.item-code { font-size: 11px; color: var(–text2); font-family: ‘DM Mono’, monospace; }
 .item-stock { font-size: 11px; font-weight: 700; }
-.item-stock.ok { color: var(--success); }
-.item-stock.none { color: var(--danger); }
+.item-stock.ok { color: var(–success); }
+.item-stock.none { color: var(–danger); }
 .qty-control { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 .qty-btn {
-  width: 30px; height: 30px;
-  border-radius: 50%;
-  border: 1.5px solid var(--border);
-  background: var(--surface2);
-  font-size: 18px; line-height: 1;
-  cursor: pointer; display: flex; align-items: center; justify-content: center;
-  font-family: inherit; color: var(--text);
+width: 30px; height: 30px;
+border-radius: 50%;
+border: 1.5px solid var(–border);
+background: var(–surface2);
+font-size: 18px; line-height: 1;
+cursor: pointer; display: flex; align-items: center; justify-content: center;
+font-family: inherit; color: var(–text);
 }
-.qty-btn:active { background: var(--border); }
-.qty-num { font-family: 'DM Mono', monospace; font-size: 16px; font-weight: 700; min-width: 24px; text-align: center; }
-.item-delete { background: none; border: none; color: var(--danger); font-size: 20px; cursor: pointer; padding: 4px; flex-shrink: 0; }
+.qty-btn:active { background: var(–border); }
+.qty-num { font-family: ‘DM Mono’, monospace; font-size: 16px; font-weight: 700; min-width: 24px; text-align: center; }
+.item-delete { background: none; border: none; color: var(–danger); font-size: 20px; cursor: pointer; padding: 4px; flex-shrink: 0; }
 
 .add-product-btn {
-  width: 100%;
-  background: none;
-  border: 1.5px dashed var(--border);
-  border-radius: var(--radius-sm);
-  padding: 12px;
-  color: var(--accent);
-  font-size: 14px;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center; gap: 6px;
-  margin: 8px 0;
-  transition: border-color 0.2s, background 0.2s;
+width: 100%;
+background: none;
+border: 1.5px dashed var(–border);
+border-radius: var(–radius-sm);
+padding: 12px;
+color: var(–accent);
+font-size: 14px;
+font-weight: 600;
+font-family: inherit;
+cursor: pointer;
+display: flex; align-items: center; justify-content: center; gap: 6px;
+margin: 8px 0;
+transition: border-color 0.2s, background 0.2s;
 }
-.add-product-btn:hover { border-color: var(--accent); background: var(--accent-light); }
+.add-product-btn:hover { border-color: var(–accent); background: var(–accent-light); }
 
 .form-footer {
-  padding: 16px;
-  background: var(--surface);
-  border-top: 1px solid var(--border);
-  box-shadow: 0 -4px 16px rgba(0,0,0,0.06);
+padding: 16px;
+background: var(–surface);
+border-top: 1px solid var(–border);
+box-shadow: 0 -4px 16px rgba(0,0,0,0.06);
 }
 .btn-submit {
-  width: 100%;
-  background: var(--accent);
-  color: #1a1a10;
-  border: none;
-  border-radius: var(--radius);
-  padding: 18px;
-  font-size: 18px;
-  font-weight: 700;
-  font-family: inherit;
-  cursor: pointer;
-  box-shadow: 0 4px 16px rgba(196,164,74,0.35);
-  transition: opacity 0.2s, transform 0.1s;
+width: 100%;
+background: var(–accent);
+color: #1a1a10;
+border: none;
+border-radius: var(–radius);
+padding: 18px;
+font-size: 18px;
+font-weight: 700;
+font-family: inherit;
+cursor: pointer;
+box-shadow: 0 4px 16px rgba(196,164,74,0.35);
+transition: opacity 0.2s, transform 0.1s;
 }
 .btn-submit:active { transform: scale(0.98); }
 .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -441,215 +442,215 @@ body {
 .detail-body { flex: 1; padding: 16px; overflow-y: auto; }
 
 .detail-status-hero {
-  background: linear-gradient(135deg, #1a1a2e, #2a2a4e);
-  border-radius: var(--radius);
-  padding: 20px;
-  margin-bottom: 16px;
-  color: #fff;
-  text-align: center;
+background: linear-gradient(135deg, #1a1a2e, #2a2a4e);
+border-radius: var(–radius);
+padding: 20px;
+margin-bottom: 16px;
+color: #fff;
+text-align: center;
 }
 .detail-status-icon { font-size: 40px; margin-bottom: 8px; }
 .detail-status-text { font-size: 20px; font-weight: 700; }
-.detail-order-no { font-family: 'DM Mono', monospace; font-size: 13px; color: rgba(255,255,255,0.6); margin-top: 4px; }
+.detail-order-no { font-family: ‘DM Mono’, monospace; font-size: 13px; color: rgba(255,255,255,0.6); margin-top: 4px; }
 
 .detail-card {
-  background: var(--surface);
-  border-radius: var(--radius);
-  margin-bottom: 12px;
-  overflow: hidden;
-  box-shadow: var(--shadow);
+background: var(–surface);
+border-radius: var(–radius);
+margin-bottom: 12px;
+overflow: hidden;
+box-shadow: var(–shadow);
 }
 .detail-card-title {
-  padding: 10px 14px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  color: var(--text2);
-  background: var(--surface2);
-  border-bottom: 1px solid var(--border);
+padding: 10px 14px;
+font-size: 12px;
+font-weight: 700;
+letter-spacing: 0.5px;
+color: var(–text2);
+background: var(–surface2);
+border-bottom: 1px solid var(–border);
 }
 .detail-row {
-  padding: 12px 14px;
-  display: flex;
-  border-bottom: 1px solid var(--border);
-  gap: 8px;
+padding: 12px 14px;
+display: flex;
+border-bottom: 1px solid var(–border);
+gap: 8px;
 }
 .detail-row:last-child { border-bottom: none; }
-.detail-row-label { font-size: 12px; color: var(--text2); min-width: 60px; flex-shrink: 0; padding-top: 1px; }
+.detail-row-label { font-size: 12px; color: var(–text2); min-width: 60px; flex-shrink: 0; padding-top: 1px; }
 .detail-row-value { font-size: 14px; font-weight: 500; flex: 1; word-break: break-all; }
 
 .tracking-box {
-  background: var(--success-light);
-  border: 1px solid var(--success);
-  border-radius: var(--radius-sm);
-  padding: 12px 14px;
-  margin: 12px 14px;
-  display: flex; align-items: center; gap: 8px;
+background: var(–success-light);
+border: 1px solid var(–success);
+border-radius: var(–radius-sm);
+padding: 12px 14px;
+margin: 12px 14px;
+display: flex; align-items: center; gap: 8px;
 }
-.tracking-box .tracking-num { font-family: 'DM Mono', monospace; font-size: 15px; font-weight: 700; color: var(--success); flex: 1; }
+.tracking-box .tracking-num { font-family: ‘DM Mono’, monospace; font-size: 15px; font-weight: 700; color: var(–success); flex: 1; }
 .tracking-box .copy-btn {
-  background: var(--success);
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  padding: 6px 10px;
-  font-size: 12px;
-  cursor: pointer;
-  font-family: inherit;
+background: var(–success);
+color: #fff;
+border: none;
+border-radius: 6px;
+padding: 6px 10px;
+font-size: 12px;
+cursor: pointer;
+font-family: inherit;
 }
 
 /* QR Code */
 .qr-section {
-  background: var(--surface);
-  border-radius: var(--radius);
-  padding: 20px;
-  margin-bottom: 12px;
-  box-shadow: var(--shadow);
-  text-align: center;
+background: var(–surface);
+border-radius: var(–radius);
+padding: 20px;
+margin-bottom: 12px;
+box-shadow: var(–shadow);
+text-align: center;
 }
-.qr-section h3 { font-size: 14px; color: var(--text2); margin-bottom: 12px; }
+.qr-section h3 { font-size: 14px; color: var(–text2); margin-bottom: 12px; }
 .qr-code-wrap {
-  display: inline-block;
-  padding: 12px;
-  background: #fff;
-  border-radius: 8px;
-  border: 2px solid var(--border);
+display: inline-block;
+padding: 12px;
+background: #fff;
+border-radius: 8px;
+border: 2px solid var(–border);
 }
-.qr-hint { font-size: 12px; color: var(--text2); margin-top: 10px; }
+.qr-hint { font-size: 12px; color: var(–text2); margin-top: 10px; }
 
 /* ── ADMIN SCREEN ── */
 .admin-tabs {
-  display: flex;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+display: flex;
+background: var(–surface);
+border-bottom: 1px solid var(–border);
+overflow-x: auto;
+-webkit-overflow-scrolling: touch;
 }
 .admin-tab {
-  padding: 12px 16px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text2);
-  cursor: pointer;
-  white-space: nowrap;
-  border-bottom: 2.5px solid transparent;
-  transition: color 0.2s;
-  background: none;
-  border-top: none;
-  border-left: none;
-  border-right: none;
-  font-family: inherit;
+padding: 12px 16px;
+font-size: 14px;
+font-weight: 600;
+color: var(–text2);
+cursor: pointer;
+white-space: nowrap;
+border-bottom: 2.5px solid transparent;
+transition: color 0.2s;
+background: none;
+border-top: none;
+border-left: none;
+border-right: none;
+font-family: inherit;
 }
-.admin-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.admin-tab.active { color: var(–accent); border-bottom-color: var(–accent); }
 
 .filter-bar {
-  padding: 10px 16px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  display: flex; gap: 8px; overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+padding: 10px 16px;
+background: var(–surface);
+border-bottom: 1px solid var(–border);
+display: flex; gap: 8px; overflow-x: auto;
+-webkit-overflow-scrolling: touch;
 }
 .filter-chip {
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-  border: 1.5px solid var(--border);
-  background: var(--surface);
-  color: var(--text2);
-  font-family: inherit;
-  transition: all 0.15s;
+padding: 6px 12px;
+border-radius: 20px;
+font-size: 12px;
+font-weight: 600;
+cursor: pointer;
+white-space: nowrap;
+border: 1.5px solid var(–border);
+background: var(–surface);
+color: var(–text2);
+font-family: inherit;
+transition: all 0.15s;
 }
-.filter-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.filter-chip.active { background: var(–accent); color: #fff; border-color: var(–accent); }
 
 .orders-list { padding: 12px 16px; flex: 1; overflow-y: auto; }
 
 /* Admin status update */
 .btn-status {
-  display: inline-block;
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  border: none;
-  font-family: inherit;
-  margin: 2px;
+display: inline-block;
+padding: 6px 12px;
+border-radius: 6px;
+font-size: 12px;
+font-weight: 700;
+cursor: pointer;
+border: none;
+font-family: inherit;
+margin: 2px;
 }
-.btn-status.process { background: var(--accent-light); color: var(--accent); }
-.btn-status.ship { background: var(--success-light); color: var(--success); }
-.btn-status.cancel { background: var(--danger-light); color: var(--danger); }
+.btn-status.process { background: var(–accent-light); color: var(–accent); }
+.btn-status.ship { background: var(–success-light); color: var(–success); }
+.btn-status.cancel { background: var(–danger-light); color: var(–danger); }
 
 /* ── TOAST ── */
 .toast {
-  position: fixed;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%) translateY(80px);
-  background: #1a1a18;
-  color: #fff;
-  padding: 12px 20px;
-  border-radius: 24px;
-  font-size: 14px;
-  font-weight: 500;
-  z-index: 9999;
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  white-space: nowrap;
-  max-width: calc(100vw - 32px);
+position: fixed;
+bottom: 24px;
+left: 50%;
+transform: translateX(-50%) translateY(80px);
+background: #1a1a18;
+color: #fff;
+padding: 12px 20px;
+border-radius: 24px;
+font-size: 14px;
+font-weight: 500;
+z-index: 9999;
+transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+white-space: nowrap;
+max-width: calc(100vw - 32px);
 }
 .toast.show { transform: translateX(-50%) translateY(0); }
-.toast.success { background: var(--success); }
-.toast.error { background: var(--danger); }
+.toast.success { background: var(–success); }
+.toast.error { background: var(–danger); }
 
 /* ── LOADING ── */
 .loading-overlay {
-  position: fixed; inset: 0;
-  background: rgba(255,255,255,0.85);
-  display: flex; align-items: center; justify-content: center;
-  z-index: 9998;
-  display: none;
+position: fixed; inset: 0;
+background: rgba(255,255,255,0.85);
+display: flex; align-items: center; justify-content: center;
+z-index: 9998;
+display: none;
 }
 .loading-overlay.show { display: flex; }
 .spinner {
-  width: 40px; height: 40px;
-  border: 3px solid var(--border);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
+width: 40px; height: 40px;
+border: 3px solid var(–border);
+border-top-color: var(–accent);
+border-radius: 50%;
+animation: spin 0.7s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ── EMPTY STATE ── */
 .empty-state {
-  text-align: center;
-  padding: 48px 24px;
-  color: var(--text2);
+text-align: center;
+padding: 48px 24px;
+color: var(–text2);
 }
 .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
 .empty-state p { font-size: 15px; }
 
 /* ── MODAL ── */
 .modal-overlay {
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,0.5);
-  z-index: 500;
-  display: none;
-  align-items: flex-end;
+position: fixed; inset: 0;
+background: rgba(0,0,0,0.5);
+z-index: 500;
+display: none;
+align-items: flex-end;
 }
 .modal-overlay.show { display: flex; }
 .modal-sheet {
-  background: var(--surface);
-  border-radius: 20px 20px 0 0;
-  padding: 20px;
-  width: 100%;
-  max-height: 80vh;
-  overflow-y: auto;
+background: var(–surface);
+border-radius: 20px 20px 0 0;
+padding: 20px;
+width: 100%;
+max-height: 80vh;
+overflow-y: auto;
 }
 .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
 .modal-input-row { margin-bottom: 12px; }
-.modal-input-row label { font-size: 12px; color: var(--text2); display: block; margin-bottom: 6px; }
+.modal-input-row label { font-size: 12px; color: var(–text2); display: block; margin-bottom: 6px; }
 
 /* Utility */
 .text-center { text-align: center; }
@@ -660,52 +661,58 @@ body {
 
 /* Same buyer checkbox */
 .same-buyer-label {
-  display: flex; align-items: center; gap: 10px;
-  cursor: pointer; padding: 4px 0;
-  font-size: 15px; font-weight: 500;
-  user-select: none;
+display: flex; align-items: center; gap: 10px;
+cursor: pointer; padding: 4px 0;
+font-size: 15px; font-weight: 500;
+user-select: none;
 }
 .checkbox-wrap {
-  width: 24px; height: 24px;
-  border: 2px solid var(--border);
-  border-radius: 6px;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-  transition: all 0.2s;
-  background: var(--surface);
+width: 24px; height: 24px;
+border: 2px solid var(–border);
+border-radius: 6px;
+display: flex; align-items: center; justify-content: center;
+flex-shrink: 0;
+transition: all 0.2s;
+background: var(–surface);
 }
 .checkbox-wrap.checked {
-  background: var(--accent);
-  border-color: var(--accent);
+background: var(–accent);
+border-color: var(–accent);
 }
 .checkbox-inner { display: none; }
 .checkbox-wrap.checked .checkbox-inner {
-  display: block;
-  width: 6px; height: 10px;
-  border: 2px solid #fff;
-  border-top: none; border-left: none;
-  transform: rotate(45deg) translateY(-1px);
+display: block;
+width: 6px; height: 10px;
+border: 2px solid #fff;
+border-top: none; border-left: none;
+transform: rotate(45deg) translateY(-1px);
 }
 
 /* Field hint */
 .field-hint { font-size: 12px; margin-top: 4px; }
-.field-hint.error { color: var(--danger); }
-.field-hint.ok { color: var(--success); }
+.field-hint.error { color: var(–danger); }
+.field-hint.ok { color: var(–success); }
 </style>
+
 </head>
 <body>
 
 <!-- Loading -->
+
 <div class="loading-overlay" id="loadingOverlay">
   <div class="spinner"></div>
 </div>
 
 <!-- Toast -->
+
 <div class="toast" id="toast"></div>
 
 <!-- ══════════════════════════════════════ -->
+
 <!-- LOGIN SCREEN                          -->
+
 <!-- ══════════════════════════════════════ -->
+
 <div class="screen active" id="loginScreen">
   <div class="login-box">
     <div class="login-logo">
@@ -727,8 +734,11 @@ body {
 </div>
 
 <!-- ══════════════════════════════════════ -->
+
 <!-- MAIN SCREEN (業務首頁)                 -->
+
 <!-- ══════════════════════════════════════ -->
+
 <div class="screen" id="mainScreen">
   <div class="main-header">
     <div class="greeting">👋 歡迎回來</div>
@@ -781,8 +791,11 @@ body {
 </div>
 
 <!-- ══════════════════════════════════════ -->
+
 <!-- FORM SCREEN (新增訂單)                 -->
+
 <!-- ══════════════════════════════════════ -->
+
 <div class="screen" id="formScreen">
   <div class="topbar">
     <button class="topbar-back" onclick="showScreen('mainScreen')">←</button>
@@ -794,123 +807,126 @@ body {
 
   <div class="form-body">
 
-    <!-- 訂購人資訊 -->
-    <div class="form-section">
-      <div class="form-section-title">🧾 訂購人資訊</div>
-      <div class="form-row">
-        <label class="form-label">訂購人姓名 <span class="req">*</span></label>
-        <input class="form-input" id="buyerName" placeholder="請輸入訂購人姓名" type="text">
+```
+<!-- 訂購人資訊 -->
+<div class="form-section">
+  <div class="form-section-title">🧾 訂購人資訊</div>
+  <div class="form-row">
+    <label class="form-label">訂購人姓名 <span class="req">*</span></label>
+    <input class="form-input" id="buyerName" placeholder="請輸入訂購人姓名" type="text">
+  </div>
+  <div class="form-row">
+    <label class="form-label">訂購人電話 <span class="req">*</span></label>
+    <input class="form-input" id="buyerPhone" placeholder="請輸入10碼手機號碼" type="tel" inputmode="numeric" maxlength="10" oninput="validatePhone(this)">
+    <div class="field-hint" id="buyerPhoneHint"></div>
+  </div>
+</div>
+
+<!-- 收件人資訊 -->
+<div class="form-section">
+  <div class="form-section-title">📦 收件人資訊</div>
+
+  <!-- 與訂購人相同勾選 -->
+  <div class="form-row">
+    <label class="same-buyer-label" onclick="toggleSameBuyer()">
+      <div class="checkbox-wrap" id="sameBuyerCheck">
+        <div class="checkbox-inner"></div>
       </div>
-      <div class="form-row">
-        <label class="form-label">訂購人電話 <span class="req">*</span></label>
-        <input class="form-input" id="buyerPhone" placeholder="請輸入10碼手機號碼" type="tel" inputmode="numeric" maxlength="10" oninput="validatePhone(this)">
-        <div class="field-hint" id="buyerPhoneHint"></div>
-      </div>
+      <span>收件人與訂購人相同</span>
+    </label>
+  </div>
+
+  <div id="receiverFields">
+    <div class="form-row">
+      <label class="form-label">收件人姓名 <span class="req">*</span></label>
+      <input class="form-input" id="receiverName" placeholder="請輸入收件人姓名" type="text">
     </div>
-
-    <!-- 收件人資訊 -->
-    <div class="form-section">
-      <div class="form-section-title">📦 收件人資訊</div>
-
-      <!-- 與訂購人相同勾選 -->
-      <div class="form-row">
-        <label class="same-buyer-label" onclick="toggleSameBuyer()">
-          <div class="checkbox-wrap" id="sameBuyerCheck">
-            <div class="checkbox-inner"></div>
-          </div>
-          <span>收件人與訂購人相同</span>
-        </label>
-      </div>
-
-      <div id="receiverFields">
-        <div class="form-row">
-          <label class="form-label">收件人姓名 <span class="req">*</span></label>
-          <input class="form-input" id="receiverName" placeholder="請輸入收件人姓名" type="text">
-        </div>
-        <div class="form-row">
-          <label class="form-label">收件人電話 <span class="req">*</span></label>
-          <input class="form-input" id="receiverPhone" placeholder="請輸入10碼手機號碼" type="tel" inputmode="numeric" maxlength="10" oninput="validatePhone(this)">
-          <div class="field-hint" id="receiverPhoneHint"></div>
-        </div>
-      </div>
-
-      <!-- 地址 -->
-      <div class="form-row">
-        <label class="form-label">縣市 <span class="req">*</span></label>
-        <select class="form-select" id="addrCity" onchange="onCityChange(this.value)">
-          <option value="">請選擇縣市</option>
-        </select>
-      </div>
-      <div class="form-row">
-        <label class="form-label">鄉鎮市區 <span class="req">*</span></label>
-        <select class="form-select" id="addrDistrict" onchange="onDistrictChange(this.value)" disabled>
-          <option value="">請先選縣市</option>
-        </select>
-      </div>
-      <div class="form-row" id="addrZipRow" style="display:none;">
-        <label class="form-label">郵遞區號</label>
-        <input class="form-input" id="addrZip" readonly style="background:var(--surface2);color:var(--accent);font-weight:700;">
-      </div>
-      <div class="form-row" id="addrDetailRow" style="display:none;">
-        <label class="form-label">詳細地址 <span class="req">*</span></label>
-        <input class="form-input" id="addrDetail"
-          placeholder="路街名＋門牌，例：竹光路100號3樓 或 蒜頭1鄰100號"
-          oninput="validateDetail(this)">
-        <div class="field-hint" id="detailHint">都市：竹光路100號3樓｜農村：1鄰100號</div>
-      </div>
+    <div class="form-row">
+      <label class="form-label">收件人電話 <span class="req">*</span></label>
+      <input class="form-input" id="receiverPhone" placeholder="請輸入10碼手機號碼" type="tel" inputmode="numeric" maxlength="10" oninput="validatePhone(this)">
+      <div class="field-hint" id="receiverPhoneHint"></div>
     </div>
+  </div>
 
-    <!-- 訂單資訊 -->
-    <div class="form-section">
-      <div class="form-section-title">🏪 訂單資訊</div>
-      <!-- 管理員才顯示門市選擇 -->
-      <div class="form-row" id="adminStoreRow" style="display:none;">
-        <label class="form-label">門市 <span class="req">*</span></label>
-        <select class="form-select" id="formStoreSelect">
-          <option value="">請選擇門市</option>
-        </select>
-      </div>
-      <div class="form-row" id="staffStoreRow">
-        <label class="form-label">門市</label>
-        <input class="form-input" id="storeDisplay" readonly style="background:var(--surface2);color:var(--text);font-weight:700;">
-      </div>
-      <div class="form-row">
-        <label class="form-label">機號 <span class="req">*</span></label>
-        <select class="form-select" id="posTerminal">
-          <option value="001">001</option>
-        </select>
-      </div>
-      <div class="form-row">
-        <label class="form-label">POS交易序號 <span class="req">*</span>（5碼數字）</label>
-        <input class="form-input" id="posNo" placeholder="請輸入5碼POS交易序號"
-          inputmode="numeric" maxlength="5" oninput="validatePosNo(this)">
-        <div class="field-hint" id="posNoHint"></div>
-      </div>
-      <div class="form-row">
-        <label class="form-label">備註</label>
-        <textarea class="form-textarea" id="orderNote" placeholder="特殊要求、指定到貨日等（選填）"></textarea>
-      </div>
-    </div>
+  <!-- 地址 -->
+  <div class="form-row">
+    <label class="form-label">縣市 <span class="req">*</span></label>
+    <select class="form-select" id="addrCity" onchange="onCityChange(this.value)">
+      <option value="">請選擇縣市</option>
+    </select>
+  </div>
+  <div class="form-row">
+    <label class="form-label">鄉鎮市區 <span class="req">*</span></label>
+    <select class="form-select" id="addrDistrict" onchange="onDistrictChange(this.value)" disabled>
+      <option value="">請先選縣市</option>
+    </select>
+  </div>
+  <div class="form-row" id="addrZipRow" style="display:none;">
+    <label class="form-label">郵遞區號</label>
+    <input class="form-input" id="addrZip" readonly style="background:var(--surface2);color:var(--accent);font-weight:700;">
+  </div>
+  <div class="form-row" id="addrDetailRow" style="display:none;">
+    <label class="form-label">詳細地址 <span class="req">*</span></label>
+    <input class="form-input" id="addrDetail"
+      placeholder="路街名＋門牌，例：竹光路100號3樓 或 蒜頭1鄰100號"
+      oninput="validateDetail(this)">
+    <div class="field-hint" id="detailHint">都市：竹光路100號3樓｜農村：1鄰100號</div>
+  </div>
+</div>
 
-    <!-- 品項 -->
-    <div class="form-section">
-      <div class="form-section-title">📦 訂購品項（最多5項）</div>
-      <div class="form-row">
-        <label class="form-label">搜尋商品</label>
-        <div class="product-search-wrap" id="productSearchWrap">
-          <span class="product-search-icon">🔍</span>
-          <input class="product-search-input" id="productSearch"
-            placeholder="輸入品名或品號搜尋..."
-            oninput="onProductSearch(this.value)"
-            autocomplete="off">
-          <div class="product-dropdown" id="productDropdown"></div>
-        </div>
-      </div>
-      <div class="item-list" id="itemList"></div>
-      <div style="padding:0 16px 12px;">
-        <div style="font-size:12px;color:var(--text2);" id="itemCountHint">已選 0 / 5 項</div>
-      </div>
+<!-- 訂單資訊 -->
+<div class="form-section">
+  <div class="form-section-title">🏪 訂單資訊</div>
+  <!-- 管理員才顯示門市選擇 -->
+  <div class="form-row" id="adminStoreRow" style="display:none;">
+    <label class="form-label">門市 <span class="req">*</span></label>
+    <select class="form-select" id="formStoreSelect">
+      <option value="">請選擇門市</option>
+    </select>
+  </div>
+  <div class="form-row" id="staffStoreRow">
+    <label class="form-label">門市</label>
+    <input class="form-input" id="storeDisplay" readonly style="background:var(--surface2);color:var(--text);font-weight:700;">
+  </div>
+  <div class="form-row">
+    <label class="form-label">機號 <span class="req">*</span></label>
+    <select class="form-select" id="posTerminal">
+      <option value="001">001</option>
+    </select>
+  </div>
+  <div class="form-row">
+    <label class="form-label">POS交易序號 <span class="req">*</span>（5碼數字）</label>
+    <input class="form-input" id="posNo" placeholder="請輸入5碼POS交易序號"
+      inputmode="numeric" maxlength="5" oninput="validatePosNo(this)">
+    <div class="field-hint" id="posNoHint"></div>
+  </div>
+  <div class="form-row">
+    <label class="form-label">備註</label>
+    <textarea class="form-textarea" id="orderNote" placeholder="特殊要求、指定到貨日等（選填）"></textarea>
+  </div>
+</div>
+
+<!-- 品項 -->
+<div class="form-section">
+  <div class="form-section-title">📦 訂購品項（最多5項）</div>
+  <div class="form-row">
+    <label class="form-label">搜尋商品</label>
+    <div class="product-search-wrap" id="productSearchWrap">
+      <span class="product-search-icon">🔍</span>
+      <input class="product-search-input" id="productSearch"
+        placeholder="輸入品名或品號搜尋..."
+        oninput="onProductSearch(this.value)"
+        autocomplete="off">
+      <div class="product-dropdown" id="productDropdown"></div>
     </div>
+  </div>
+  <div class="item-list" id="itemList"></div>
+  <div style="padding:0 16px 12px;">
+    <div style="font-size:12px;color:var(--text2);" id="itemCountHint">已選 0 / 5 項</div>
+  </div>
+</div>
+```
+
   </div>
 
   <div class="form-footer">
@@ -919,8 +935,104 @@ body {
 </div>
 
 <!-- ══════════════════════════════════════ -->
-<!-- ORDER DETAIL SCREEN                   -->
+
+<!-- EDIT ORDER SCREEN                     -->
+
 <!-- ══════════════════════════════════════ -->
+
+<div class="screen" id="editScreen">
+  <div class="topbar">
+    <button class="topbar-back" id="editBack" onclick="showScreen('detailScreen')">←</button>
+    <div>
+      <div class="topbar-title">修改訂單</div>
+      <div class="topbar-sub" id="editOrderNo"></div>
+    </div>
+  </div>
+  <div class="form-body">
+
+```
+<!-- 收件人資訊 -->
+<div class="form-section">
+  <div class="form-section-title">👤 收件人資訊</div>
+  <div class="form-row">
+    <label class="form-label">收件人姓名 <span class="req">*</span></label>
+    <input class="form-input" id="editReceiverName" type="text">
+  </div>
+  <div class="form-row">
+    <label class="form-label">收件人電話 <span class="req">*</span></label>
+    <input class="form-input" id="editReceiverPhone" type="tel" inputmode="numeric" maxlength="10" oninput="validatePhone(this)">
+    <div class="field-hint" id="editReceiverPhoneHint"></div>
+  </div>
+  <div class="form-row">
+    <label class="form-label">縣市 <span class="req">*</span></label>
+    <select class="form-select" id="editAddrCity" onchange="onEditCityChange(this.value)">
+      <option value="">請選擇縣市</option>
+    </select>
+  </div>
+  <div class="form-row">
+    <label class="form-label">鄉鎮市區 <span class="req">*</span></label>
+    <select class="form-select" id="editAddrDistrict" onchange="onEditDistrictChange(this.value)" disabled>
+      <option value="">請先選縣市</option>
+    </select>
+  </div>
+  <div class="form-row" id="editAddrZipRow" style="display:none;">
+    <label class="form-label">郵遞區號</label>
+    <input class="form-input" id="editAddrZip" readonly style="background:var(--surface2);color:var(--accent);font-weight:700;">
+  </div>
+  <div class="form-row">
+    <label class="form-label">詳細地址 <span class="req">*</span></label>
+    <input class="form-input" id="editAddrDetail" placeholder="路街名＋門牌，例：竹光路100號3樓">
+  </div>
+</div>
+
+<!-- 訂單資訊 -->
+<div class="form-section">
+  <div class="form-section-title">🏪 訂單資訊</div>
+  <div class="form-row">
+    <label class="form-label">POS交易序號 <span class="req">*</span>（5碼數字）</label>
+    <input class="form-input" id="editPosNo" inputmode="numeric" maxlength="5" oninput="validatePosNo(this)">
+    <div class="field-hint" id="editPosNoHint"></div>
+  </div>
+  <div class="form-row">
+    <label class="form-label">備註</label>
+    <textarea class="form-textarea" id="editNote" placeholder="特殊要求、指定到貨日等（選填）"></textarea>
+  </div>
+</div>
+
+<!-- 品項 -->
+<div class="form-section">
+  <div class="form-section-title">📦 訂購品項（最多5項）</div>
+  <div class="form-row">
+    <label class="form-label">搜尋商品</label>
+    <div class="product-search-wrap" id="editProductSearchWrap">
+      <span class="product-search-icon">🔍</span>
+      <input class="product-search-input" id="editProductSearch"
+        placeholder="輸入品名或品號搜尋..."
+        oninput="onEditProductSearch(this.value)"
+        autocomplete="off">
+      <div class="product-dropdown" id="editProductDropdown"></div>
+    </div>
+  </div>
+  <div class="item-list" id="editItemList"></div>
+  <div style="padding:0 16px 12px;">
+    <div style="font-size:12px;color:var(--text2);" id="editItemCountHint">已選 0 / 5 項</div>
+  </div>
+</div>
+```
+
+  </div>
+
+  <div class="form-footer">
+    <button class="btn-submit" onclick="saveEditOrder()">💾 儲存修改</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════ -->
+
+<!-- ORDER DETAIL SCREEN                   -->
+
+<!-- ══════════════════════════════════════ -->
+
 <div class="screen" id="detailScreen">
   <div class="topbar">
     <button class="topbar-back" id="detailBack" onclick="showScreen('mainScreen')">←</button>
@@ -930,8 +1042,11 @@ body {
 </div>
 
 <!-- ══════════════════════════════════════ -->
+
 <!-- ADMIN SCREEN                          -->
+
 <!-- ══════════════════════════════════════ -->
+
 <div class="screen" id="adminScreen">
   <div class="topbar">
     <button class="topbar-back" onclick="showScreen('mainScreen')">←</button>
@@ -950,6 +1065,7 @@ body {
 </div>
 
 <!-- QR Token 公開查詢頁（嵌在同檔案） -->
+
 <div class="screen" id="publicScreen">
   <div class="topbar">
     <div class="topbar-title">📦 訂單查詢</div>
@@ -958,6 +1074,7 @@ body {
 </div>
 
 <!-- 送出確認視窗 -->
+
 <div class="modal-overlay" id="confirmModal">
   <div class="modal-sheet">
     <div class="modal-title">📋 請確認訂單內容</div>
@@ -970,6 +1087,7 @@ body {
 </div>
 
 <!-- 取消訂單視窗 -->
+
 <div class="modal-overlay" id="cancelModal">
   <div class="modal-sheet">
     <div class="modal-title">❌ 取消訂單</div>
@@ -1850,15 +1968,15 @@ function renderDetail(o, containerId, isPublic) {
       </div>
       <div style="font-size:12px;color:var(--text2);margin-bottom:8px;margin-top:12px;">訂單操作</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px;">
-        ${o.status!=='shipped'&&o.status!=='cancelled' ? `<button class="btn-status process" onclick="editOrder('${o.id}')">✏️ 修改備註</button>` : ''}
+        ${o.status==='pending' ? `<button class="btn-status process" onclick="openEditOrder('${o.id}')">✏️ 修改訂單</button>` : ''}
         ${o.status!=='cancelled'&&o.status!=='shipped' ? `<button class="btn-status cancel" onclick="showCancelModal('${o.id}')">❌ 取消訂單</button>` : ''}
         <button class="btn-status cancel" style="background:#1a1a18;color:#fff;" onclick="deleteOrder('${o.id}')">🗑️ 刪除訂單</button>
       </div>
       ${o.cancel_reason ? `<div style="margin-top:10px;padding:8px 10px;background:var(--danger-light);border-radius:6px;font-size:13px;color:var(--danger);">取消原因：${escHtml(o.cancel_reason)}</div>` : ''}
     </div>`;
   } else if (!isPublic && o.status!=='cancelled'&&o.status!=='shipped') {
-    // 業務也可以取消自己的訂單
     adminBtns = `<div style="padding:12px 14px;border-top:1px solid var(--border);">
+      ${o.status==='pending' ? `<button class="btn-status process" onclick="openEditOrder('${o.id}')">✏️ 修改訂單</button>` : ''}
       <button class="btn-status cancel" onclick="showCancelModal('${o.id}')">❌ 取消訂單</button>
       ${o.cancel_reason ? `<div style="margin-top:8px;font-size:13px;color:var(--danger);">取消原因：${escHtml(o.cancel_reason)}</div>` : ''}
     </div>`;
@@ -2061,22 +2179,231 @@ async function deleteOrder(orderId) {
 }
 
 // ════════════════════════════════════════
-// 修改備註
+// 修改訂單
 // ════════════════════════════════════════
-async function editOrder(orderId) {
-  const orders = await sb.get('orders', `?id=eq.${orderId}&select=note`);
-  const current = orders?.[0]?.note || '';
-  const newNote = prompt('修改備註：', current);
-  if (newNote === null) return;
+let editOrderId = null;
+let editFormItems = [];
+let editSearchDebounce = null;
+
+async function openEditOrder(orderId) {
   showLoading(true);
   try {
-    await sb.patch('orders', orderId, {
-      note: newNote.trim() || null,
+    const orders = await sb.get('orders',
+      `?id=eq.${orderId}&select=*,order_items(*),stores(name)`
+    );
+    const o = orders?.[0];
+    if (!o) { showToast('找不到訂單', 'error'); showLoading(false); return; }
+    if (o.status !== 'pending') { showToast('只有待處理訂單才能修改', 'error'); showLoading(false); return; }
+
+    editOrderId = orderId;
+    editFormItems = (o.order_items || []).map(i => ({
+      sku: i.sku,
+      name: i.product_name,
+      qty: i.quantity,
+      stock: allProducts.find(p => p.sku === i.sku)?.stock ?? 99
+    }));
+
+    // 填入現有資料
+    document.getElementById('editOrderNo').textContent = o.order_no;
+    document.getElementById('editReceiverName').value = o.receiver_name || '';
+    document.getElementById('editReceiverPhone').value = o.receiver_phone || '';
+    document.getElementById('editPosNo').value = o.pos_no || '';
+    document.getElementById('editNote').value = o.note || '';
+
+    // 解析地址（格式：郵遞區號 縣市區詳細地址）
+    const addr = o.receiver_address || '';
+    const addrMatch = addr.match(/^(\d{3,5})\s?(.{2,3}[市縣])(.{2,4}[區鄉鎮市])(.+)$/);
+
+    // 初始化縣市下拉
+    initEditCitySelect();
+
+    if (addrMatch) {
+      const city = addrMatch[2];
+      const dist = addrMatch[3];
+      const detail = addrMatch[4];
+
+      const cityEl = document.getElementById('editAddrCity');
+      if (cityEl) cityEl.value = city;
+      onEditCityChange(city, dist);
+      document.getElementById('editAddrDetail').value = detail;
+    } else {
+      document.getElementById('editAddrDetail').value = addr;
+    }
+
+    renderEditItems();
+    document.getElementById('editBack').onclick = () => openOrderDetail(orderId);
+    showScreen('editScreen');
+  } catch(e) {
+    showToast('載入失敗', 'error');
+  }
+  showLoading(false);
+}
+
+function initEditCitySelect() {
+  const el = document.getElementById('editAddrCity');
+  if (!el) return;
+  el.innerHTML = '<option value="">請選擇縣市</option>' +
+    Object.keys(TW_DISTRICTS).map(c => `<option value="${c}">${c}</option>`).join('');
+}
+
+function onEditCityChange(city, presetDist) {
+  const distEl = document.getElementById('editAddrDistrict');
+  document.getElementById('editAddrZipRow').style.display = 'none';
+  if (!city || !TW_DISTRICTS[city]) {
+    distEl.innerHTML = '<option value="">請先選縣市</option>';
+    distEl.disabled = true;
+    return;
+  }
+  const dists = TW_DISTRICTS[city];
+  distEl.innerHTML = '<option value="">請選擇區域</option>' +
+    Object.keys(dists).map(d => `<option value="${d}">${d}</option>`).join('');
+  distEl.disabled = false;
+  if (presetDist) {
+    distEl.value = presetDist;
+    onEditDistrictChange(presetDist, city);
+  }
+}
+
+function onEditDistrictChange(dist, cityOverride) {
+  const city = cityOverride || document.getElementById('editAddrCity').value;
+  if (!dist || !city) return;
+  const zip = TW_DISTRICTS[city]?.[dist] || '';
+  const zipEl = document.getElementById('editAddrZip');
+  if (zipEl) zipEl.value = zip;
+  document.getElementById('editAddrZipRow').style.display = 'block';
+}
+
+function onEditProductSearch(val) {
+  clearTimeout(editSearchDebounce);
+  const dd = document.getElementById('editProductDropdown');
+  if (!val.trim()) { dd.style.display = 'none'; return; }
+  if (editFormItems.length >= 5) { showToast('最多只能選5項商品'); dd.style.display = 'none'; return; }
+  editSearchDebounce = setTimeout(() => renderEditDropdown(val.trim()), 200);
+}
+
+function renderEditDropdown(q) {
+  const dd = document.getElementById('editProductDropdown');
+  const lower = q.toLowerCase();
+  const filtered = allProducts.filter(p =>
+    p.product_name?.toLowerCase().includes(lower) ||
+    p.sku?.toLowerCase().includes(lower)
+  ).slice(0, 50);
+
+  if (!filtered.length) {
+    dd.innerHTML = `<div class="product-option"><div class="pname">找不到相關商品</div></div>`;
+    dd.style.display = 'block'; return;
+  }
+
+  dd.innerHTML = filtered.map(p => {
+    const stock = p.stock ?? 0;
+    const stockClass = stock > 10 ? 'ok' : stock > 0 ? 'low' : 'none';
+    const stockText = stock > 0 ? `可用 ${stock}` : '無庫存';
+    const disabled = stock <= 0 ? 'style="opacity:0.5;pointer-events:none;"' : '';
+    return `<div class="product-option" onclick="addEditItem('${escHtml(p.sku)}','${escHtml(p.product_name)}',${stock})" ${disabled}>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+        <div style="min-width:0;flex:1;">
+          <div class="pname" style="white-space:normal;line-height:1.4;">${escHtml(p.product_name)}</div>
+          <div class="pcode">${p.sku}</div>
+        </div>
+        <div class="pstock ${stockClass}" style="flex-shrink:0;">${stockText}</div>
+      </div>
+    </div>`;
+  }).join('');
+  dd.style.display = 'block';
+}
+
+function addEditItem(sku, name, stock) {
+  if (editFormItems.find(i => i.sku === sku)) { showToast('此商品已加入'); document.getElementById('editProductDropdown').style.display='none'; return; }
+  if (editFormItems.length >= 5) { showToast('最多只能選5項商品'); return; }
+  editFormItems.push({ sku, name, stock, qty: 1 });
+  renderEditItems();
+  document.getElementById('editProductDropdown').style.display = 'none';
+  document.getElementById('editProductSearch').value = '';
+}
+
+function renderEditItems() {
+  const list = document.getElementById('editItemList');
+  document.getElementById('editItemCountHint').textContent = `已選 ${editFormItems.length} / 5 項`;
+  if (!editFormItems.length) { list.innerHTML = ''; return; }
+  list.innerHTML = editFormItems.map((item, i) => `
+    <div class="item-row">
+      <div class="item-info">
+        <div class="item-name">${escHtml(item.name)}</div>
+        <div class="item-code">${item.sku}</div>
+        <div class="item-stock ${item.stock > 0 ? 'ok' : 'none'}">庫存 ${item.stock}</div>
+      </div>
+      <div class="qty-control">
+        <button class="qty-btn" onclick="changeEditQty(${i},-1)">−</button>
+        <span class="qty-num">${item.qty}</span>
+        <button class="qty-btn" onclick="changeEditQty(${i},1)">＋</button>
+      </div>
+      <button class="item-delete" onclick="removeEditItem(${i})">✕</button>
+    </div>
+  `).join('');
+}
+
+function changeEditQty(i, d) {
+  editFormItems[i].qty = Math.max(1, editFormItems[i].qty + d);
+  renderEditItems();
+}
+
+function removeEditItem(i) {
+  editFormItems.splice(i, 1);
+  renderEditItems();
+}
+
+async function saveEditOrder() {
+  const receiverName = document.getElementById('editReceiverName').value.trim();
+  const receiverPhone = document.getElementById('editReceiverPhone').value.trim();
+  const city = document.getElementById('editAddrCity').value;
+  const dist = document.getElementById('editAddrDistrict').value;
+  const zip = document.getElementById('editAddrZip').value;
+  const detail = document.getElementById('editAddrDetail').value.trim();
+  const posNo = document.getElementById('editPosNo').value.trim();
+  const note = document.getElementById('editNote').value.trim();
+
+  if (!receiverName) { showToast('請輸入收件人姓名', 'error'); return; }
+  if (!receiverPhone || receiverPhone.length !== 10) { showToast('收件人電話請輸入10碼', 'error'); return; }
+  if (!city || !dist) { showToast('請選擇縣市和區域', 'error'); return; }
+  if (!detail) { showToast('請輸入詳細地址', 'error'); return; }
+  if (!posNo || posNo.length !== 5) { showToast('POS序號請輸入5碼', 'error'); return; }
+  if (!editFormItems.length) { showToast('請至少選擇一項商品', 'error'); return; }
+
+  const address = `${zip} ${city}${dist}${detail}`;
+
+  showLoading(true);
+  try {
+    // 更新訂單主資料
+    await sb.patch('orders', editOrderId, {
+      receiver_name: receiverName,
+      receiver_phone: receiverPhone,
+      receiver_address: address,
+      pos_no: posNo,
+      note: note || null,
       updated_at: new Date().toISOString()
     });
-    showToast('備註已更新', 'success');
-    await openOrderDetail(orderId);
-  } catch(e) { showToast('更新失敗', 'error'); }
+
+    // 刪除舊品項，重新寫入
+    await fetch(`${SUPABASE_URL}/rest/v1/order_items?order_id=eq.${editOrderId}`, {
+      method: 'DELETE',
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+    });
+
+    for (const item of editFormItems) {
+      await sb.post('order_items', {
+        order_id: editOrderId,
+        sku: item.sku,
+        product_name: item.name,
+        quantity: item.qty
+      });
+    }
+
+    showToast('訂單修改成功！', 'success');
+    await openOrderDetail(editOrderId);
+    loadMyOrders();
+  } catch(e) {
+    showToast('修改失敗：' + e.message, 'error');
+  }
   showLoading(false);
 }
 
@@ -2172,6 +2499,10 @@ function formatDate(iso) {
 // Close dropdown when clicking outside
 document.addEventListener('click', e => {
   if (!e.target.closest('#productSearchWrap')) closeDropdown();
+  if (!e.target.closest('#editProductSearchWrap')) {
+    const dd = document.getElementById('editProductDropdown');
+    if (dd) dd.style.display = 'none';
+  }
 });
 
 // Enter key login
@@ -2248,5 +2579,6 @@ document.addEventListener('keydown', e => {
   }
 });
 </script>
+
 </body>
 </html>
