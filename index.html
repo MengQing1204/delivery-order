@@ -1195,7 +1195,40 @@ function onProductSearch(val) {
   const dd = document.getElementById('productDropdown');
   if (!val.trim()) { dd.style.display = 'none'; return; }
   if (formItems.length >= 5) { showToast('最多只能選5項商品'); dd.style.display = 'none'; return; }
-  searchDebounce = setTimeout(() => renderDropdownWithStock(val.trim()), 300);
+  searchDebounce = setTimeout(() => renderDropdownFromLocal(val.trim()), 200);
+}
+
+function renderDropdownFromLocal(q) {
+  const dd = document.getElementById('productDropdown');
+  const lower = q.toLowerCase();
+
+  const filtered = allProducts.filter(p =>
+    p.product_name?.toLowerCase().includes(lower) ||
+    p.sku?.toLowerCase().includes(lower)
+  ).slice(0, 50);
+
+  if (!filtered.length) {
+    dd.innerHTML = `<div class="product-option"><div class="pname">找不到「${escHtml(q)}」相關商品</div></div>`;
+    dd.style.display = 'block';
+    return;
+  }
+
+  dd.innerHTML = filtered.map(p => {
+    const stock = p.stock ?? 0;
+    const stockClass = stock > 10 ? 'ok' : stock > 0 ? 'low' : 'none';
+    const stockText = stock > 0 ? `可用 ${stock}` : '無庫存';
+    const disabled = stock <= 0 ? 'style="opacity:0.5;pointer-events:none;"' : '';
+    return `<div class="product-option" onclick="addItem('${escHtml(p.sku)}','${escHtml(p.product_name)}',${stock})" ${disabled}>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+        <div style="min-width:0;flex:1;">
+          <div class="pname" style="white-space:normal;line-height:1.4;">${escHtml(p.product_name)}</div>
+          <div class="pcode">${p.sku}</div>
+        </div>
+        <div class="pstock ${stockClass}" style="flex-shrink:0;">${stockText}</div>
+      </div>
+    </div>`;
+  }).join('');
+  dd.style.display = 'block';
 }
 
 async function renderDropdownWithStock(q) {
