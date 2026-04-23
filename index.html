@@ -2490,11 +2490,22 @@ document.addEventListener('click', e => {
   if (!e.target.closest('#editProductSearchWrap') && !e.target.closest('#editProductDropdown')) closeEditDropdown();
 });
 
-// 滾動時重新定位下拉框
-document.addEventListener('scroll', () => {
-  closeDropdown();
-  closeEditDropdown();
+// 滾動時重新定位下拉框（不關閉）
+window.addEventListener('scroll', () => {
+  const dd = document.getElementById('productDropdown');
+  const inp = document.getElementById('productSearch');
+  if (dd && dd.style.display !== 'none' && inp) positionDropdown(inp, dd);
+
+  const edd = document.getElementById('editProductDropdown');
+  const einp = document.getElementById('editProductSearch');
+  if (edd && edd.style.display !== 'none' && einp) positionDropdown(einp, edd);
 }, true);
+
+window.addEventListener('resize', () => {
+  const dd = document.getElementById('productDropdown');
+  const inp = document.getElementById('productSearch');
+  if (dd && dd.style.display !== 'none' && inp) positionDropdown(inp, dd);
+});
 
 // Enter key login
 document.addEventListener('keydown', e => {
