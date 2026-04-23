@@ -1258,13 +1258,12 @@ async function ibizaGetStock(skus) {
 // ════════════════════════════════════════
 async function loadProducts() {
   try {
-    // 分批載入全部品項（每批1000筆）
     let allRows = [];
     let offset = 0;
     const batchSize = 1000;
     while (true) {
       const rows = await sb.get('products',
-        `?is_active=eq.true&order=product_name.asc&limit=${batchSize}&offset=${offset}`
+        `?is_active=eq.true&in_stock_list=eq.true&order=product_name.asc&limit=${batchSize}&offset=${offset}`
       );
       if (!Array.isArray(rows) || rows.length === 0) break;
       allRows = allRows.concat(rows);
