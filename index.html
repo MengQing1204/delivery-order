@@ -1258,15 +1258,31 @@ async function ibizaGetStock(skus) {
 // ════════════════════════════════════════
 async function loadProducts() {
   try {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/products?is_active=eq.true&in_stock_list=eq.true&order=product_name.asc&limit=10000`, {
-      headers: {
-        apikey: SUPABASE_KEY,
-        Authorization: `Bearer ${SUPABASE_KEY}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    const rows = await r.json();
-    allProducts = Array.isArray(rows) ? rows : [];
+    allProducts = [];
+    let page = 0;
+    const size = 500;
+    while (true) {
+      const from = page * size;
+      const to = from + size - 1;
+      const r = await fetch(
+        `${SUPABASE_URL}/rest/v1/products?is_active=eq.true&in_stock_list=eq.true&order=product_name.asc&limit=${size}&offset=${from}`,
+        {
+          headers: {
+            apikey: SUPABASE_KEY,
+            Authorization: `Bearer ${SUPABASE_KEY}`,
+            'Content-Type': 'application/json',
+            'Range-Unit': 'items',
+            'Range': `${from}-${to}`,
+            'Prefer': 'count=none'
+          }
+        }
+      );
+      const rows = await r.json();
+      if (!Array.isArray(rows) || rows.length === 0) break;
+      allProducts = allProducts.concat(rows);
+      if (rows.length < size) break;
+      page++;
+    }
     console.log(`品項載入完成：共 ${allProducts.length} 筆`);
   } catch(e) { console.log('Products not loaded', e); }
 }
