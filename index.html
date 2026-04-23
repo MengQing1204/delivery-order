@@ -347,10 +347,10 @@ body {
   background: var(--surface);
   border: 1.5px solid var(--accent2);
   border-radius: var(--radius-sm);
-  max-height: 50vh;
+  max-height: 40vh;
   overflow-y: auto;
-  z-index: 9990;
-  box-shadow: var(--shadow-lg);
+  z-index: 99999;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
   display: none;
 }
 .product-option {
@@ -1316,9 +1316,23 @@ function addItem(sku, name, stock) {
 
 function positionDropdown(inputEl, dropdownEl) {
   const rect = inputEl.getBoundingClientRect();
+  const viewportHeight = window.innerHeight;
+  const spaceBelow = viewportHeight - rect.bottom - 8;
+  const spaceAbove = rect.top - 8;
+  const maxH = Math.min(Math.max(spaceBelow, 160), 320);
+
   dropdownEl.style.left = rect.left + 'px';
   dropdownEl.style.width = rect.width + 'px';
-  dropdownEl.style.top = (rect.bottom + 2) + 'px';
+  dropdownEl.style.maxHeight = maxH + 'px';
+
+  // 如果下方空間不足，往上展開
+  if (spaceBelow < 160 && spaceAbove > spaceBelow) {
+    const h = Math.min(spaceAbove, 320);
+    dropdownEl.style.top = (rect.top - h - 4) + 'px';
+    dropdownEl.style.maxHeight = h + 'px';
+  } else {
+    dropdownEl.style.top = (rect.bottom + 2) + 'px';
+  }
 }
 
 function closeDropdown() {
