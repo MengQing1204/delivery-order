@@ -1272,18 +1272,21 @@ function onProductSearch(val) {
 const STOCK_API = 'https://script.google.com/macros/s/AKfycbzsY3BMJ7BB1YYx9yjvuUYczD3wioLLU5FmaWJTqVLx7b7s4iHA4MR29G9htSfr_7au/exec';
 const STOCK_KEY = 'SDJ_83584249';
 
-async function getLiveStock() {
+async function getLiveStock(skus) {
   try {
-    const res = await fetch(`${STOCK_API}?action=stock&key=${STOCK_KEY}`, {
-      method: 'GET', redirect: 'follow'
-    });
-    if (!res.ok) return null;
-    const json = await res.json();
-    if (!json.success) return null;
+    // 用單一SKU查詢，回傳快且準確
+    const results = await Promise.all(
+      skus.map(sku =>
+        fetch(`${STOCK_API}?action=stock&key=${STOCK_KEY}&sku=${encodeURIComponent(sku)}`, {
+          method: 'GET', redirect: 'follow'
+        })
+        .then(r => r.json())
+        .then(json => ({ sku, stock: json.success ? Number(json.data[0]?.available ?? 0) : null }))
+        .catch(() => ({ sku, stock: null }))
+      )
+    );
     const stockMap = {};
-    (json.data || []).forEach(item => {
-      if (item.sku) stockMap[item.sku] = Number(item.available ?? 0);
-    });
+    results.forEach(r => { if (r.stock !== null) stockMap[r.sku] = r.stock; });
     return stockMap;
   } catch(e) {
     return null;
