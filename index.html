@@ -1269,7 +1269,44 @@ function onProductSearch(val) {
   searchDebounce = setTimeout(() => renderDropdownFromLocal(val.trim()), 200);
 }
 
-function renderDropdownFromLocal(q) {
+const STOCK_API = 'https://script.google.com/macros/s/AKfycbzsY3BMJ7BB1YYx9yjvuUYczD3wioLLU5FmaWJTqVLx7b7s4iHA4MR29G9htSfr_7au/exec';
+
+async function getLiveStock(skus) {
+  try {
+    const res = await fetch(`${STOCK_API}?action=stock`, { mode: 'cors' });
+    const json = await res.json();
+    const stockMap = {};
+    (json.data || []).forEach(item => {
+      if (item.sku) stockMap[item.sku] = Number(item.available_qty ?? item.stock ?? 0);
+    });
+    return stockMap;
+  } catch(e) {
+    return null; // 查詢失敗，保留靜態庫存
+  }
+}
+
+function renderDropdown(filtered, stockMap, inputEl) {
+  const dd = document.getElementById('productDropdown');
+  dd.innerHTML = filtered.map(p => {
+    const stock = stockMap ? (stockMap[p.sku] ?? p.stock ?? 0) : (p.stock ?? 0);
+    const stockClass = stock > 10 ? 'ok' : stock > 0 ? 'low' : 'none';
+    const stockText = stock > 0 ? `可用 ${stock}` : '無庫存';
+    const disabled = stock <= 0 ? 'style="opacity:0.5;pointer-events:none;"' : '';
+    return `<div class="product-option" onclick="addItem('${escHtml(p.sku)}','${escHtml(p.product_name)}',${stock})" ${disabled}>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+        <div style="min-width:0;flex:1;">
+          <div class="pname" style="white-space:normal;line-height:1.4;">${escHtml(p.product_name)}</div>
+          <div class="pcode">${p.sku}</div>
+        </div>
+        <div class="pstock ${stockClass}" style="flex-shrink:0;">${stockText}</div>
+      </div>
+    </div>`;
+  }).join('');
+  positionDropdown(inputEl, dd);
+  dd.style.display = 'block';
+}
+
+async function renderDropdownFromLocal(q) {
   const dd = document.getElementById('productDropdown');
   const inputEl = document.getElementById('productSearch');
   const lower = q.toLowerCase();
@@ -1286,23 +1323,14 @@ function renderDropdownFromLocal(q) {
     return;
   }
 
-  dd.innerHTML = filtered.map(p => {
-    const stock = p.stock ?? 0;
-    const stockClass = stock > 10 ? 'ok' : stock > 0 ? 'low' : 'none';
-    const stockText = stock > 0 ? `可用 ${stock}` : '無庫存';
-    const disabled = stock <= 0 ? 'style="opacity:0.5;pointer-events:none;"' : '';
-    return `<div class="product-option" onclick="addItem('${escHtml(p.sku)}','${escHtml(p.product_name)}',${stock})" ${disabled}>
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-        <div style="min-width:0;flex:1;">
-          <div class="pname" style="white-space:normal;line-height:1.4;">${escHtml(p.product_name)}</div>
-          <div class="pcode">${p.sku}</div>
-        </div>
-        <div class="pstock ${stockClass}" style="flex-shrink:0;">${stockText}</div>
-      </div>
-    </div>`;
-  }).join('');
-  positionDropdown(inputEl, dd);
-  dd.style.display = 'block';
+  // 先顯示靜態庫存（立即呈現）
+  renderDropdown(filtered, null, inputEl);
+
+  // 背景查詢即時庫存，更新顯示
+  const stockMap = await getLiveStock(filtered.map(p => p.sku));
+  if (stockMap && dd.style.display !== 'none') {
+    renderDropdown(filtered, stockMap, inputEl);
+  }
 }
 
 function addItem(sku, name, stock) {
@@ -2210,7 +2238,7 @@ function onEditProductSearch(val) {
   editSearchDebounce = setTimeout(() => renderEditDropdown(val.trim()), 200);
 }
 
-function renderEditDropdown(q) {
+async function renderEditDropdown(q) {
   const dd = document.getElementById('editProductDropdown');
   const inputEl = document.getElementById('editProductSearch');
   const lower = q.toLowerCase();
@@ -2226,8 +2254,19 @@ function renderEditDropdown(q) {
     return;
   }
 
+  // 先顯示靜態庫存
+  renderEditDropdownItems(filtered, null, inputEl, dd);
+
+  // 背景查詢即時庫存
+  const stockMap = await getLiveStock(filtered.map(p => p.sku));
+  if (stockMap && dd.style.display !== 'none') {
+    renderEditDropdownItems(filtered, stockMap, inputEl, dd);
+  }
+}
+
+function renderEditDropdownItems(filtered, stockMap, inputEl, dd) {
   dd.innerHTML = filtered.map(p => {
-    const stock = p.stock ?? 0;
+    const stock = stockMap ? (stockMap[p.sku] ?? p.stock ?? 0) : (p.stock ?? 0);
     const stockClass = stock > 10 ? 'ok' : stock > 0 ? 'low' : 'none';
     const stockText = stock > 0 ? `可用 ${stock}` : '無庫存';
     const disabled = stock <= 0 ? 'style="opacity:0.5;pointer-events:none;"' : '';
