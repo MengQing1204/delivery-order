@@ -1270,18 +1270,23 @@ function onProductSearch(val) {
 }
 
 const STOCK_API = 'https://script.google.com/macros/s/AKfycbzsY3BMJ7BB1YYx9yjvuUYczD3wioLLU5FmaWJTqVLx7b7s4iHA4MR29G9htSfr_7au/exec';
+const STOCK_KEY = 'SDJ_83584249';
 
-async function getLiveStock(skus) {
+async function getLiveStock() {
   try {
-    const res = await fetch(`${STOCK_API}?action=stock`, { mode: 'cors' });
+    const res = await fetch(`${STOCK_API}?action=stock&key=${STOCK_KEY}`, {
+      method: 'GET', redirect: 'follow'
+    });
+    if (!res.ok) return null;
     const json = await res.json();
+    if (!json.success) return null;
     const stockMap = {};
     (json.data || []).forEach(item => {
-      if (item.sku) stockMap[item.sku] = Number(item.available_qty ?? item.stock ?? 0);
+      if (item.sku) stockMap[item.sku] = Number(item.available ?? 0);
     });
     return stockMap;
   } catch(e) {
-    return null; // 查詢失敗，保留靜態庫存
+    return null;
   }
 }
 
