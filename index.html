@@ -1217,7 +1217,7 @@ async function doLogin() {
 async function loginWithData(u) {
   currentUser = u;
   currentStore = u.stores;
-<div class="greeting" id="headerGreeting">👋 歡迎回來</div>
+
 document.getElementById('headerName').textContent = u.name;
 const _gr = {
   morning: ['🌅 早安！今天也要大賣喔，','☕ 咖啡喝了嗎？出發囉，','🌤 新的一天，新的業績，加油，'],
@@ -1229,7 +1229,7 @@ const _h = new Date().getHours();
 const _p = _h<11?'morning':_h<14?'noon':_h<18?'afternoon':'evening';
 const _pool = _gr[_p];
 const _g = _pool[Math.floor(Math.random()*_pool.length)];
-document.getElementById('headerGreeting').te
+document.getElementById('headerGreeting').textContent = _g + u.name;
   document.getElementById('headerStore').textContent = currentStore?.name || '未指定門市';
   document.getElementById('formStoreName').textContent = currentStore?.name || '';
   initCitySelect();
