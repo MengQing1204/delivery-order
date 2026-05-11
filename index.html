@@ -2540,7 +2540,43 @@ function generateQR(text, canvasId) {
 // ════════════════════════════════════════
 // UTILS
 // ════════════════════════════════════════
-function showLoading(show) {
+// ════════════════════════════════════════
+// STOCK SEARCH SCREEN
+// ════════════════════════════════════════
+let stockSearchDebounce = null;
+function onStockSearch(val) {
+  clearTimeout(stockSearchDebounce);
+  const list = document.getElementById('stockResultList');
+  if (!val.trim()) { list.innerHTML = ''; return; }
+  stockSearchDebounce = setTimeout(async () => {
+    const lower = val.toLowerCase();
+    const filtered = allProducts.filter(p =>
+      p.product_name?.toLowerCase().includes(lower) ||
+      p.sku?.toLowerCase().includes(lower)
+    ).slice(0, 30);
+    if (!filtered.length) {
+      list.innerHTML = `<div style="text-align:center;padding:32px;color:#4A6058;">找不到「${escHtml(val)}」相關商品</div>`;
+      return;
+    }
+    list.innerHTML = filtered.map(p => `
+      <div style="background:#fff;border-radius:10px;padding:12px 14px;margin-bottom:8px;box-shadow:0 2px 8px rgba(0,0,0,0.06);display:flex;justify-content:space-between;align-items:center;">
+        <div style="min-width:0;flex:1;">
+          <div style="font-size:14px;font-weight:500;color:#1a1a18;">${escHtml(p.product_name)}</div>
+          <div style="font-size:11px;color:#4A6058;font-family:'DM Mono',monospace;margin-top:2px;">${p.sku}</div>
+        </div>
+        <div id="stock_${p.sku}" style="font-size:13px;font-weight:700;color:#4A6058;flex-shrink:0;margin-left:12px;">查詢中...</div>
+      </div>`).join('');
+    const stockMap = await ibizaGetStock(filtered.map(p => p.sku));
+    filtered.forEach(p => {
+      const el = document.getElementById(`stock_${p.sku}`);
+      if (!el) return;
+      const s = stockMap?.[p.sku] ?? p.stock ?? 0;
+      el.textContent = s > 0 ? `可用 ${s}` : '無庫存';
+      el.style.color = s > 10 ? '#2a8c5a' : s > 0 ? '#c87a2a' : '#c82a2a';
+    });
+  }, 300);
+}
+  function showLoading(show) {
   document.getElementById('loadingOverlay').classList.toggle('show', show);
 }
 
