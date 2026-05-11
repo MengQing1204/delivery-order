@@ -1303,11 +1303,10 @@ async function loginWithData(u) {
   const _g = _pool[Math.floor(Math.random() * _pool.length)];
   document.getElementById('headerName').textContent = _g + u.name;
 
-  initCitySelect();
-  showScreen('mainScreen');
-  loadMyOrders();
+initCitySelect();
+  showScreen('homeScreen');
   loadProducts();
-}
+}  
 
 function doLogout() {
   localStorage.removeItem('delivery_user');
