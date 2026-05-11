@@ -1213,25 +1213,25 @@ async function doLogin() {
   }
   showLoading(false);
 }
-
 async function loginWithData(u) {
   currentUser = u;
   currentStore = u.stores;
-
-document.getElementById('headerName').textContent = u.name;
-const _gr = {
-  morning: ['🌅 早安！今天也要大賣喔，','☕ 咖啡喝了嗎？出發囉，','🌤 新的一天，新的業績，加油，'],
-  noon:    ['✨ 歡迎回來，','🎨 藝術加持中⋯準備好了嗎，','💪 業績衝衝衝，'],
-  afternoon:['🌿 下午好，撐住再一波，','🍵 下午茶時間到了，繼續衝起來，','🌇 快下班了，最後衝刺，'],
-  evening: ['⭐ 今天辛苦了，','🌙 收攤前最後一搏，','🎉 今天也很厲害，']
-};
-const _h = new Date().getHours();
-const _p = _h<11?'morning':_h<14?'noon':_h<18?'afternoon':'evening';
-const _pool = _gr[_p];
-const _g = _pool[Math.floor(Math.random()*_pool.length)];
-document.getElementById('headerGreeting').textContent = _g + u.name;
+  document.getElementById('loginError').style.display = 'none';
   document.getElementById('headerStore').textContent = currentStore?.name || '未指定門市';
   document.getElementById('formStoreName').textContent = currentStore?.name || '';
+
+  const _gr = {
+    morning:   ['🌅 早安！今天也要大賣喔，','☕ 咖啡喝了嗎？出發囉，','🌤 新的一天，新的業績，加油，'],
+    noon:      ['✨ 歡迎回來，','🎨 藝術加持中⋯準備好了嗎，','💪 業績衝衝衝，'],
+    afternoon: ['🌿 下午好，撐住再一波，','🍵 下午茶時間到了，繼續衝起來，','🌇 快下班了，最後衝刺，'],
+    evening:   ['⭐ 今天辛苦了，','🌙 收攤前最後一搏，','🎉 今天也很厲害，']
+  };
+  const _h = new Date().getHours();
+  const _p = _h < 11 ? 'morning' : _h < 14 ? 'noon' : _h < 18 ? 'afternoon' : 'evening';
+  const _pool = _gr[_p];
+  const _g = _pool[Math.floor(Math.random() * _pool.length)];
+  document.getElementById('headerName').textContent = _g + u.name;
+
   initCitySelect();
   showScreen('mainScreen');
   loadMyOrders();
