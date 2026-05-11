@@ -1335,7 +1335,7 @@ async function renderDropdownFromLocal(q) {
   renderDropdown(filtered, null, inputEl);
 
   // 背景查詢即時庫存，更新顯示
-  const stockMap = await getLiveStock(filtered.map(p => p.sku));
+  const stockMap = await ibizaGetStock(filtered.map(p => p.sku));
   if (stockMap && dd.style.display !== 'none') {
     renderDropdown(filtered, stockMap, inputEl);
   }
@@ -2266,7 +2266,7 @@ async function renderEditDropdown(q) {
   renderEditDropdownItems(filtered, null, inputEl, dd);
 
   // 背景查詢即時庫存
-  const stockMap = await getLiveStock(filtered.map(p => p.sku));
+  const stockMap = await ibizaGetStock(filtered.map(p => p.sku));
   if (stockMap && dd.style.display !== 'none') {
     renderEditDropdownItems(filtered, stockMap, inputEl, dd);
   }
