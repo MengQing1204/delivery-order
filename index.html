@@ -72,7 +72,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
 .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .section-title { font-weight: 700; font-size: 17px; }
 .section-link { font-size: 14px; color: var(--accent2); font-weight: 600; background: none; border: none; cursor: pointer; font-family: inherit; }
-.btn-new-order { width: 100%; background: var(--accent); color: #1a1a10; border: none; border-radius: var(--radius); padding: 20px; font-size: 18px; font-weight: 700; font-family: inherit; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 16px rgba(196,164,74,0.35); margin: 8px 16px 20px; transition: transform 0.1s; width: calc(100% - 32px); }
+.btn-new-order { background: var(--accent); color: #1a1a10; border: none; border-radius: var(--radius); padding: 20px; font-size: 18px; font-weight: 700; font-family: inherit; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 16px rgba(196,164,74,0.35); margin: 8px 16px 20px; transition: transform 0.1s; width: calc(100% - 32px); }
 .btn-new-order:active { transform: scale(0.98); }
 .order-card { background: var(--surface); border-radius: var(--radius); padding: 14px; margin-bottom: 10px; box-shadow: var(--shadow); cursor: pointer; transition: transform 0.1s; border-left: 4px solid transparent; }
 .order-card:active { transform: scale(0.99); }
@@ -261,7 +261,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
     <div style="position:relative;margin-bottom:12px;">
       <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:16px;pointer-events:none;">🔍</span>
       <input type="text" id="stockSearchInput"
-        style="width:100%;border:2px solid #3A5A48;border-radius:8px;padding:13px 14px 13px 40px;font-size:16px;font-family:inherit;outline:none;"
+        style="width:100%;border:2px solid #3A5A48;border-radius:8px;padding:13px 14px 13px 40px;font-size:17px;font-family:inherit;outline:none;"
         placeholder="輸入品名或品號搜尋..."
         oninput="onStockSearch(this.value)">
     </div>
@@ -293,18 +293,9 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
     </div>
   </div>
   <div class="stats-row">
-    <div class="stat-card accent">
-      <div class="num" id="statPending">0</div>
-      <div class="label">待處理</div>
-    </div>
-    <div class="stat-card blue">
-      <div class="num" id="statProcessing">0</div>
-      <div class="label">出貨中</div>
-    </div>
-    <div class="stat-card green">
-      <div class="num" id="statShipped">0</div>
-      <div class="label">已完成</div>
-    </div>
+    <div class="stat-card accent"><div class="num" id="statPending">0</div><div class="label">待處理</div></div>
+    <div class="stat-card blue"><div class="num" id="statProcessing">0</div><div class="label">出貨中</div></div>
+    <div class="stat-card green"><div class="num" id="statShipped">0</div><div class="label">已完成</div></div>
   </div>
   <button class="btn-new-order" onclick="showScreen('formScreen'); initForm()">＋ 新增宅配登記</button>
   <div class="section">
@@ -314,10 +305,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
     </div>
     <div style="position:relative;margin-bottom:12px;">
       <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;">🔍</span>
-      <input type="text" id="myOrderSearch"
-        style="width:100%;border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px 10px 36px;font-size:15px;font-family:inherit;outline:none;"
-        placeholder="搜尋客人姓名或電話..."
-        oninput="searchMyOrders(this.value)">
+      <input type="text" id="myOrderSearch" style="width:100%;border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px 10px 36px;font-size:15px;font-family:inherit;outline:none;" placeholder="搜尋客人姓名或電話..." oninput="searchMyOrders(this.value)">
     </div>
     <div id="myOrdersList"><div class="empty-state"><div class="icon">📋</div><p>尚無訂單</p></div></div>
     <div id="myOrdersLoadMore" style="display:none;text-align:center;padding:12px;">
@@ -330,84 +318,33 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
 <div class="screen" id="formScreen">
   <div class="topbar">
     <button class="topbar-back" onclick="showScreen('homeScreen')">←</button>
-    <div>
-      <div class="topbar-title">新增宅配登記</div>
-      <div class="topbar-sub" id="formStoreName">門市</div>
-    </div>
+    <div><div class="topbar-title">新增宅配登記</div><div class="topbar-sub" id="formStoreName">門市</div></div>
   </div>
   <div class="form-body">
     <div class="form-section">
       <div class="form-section-title">🧾 訂購人資訊</div>
-      <div class="form-row">
-        <label class="form-label">訂購人姓名 <span class="req">*</span></label>
-        <input class="form-input" id="buyerName" placeholder="請輸入訂購人姓名" type="text">
-      </div>
-      <div class="form-row">
-        <label class="form-label">訂購人電話 <span class="req">*</span></label>
-        <input class="form-input" id="buyerPhone" placeholder="請輸入10碼手機號碼" type="tel" inputmode="numeric" maxlength="10" oninput="validatePhone(this)">
-        <div class="field-hint" id="buyerPhoneHint"></div>
-      </div>
+      <div class="form-row"><label class="form-label">訂購人姓名 <span class="req">*</span></label><input class="form-input" id="buyerName" placeholder="請輸入訂購人姓名" type="text"></div>
+      <div class="form-row"><label class="form-label">訂購人電話 <span class="req">*</span></label><input class="form-input" id="buyerPhone" placeholder="請輸入10碼手機號碼" type="tel" inputmode="numeric" maxlength="10" oninput="validatePhone(this)"><div class="field-hint" id="buyerPhoneHint"></div></div>
     </div>
     <div class="form-section">
       <div class="form-section-title">📦 收件人資訊</div>
-      <div class="form-row">
-        <label class="same-buyer-label" onclick="toggleSameBuyer()">
-          <div class="checkbox-wrap" id="sameBuyerCheck"><div class="checkbox-inner"></div></div>
-          <span>收件人與訂購人相同</span>
-        </label>
-      </div>
+      <div class="form-row"><label class="same-buyer-label" onclick="toggleSameBuyer()"><div class="checkbox-wrap" id="sameBuyerCheck"><div class="checkbox-inner"></div></div><span>收件人與訂購人相同</span></label></div>
       <div id="receiverFields">
-        <div class="form-row">
-          <label class="form-label">收件人姓名 <span class="req">*</span></label>
-          <input class="form-input" id="receiverName" placeholder="請輸入收件人姓名" type="text">
-        </div>
-        <div class="form-row">
-          <label class="form-label">收件人電話 <span class="req">*</span></label>
-          <input class="form-input" id="receiverPhone" placeholder="請輸入10碼手機號碼" type="tel" inputmode="numeric" maxlength="10" oninput="validatePhone(this)">
-          <div class="field-hint" id="receiverPhoneHint"></div>
-        </div>
+        <div class="form-row"><label class="form-label">收件人姓名 <span class="req">*</span></label><input class="form-input" id="receiverName" placeholder="請輸入收件人姓名" type="text"></div>
+        <div class="form-row"><label class="form-label">收件人電話 <span class="req">*</span></label><input class="form-input" id="receiverPhone" placeholder="請輸入10碼手機號碼" type="tel" inputmode="numeric" maxlength="10" oninput="validatePhone(this)"><div class="field-hint" id="receiverPhoneHint"></div></div>
       </div>
-      <div class="form-row">
-        <label class="form-label">縣市 <span class="req">*</span></label>
-        <select class="form-select" id="addrCity" onchange="onCityChange(this.value)"><option value="">請選擇縣市</option></select>
-      </div>
-      <div class="form-row">
-        <label class="form-label">鄉鎮市區 <span class="req">*</span></label>
-        <select class="form-select" id="addrDistrict" onchange="onDistrictChange(this.value)" disabled><option value="">請先選縣市</option></select>
-      </div>
-      <div class="form-row" id="addrZipRow" style="display:none;">
-        <label class="form-label">郵遞區號</label>
-        <input class="form-input" id="addrZip" readonly style="background:var(--surface2);color:var(--accent);font-weight:700;">
-      </div>
-      <div class="form-row" id="addrDetailRow" style="display:none;">
-        <label class="form-label">詳細地址 <span class="req">*</span></label>
-        <input class="form-input" id="addrDetail" placeholder="路街名＋門牌，例：竹光路100號3樓" oninput="validateDetail(this)">
-        <div class="field-hint" id="detailHint">都市：竹光路100號3樓｜農村：1鄰100號</div>
-      </div>
+      <div class="form-row"><label class="form-label">縣市 <span class="req">*</span></label><select class="form-select" id="addrCity" onchange="onCityChange(this.value)"><option value="">請選擇縣市</option></select></div>
+      <div class="form-row"><label class="form-label">鄉鎮市區 <span class="req">*</span></label><select class="form-select" id="addrDistrict" onchange="onDistrictChange(this.value)" disabled><option value="">請先選縣市</option></select></div>
+      <div class="form-row" id="addrZipRow" style="display:none;"><label class="form-label">郵遞區號</label><input class="form-input" id="addrZip" readonly style="background:var(--surface2);color:var(--accent);font-weight:700;"></div>
+      <div class="form-row" id="addrDetailRow" style="display:none;"><label class="form-label">詳細地址 <span class="req">*</span></label><input class="form-input" id="addrDetail" placeholder="路街名＋門牌，例：竹光路100號3樓" oninput="validateDetail(this)"><div class="field-hint" id="detailHint">都市：竹光路100號3樓｜農村：1鄰100號</div></div>
     </div>
     <div class="form-section">
       <div class="form-section-title">🏪 訂單資訊</div>
-      <div class="form-row" id="adminStoreRow" style="display:none;">
-        <label class="form-label">門市 <span class="req">*</span></label>
-        <select class="form-select" id="formStoreSelect"><option value="">請選擇門市</option></select>
-      </div>
-      <div class="form-row" id="staffStoreRow">
-        <label class="form-label">門市</label>
-        <input class="form-input" id="storeDisplay" readonly style="background:var(--surface2);color:var(--text);font-weight:700;">
-      </div>
-      <div class="form-row">
-        <label class="form-label">機號 <span class="req">*</span></label>
-        <select class="form-select" id="posTerminal"><option value="001">001</option></select>
-      </div>
-      <div class="form-row">
-        <label class="form-label">POS交易序號 <span class="req">*</span>（5碼數字）</label>
-        <input class="form-input" id="posNo" placeholder="請輸入5碼POS交易序號" inputmode="numeric" maxlength="5" oninput="validatePosNo(this)">
-        <div class="field-hint" id="posNoHint"></div>
-      </div>
-      <div class="form-row">
-        <label class="form-label">備註</label>
-        <textarea class="form-textarea" id="orderNote" placeholder="特殊要求、指定到貨日等（選填）"></textarea>
-      </div>
+      <div class="form-row" id="adminStoreRow" style="display:none;"><label class="form-label">門市 <span class="req">*</span></label><select class="form-select" id="formStoreSelect"><option value="">請選擇門市</option></select></div>
+      <div class="form-row" id="staffStoreRow"><label class="form-label">門市</label><input class="form-input" id="storeDisplay" readonly style="background:var(--surface2);color:var(--text);font-weight:700;"></div>
+      <div class="form-row"><label class="form-label">機號 <span class="req">*</span></label><select class="form-select" id="posTerminal"><option value="001">001</option></select></div>
+      <div class="form-row"><label class="form-label">POS交易序號 <span class="req">*</span>（5碼數字）</label><input class="form-input" id="posNo" placeholder="請輸入5碼POS交易序號" inputmode="numeric" maxlength="5" oninput="validatePosNo(this)"><div class="field-hint" id="posNoHint"></div></div>
+      <div class="form-row"><label class="form-label">備註</label><textarea class="form-textarea" id="orderNote" placeholder="特殊要求、指定到貨日等（選填）"></textarea></div>
     </div>
     <div class="form-section">
       <div class="form-section-title">📦 訂購品項（最多5項）</div>
@@ -423,60 +360,29 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
       <div style="padding:0 16px 12px;"><div style="font-size:12px;color:var(--text2);" id="itemCountHint">已選 0 / 5 項</div></div>
     </div>
   </div>
-  <div class="form-footer">
-    <button class="btn-submit" id="submitBtn" onclick="submitOrder()">確認送出登記</button>
-  </div>
+  <div class="form-footer"><button class="btn-submit" id="submitBtn" onclick="submitOrder()">確認送出登記</button></div>
 </div>
 
 <!-- EDIT SCREEN -->
 <div class="screen" id="editScreen">
   <div class="topbar">
     <button class="topbar-back" id="editBack" onclick="showScreen('detailScreen')">←</button>
-    <div>
-      <div class="topbar-title">修改訂單</div>
-      <div class="topbar-sub" id="editOrderNo"></div>
-    </div>
+    <div><div class="topbar-title">修改訂單</div><div class="topbar-sub" id="editOrderNo"></div></div>
   </div>
   <div class="form-body">
     <div class="form-section">
       <div class="form-section-title">👤 收件人資訊</div>
-      <div class="form-row">
-        <label class="form-label">收件人姓名 <span class="req">*</span></label>
-        <input class="form-input" id="editReceiverName" type="text">
-      </div>
-      <div class="form-row">
-        <label class="form-label">收件人電話 <span class="req">*</span></label>
-        <input class="form-input" id="editReceiverPhone" type="tel" inputmode="numeric" maxlength="10" oninput="validatePhone(this)">
-        <div class="field-hint" id="editReceiverPhoneHint"></div>
-      </div>
-      <div class="form-row">
-        <label class="form-label">縣市 <span class="req">*</span></label>
-        <select class="form-select" id="editAddrCity" onchange="onEditCityChange(this.value)"><option value="">請選擇縣市</option></select>
-      </div>
-      <div class="form-row">
-        <label class="form-label">鄉鎮市區 <span class="req">*</span></label>
-        <select class="form-select" id="editAddrDistrict" onchange="onEditDistrictChange(this.value)" disabled><option value="">請先選縣市</option></select>
-      </div>
-      <div class="form-row" id="editAddrZipRow" style="display:none;">
-        <label class="form-label">郵遞區號</label>
-        <input class="form-input" id="editAddrZip" readonly style="background:var(--surface2);color:var(--accent);font-weight:700;">
-      </div>
-      <div class="form-row">
-        <label class="form-label">詳細地址 <span class="req">*</span></label>
-        <input class="form-input" id="editAddrDetail" placeholder="路街名＋門牌，例：竹光路100號3樓">
-      </div>
+      <div class="form-row"><label class="form-label">收件人姓名 <span class="req">*</span></label><input class="form-input" id="editReceiverName" type="text"></div>
+      <div class="form-row"><label class="form-label">收件人電話 <span class="req">*</span></label><input class="form-input" id="editReceiverPhone" type="tel" inputmode="numeric" maxlength="10" oninput="validatePhone(this)"><div class="field-hint" id="editReceiverPhoneHint"></div></div>
+      <div class="form-row"><label class="form-label">縣市 <span class="req">*</span></label><select class="form-select" id="editAddrCity" onchange="onEditCityChange(this.value)"><option value="">請選擇縣市</option></select></div>
+      <div class="form-row"><label class="form-label">鄉鎮市區 <span class="req">*</span></label><select class="form-select" id="editAddrDistrict" onchange="onEditDistrictChange(this.value)" disabled><option value="">請先選縣市</option></select></div>
+      <div class="form-row" id="editAddrZipRow" style="display:none;"><label class="form-label">郵遞區號</label><input class="form-input" id="editAddrZip" readonly style="background:var(--surface2);color:var(--accent);font-weight:700;"></div>
+      <div class="form-row"><label class="form-label">詳細地址 <span class="req">*</span></label><input class="form-input" id="editAddrDetail" placeholder="路街名＋門牌，例：竹光路100號3樓"></div>
     </div>
     <div class="form-section">
       <div class="form-section-title">🏪 訂單資訊</div>
-      <div class="form-row">
-        <label class="form-label">POS交易序號 <span class="req">*</span>（5碼數字）</label>
-        <input class="form-input" id="editPosNo" inputmode="numeric" maxlength="5" oninput="validatePosNo(this)">
-        <div class="field-hint" id="editPosNoHint"></div>
-      </div>
-      <div class="form-row">
-        <label class="form-label">備註</label>
-        <textarea class="form-textarea" id="editNote" placeholder="特殊要求、指定到貨日等（選填）"></textarea>
-      </div>
+      <div class="form-row"><label class="form-label">POS交易序號 <span class="req">*</span>（5碼數字）</label><input class="form-input" id="editPosNo" inputmode="numeric" maxlength="5" oninput="validatePosNo(this)"><div class="field-hint" id="editPosNoHint"></div></div>
+      <div class="form-row"><label class="form-label">備註</label><textarea class="form-textarea" id="editNote" placeholder="特殊要求、指定到貨日等（選填）"></textarea></div>
     </div>
     <div class="form-section">
       <div class="form-section-title">📦 訂購品項（最多5項）</div>
@@ -492,9 +398,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
       <div style="padding:0 16px 12px;"><div style="font-size:12px;color:var(--text2);" id="editItemCountHint">已選 0 / 5 項</div></div>
     </div>
   </div>
-  <div class="form-footer">
-    <button class="btn-submit" onclick="saveEditOrder()">💾 儲存修改</button>
-  </div>
+  <div class="form-footer"><button class="btn-submit" onclick="saveEditOrder()">💾 儲存修改</button></div>
 </div>
 
 <!-- DETAIL SCREEN -->
@@ -541,27 +445,20 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
     </div>
   </div>
 </div>
-
 <div class="modal-overlay" id="cancelModal">
   <div class="modal-sheet">
     <div class="modal-title">❌ 取消訂單</div>
     <div style="margin-bottom:16px;font-size:14px;color:var(--text2);">請說明取消原因（必填）</div>
-    <div class="modal-input-row">
-      <textarea id="cancelReason" class="form-textarea" placeholder="例：客人改變心意、商品缺貨..." style="min-height:100px;"></textarea>
-    </div>
+    <div class="modal-input-row"><textarea id="cancelReason" class="form-textarea" placeholder="例：客人改變心意、商品缺貨..." style="min-height:100px;"></textarea></div>
     <div style="display:flex;gap:10px;margin-top:16px;">
       <button onclick="closeCancelModal()" style="flex:1;padding:14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:15px;font-family:inherit;background:var(--surface);cursor:pointer;">返回</button>
       <button onclick="doCancel()" style="flex:1;padding:14px;background:var(--danger);color:#fff;border:none;border-radius:var(--radius);font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;">確認取消</button>
     </div>
   </div>
 </div>
-
 <div class="modal-overlay" id="dupModal">
   <div class="modal-sheet">
-    <div style="text-align:center;margin-bottom:16px;">
-      <div style="font-size:40px;">⚠️</div>
-      <div style="font-size:18px;font-weight:700;color:var(--danger);margin-top:8px;">重複POS序號警告</div>
-    </div>
+    <div style="text-align:center;margin-bottom:16px;"><div style="font-size:40px;">⚠️</div><div style="font-size:18px;font-weight:700;color:var(--danger);margin-top:8px;">重複POS序號警告</div></div>
     <div id="dupContent" style="background:var(--danger-light);border-radius:var(--radius-sm);padding:14px;margin-bottom:16px;font-size:14px;"></div>
     <div style="display:flex;gap:10px;">
       <button onclick="closeDup()" style="flex:1;padding:14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:15px;font-family:inherit;background:var(--surface);cursor:pointer;">返回修改</button>
@@ -598,6 +495,48 @@ const sb = {
     });
     return r.json();
   }
+};
+
+// ════════════════════════════════════════
+// 打招呼語（依時段隨機，全新句子）
+// ════════════════════════════════════════
+const _gr = {
+  morning: [
+    '☀️ 早安！今天訂單也請火力全開～',
+    '🔥 新的一天開始啦，業績一起衝高高！',
+    '💥 今日目標：瘋狂成交、順利喊單！',
+    '🚀 BUFF 已加滿，準備開賣啦！',
+    '🌞 早安！今天也要帥氣成交一波～',
+    '📦 倉庫準備好了，你們也準備大賣了嗎？',
+    '⚡ 今日 KPI 啟動中，加油各位戰士們！'
+  ],
+  noon: [
+    '✨ 歡迎回來～下午場準備開衝！',
+    '🎯 中場休息結束，業績繼續推進！',
+    '💪 下午一起努力，把單塞爆吧！',
+    '🔥 戰鬥力恢復完成，準備再收一波訂單！',
+    '🚚 後端待命中，前線請放心開賣～',
+    '📈 今天的業績還有很大成長空間喔！',
+    '🌤 下午場開始，大家一起撐起今日業績！'
+  ],
+  afternoon: [
+    '🌇 快下班了，最後一波衝刺別放棄！',
+    '🔥 撐住！今天的業績可能就差這一單！',
+    '💥 最後倒數中，能賣的都賣起來！',
+    '🍵 下午茶喝完了，訂單也該繼續進來了～',
+    '🚀 下班前再衝一波，今天一起漂亮收尾！',
+    '📦 倉庫還撐得住，你們也要撐住啊！',
+    '⚡ 最後加速中，今天一起大爆單！'
+  ],
+  evening: [
+    '⭐ 今天辛苦啦！還有力氣再收幾單嗎～',
+    '🌙 收攤前最後一搏，說不定還有大單！',
+    '🎉 今天大家都很厲害，業績繼續衝！',
+    '🔥 晚場模式啟動，今晚也要帥氣成交！',
+    '🚚 後端還醒著，前線請繼續努力（笑）',
+    '💪 今天還沒結束，最後幾小時撐住！',
+    '🌃 越晚越精彩，今晚一起爆單吧！'
+  ]
 };
 
 let currentUser = null;
@@ -677,7 +616,7 @@ async function loginWithData(u) {
   document.getElementById('headerStore').textContent = currentStore?.name || '未指定門市';
   document.getElementById('formStoreName').textContent = currentStore?.name || '';
 
-
+  // 依時段隨機打招呼
   const _h = new Date().getHours();
   const _p = _h < 11 ? 'morning' : _h < 14 ? 'noon' : _h < 18 ? 'afternoon' : 'evening';
   const _pool = _gr[_p];
@@ -704,88 +643,15 @@ async function ibizaGetStock(skus) {
     });
     if (!res.ok) return {};
     return await res.json();
-  } catch(e) {
-    console.log('ibiza stock query error', e);
-    return {};
-  }
+  } catch(e) { console.log('ibiza stock query error', e); return {}; }
 }
-document.getElementById('headerName').textContent = u.name;
-// 依時段自動切換打招呼語
-const _greetings = {
-  morning: [
-    '☀️ 早安！今天訂單也請火力全開～',
-    '🔥 新的一天開始啦，業績一起衝高高！',
-    '💥 今日目標：瘋狂成交、順利喊單！',
-    '🚀 BUFF 已加滿，準備開賣啦！',
-    '🌞 早安！今天也要帥氣成交一波～',
-    '📦 倉庫準備好了，你們也準備大賣了嗎？',
-    '⚡ 今日 KPI 啟動中，加油各位戰士們！'
-  ],
-
-  noon: [
-    '✨ 歡迎回來～下午場準備開衝！',
-    '🎯 中場休息結束，業績繼續推進！',
-    '💪 下午一起努力，把單塞爆吧！',
-    '🔥 戰鬥力恢復完成，準備再收一波訂單！',
-    '🚚 後端待命中，前線請放心開賣～',
-    '📈 今天的業績還有很大成長空間喔！',
-    '🌤 下午場開始，大家一起撐起今日業績！'
-  ],
-
-  afternoon: [
-    '🌇 快下班了，最後一波衝刺別放棄！',
-    '🔥 撐住！今天的業績可能就差這一單！',
-    '💥 最後倒數中，能賣的都賣起來！',
-    '🍵 下午茶喝完了，訂單也該繼續進來了～',
-    '🚀 下班前再衝一波，今天一起漂亮收尾！',
-    '📦 倉庫還撐得住，你們也要撐住啊！',
-    '⚡ 最後加速中，今天一起大爆單！'
-  ],
-
-  evening: [
-    '⭐ 今天辛苦啦！還有力氣再收幾單嗎～',
-    '🌙 收攤前最後一搏，說不定還有大單！',
-    '🎉 今天大家都很厲害，業績繼續衝！',
-    '🔥 晚場模式啟動，今晚也要帥氣成交！',
-    '🚚 後端還醒著，前線請繼續努力（笑）',
-    '💪 今天還沒結束，最後幾小時撐住！',
-    '🌃 越晚越精彩，今晚一起爆單吧！'
-  ],
-
-  holiday: [
-    '🎊 假日模式啟動！今天也要大賣特賣～',
-    '☀️ 假日人潮來啦，大家準備開戰！',
-    '🔥 今天客人很多，請各位火力全開！',
-    '🎯 假日就是衝業績的最佳時機！',
-    '💥 今天訂單量感覺會很可怕喔（笑）',
-    '🚀 假日 BUFF 加成中，成交率 UP！',
-    '🛍️ 假日戰場開始，大家一起衝爆業績！',
-    '🌈 假日愉快～但業績不能休息喔！'
-  ]
-};
-
-// 隨機取一句
-function getGreeting(period, name) {
-  const arr = _gr[period] || _gr.morning;
-  const text = arr[Math.floor(Math.random() * arr.length)];
-
-  return `${name} ${text}`;
-}
-
-// 使用範例
-console.log(getGreeting('morning', '孟青'));
-console.log(getGreeting('holiday', 'Yeddy'));
-```
 
 async function loadProducts() {
   try {
     const data = await sb.get('products', '?is_active=eq.true&order=product_name.asc');
     allProducts = (data || []).map(p => ({ sku: p.sku, product_name: p.product_name, stock: p.stock ?? 0 }));
     console.log(`品項載入完成：共 ${allProducts.length} 筆`);
-  } catch(e) {
-    console.log('商品載入失敗', e);
-    allProducts = [];
-  }
+  } catch(e) { console.log('商品載入失敗', e); allProducts = []; }
 }
 
 function onProductSearch(val) {
@@ -805,29 +671,20 @@ function renderDropdown(filtered, stockMap, inputEl) {
     const disabled = stock <= 0 ? 'style="opacity:0.5;pointer-events:none;"' : '';
     return `<div class="product-option" onclick="addItem('${escHtml(p.sku)}','${escHtml(p.product_name)}',${stock})" ${disabled}>
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-        <div style="min-width:0;flex:1;">
-          <div class="pname" style="white-space:normal;line-height:1.4;">${escHtml(p.product_name)}</div>
-          <div class="pcode">${p.sku}</div>
-        </div>
+        <div style="min-width:0;flex:1;"><div class="pname" style="white-space:normal;line-height:1.4;">${escHtml(p.product_name)}</div><div class="pcode">${p.sku}</div></div>
         <div class="pstock ${stockClass}" style="flex-shrink:0;">${stockText}</div>
       </div>
     </div>`;
   }).join('');
-  positionDropdown(inputEl, dd);
-  dd.style.display = 'block';
+  positionDropdown(inputEl, dd); dd.style.display = 'block';
 }
 
 async function renderDropdownFromLocal(q) {
   const dd = document.getElementById('productDropdown');
   const inputEl = document.getElementById('productSearch');
   const lower = q.toLowerCase();
-  const filtered = allProducts.filter(p =>
-    p.product_name?.toLowerCase().includes(lower) || p.sku?.toLowerCase().includes(lower)
-  ).slice(0, 50);
-  if (!filtered.length) {
-    dd.innerHTML = `<div class="product-option"><div class="pname">找不到「${escHtml(q)}」相關商品</div></div>`;
-    positionDropdown(inputEl, dd); dd.style.display = 'block'; return;
-  }
+  const filtered = allProducts.filter(p => p.product_name?.toLowerCase().includes(lower) || p.sku?.toLowerCase().includes(lower)).slice(0, 50);
+  if (!filtered.length) { dd.innerHTML = `<div class="product-option"><div class="pname">找不到「${escHtml(q)}」相關商品</div></div>`; positionDropdown(inputEl, dd); dd.style.display = 'block'; return; }
   renderDropdown(filtered, null, inputEl);
   const stockMap = await ibizaGetStock(filtered.map(p => p.sku));
   if (stockMap && dd.style.display !== 'none') renderDropdown(filtered, stockMap, inputEl);
@@ -847,16 +704,9 @@ function positionDropdown(inputEl, dropdownEl) {
   const spaceBelow = viewportHeight - rect.bottom - 8;
   const spaceAbove = rect.top - 8;
   const maxH = Math.min(Math.max(spaceBelow, 160), 320);
-  dropdownEl.style.left = rect.left + 'px';
-  dropdownEl.style.width = rect.width + 'px';
-  dropdownEl.style.maxHeight = maxH + 'px';
-  if (spaceBelow < 160 && spaceAbove > spaceBelow) {
-    const h = Math.min(spaceAbove, 320);
-    dropdownEl.style.top = (rect.top - h - 4) + 'px';
-    dropdownEl.style.maxHeight = h + 'px';
-  } else {
-    dropdownEl.style.top = (rect.bottom + 2) + 'px';
-  }
+  dropdownEl.style.left = rect.left + 'px'; dropdownEl.style.width = rect.width + 'px'; dropdownEl.style.maxHeight = maxH + 'px';
+  if (spaceBelow < 160 && spaceAbove > spaceBelow) { const h = Math.min(spaceAbove, 320); dropdownEl.style.top = (rect.top - h - 4) + 'px'; dropdownEl.style.maxHeight = h + 'px'; }
+  else { dropdownEl.style.top = (rect.bottom + 2) + 'px'; }
 }
 
 function closeDropdown() { const dd = document.getElementById('productDropdown'); if (dd) dd.style.display = 'none'; }
@@ -868,16 +718,8 @@ function renderItems() {
   if (!formItems.length) { list.innerHTML = ''; return; }
   list.innerHTML = formItems.map((item, i) => `
     <div class="item-row">
-      <div class="item-info">
-        <div class="item-name">${escHtml(item.name)}</div>
-        <div class="item-code">${item.sku}</div>
-        <div class="item-stock ${item.stock > 0 ? 'ok' : 'none'}">庫存 ${item.stock}</div>
-      </div>
-      <div class="qty-control">
-        <button class="qty-btn" onclick="changeQty(${i},-1)">−</button>
-        <span class="qty-num">${item.qty}</span>
-        <button class="qty-btn" onclick="changeQty(${i},1)">＋</button>
-      </div>
+      <div class="item-info"><div class="item-name">${escHtml(item.name)}</div><div class="item-code">${item.sku}</div><div class="item-stock ${item.stock > 0 ? 'ok' : 'none'}">庫存 ${item.stock}</div></div>
+      <div class="qty-control"><button class="qty-btn" onclick="changeQty(${i},-1)">−</button><span class="qty-num">${item.qty}</span><button class="qty-btn" onclick="changeQty(${i},1)">＋</button></div>
       <button class="item-delete" onclick="removeItem(${i})">✕</button>
     </div>`).join('');
 }
@@ -918,10 +760,7 @@ function toggleSameBuyer() {
   sameBuyer = !sameBuyer;
   document.getElementById('sameBuyerCheck').classList.toggle('checked', sameBuyer);
   document.getElementById('receiverFields').style.display = sameBuyer ? 'none' : 'block';
-  if (sameBuyer) {
-    document.getElementById('receiverName').value = document.getElementById('buyerName').value;
-    document.getElementById('receiverPhone').value = document.getElementById('buyerPhone').value;
-  }
+  if (sameBuyer) { document.getElementById('receiverName').value = document.getElementById('buyerName').value; document.getElementById('receiverPhone').value = document.getElementById('buyerPhone').value; }
 }
 
 function validatePhone(input) {
@@ -1037,26 +876,10 @@ function showConfirmModal() {
   const d = pendingOrderData;
   const itemsHtml = formItems.map(i => `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);"><span>${escHtml(i.name)}</span><span style="font-weight:700;">×${i.qty}</span></div>`).join('');
   document.getElementById('confirmContent').innerHTML = `
-    <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:14px;margin-bottom:12px;">
-      <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">📦 收件資訊</div>
-      <div style="font-size:16px;font-weight:700;">${escHtml(d.receiverName)}</div>
-      <div style="font-size:14px;margin-top:4px;">${escHtml(d.receiverPhone)}</div>
-      <div style="font-size:14px;margin-top:6px;color:var(--accent);font-weight:500;">${escHtml(d.address)}</div>
-    </div>
-    <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:14px;margin-bottom:12px;">
-      <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">🧾 訂購人</div>
-      <div style="font-size:15px;font-weight:700;">${escHtml(d.buyerName)}　${escHtml(d.buyerPhone)}</div>
-    </div>
-    <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:14px;margin-bottom:12px;">
-      <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">📋 訂單資訊</div>
-      <div>門市：${escHtml(d.storeName)}</div>
-      <div>機號：${escHtml(d.terminal)}　POS序號：${escHtml(d.posNo)}</div>
-      ${d.note ? `<div>備註：${escHtml(d.note)}</div>` : ''}
-    </div>
-    <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:14px;">
-      <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">🛍 訂購品項</div>
-      ${itemsHtml}
-    </div>`;
+    <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:14px;margin-bottom:12px;"><div style="font-size:12px;color:var(--text2);margin-bottom:8px;">📦 收件資訊</div><div style="font-size:16px;font-weight:700;">${escHtml(d.receiverName)}</div><div style="font-size:14px;margin-top:4px;">${escHtml(d.receiverPhone)}</div><div style="font-size:14px;margin-top:6px;color:var(--accent);font-weight:500;">${escHtml(d.address)}</div></div>
+    <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:14px;margin-bottom:12px;"><div style="font-size:12px;color:var(--text2);margin-bottom:8px;">🧾 訂購人</div><div style="font-size:15px;font-weight:700;">${escHtml(d.buyerName)}　${escHtml(d.buyerPhone)}</div></div>
+    <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:14px;margin-bottom:12px;"><div style="font-size:12px;color:var(--text2);margin-bottom:8px;">📋 訂單資訊</div><div>門市：${escHtml(d.storeName)}</div><div>機號：${escHtml(d.terminal)}　POS序號：${escHtml(d.posNo)}</div>${d.note ? `<div>備註：${escHtml(d.note)}</div>` : ''}</div>
+    <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:14px;"><div style="font-size:12px;color:var(--text2);margin-bottom:8px;">🛍 訂購品項</div>${itemsHtml}</div>`;
   document.getElementById('confirmModal').classList.add('show');
 }
 
@@ -1205,15 +1028,9 @@ function renderDetail(o, containerId, isPublic) {
     </div>`;
   }
   let trackingHtml = '';
-  if (o.tracking_number) {
-    trackingHtml = `<div class="tracking-box"><span>🚚</span><span class="tracking-num">${escHtml(o.tracking_number)}</span><button class="copy-btn" onclick="copyText('${escHtml(o.tracking_number)}')">複製</button></div>`;
-  }
+  if (o.tracking_number) trackingHtml = `<div class="tracking-box"><span>🚚</span><span class="tracking-num">${escHtml(o.tracking_number)}</span><button class="copy-btn" onclick="copyText('${escHtml(o.tracking_number)}')">複製</button></div>`;
   document.getElementById(containerId).innerHTML = `
-    <div class="detail-status-hero">
-      <div class="detail-status-icon">${statusIcon[o.status]||'📦'}</div>
-      <div class="detail-status-text">${statusMap[o.status]||o.status}</div>
-      <div class="detail-order-no">${o.order_no}</div>
-    </div>
+    <div class="detail-status-hero"><div class="detail-status-icon">${statusIcon[o.status]||'📦'}</div><div class="detail-status-text">${statusMap[o.status]||o.status}</div><div class="detail-order-no">${o.order_no}</div></div>
     ${trackingHtml}
     <div class="detail-card">
       <div class="detail-card-title">👤 收件資訊</div>
@@ -1279,10 +1096,7 @@ function renderAdminOrders() {
   renderOrderList(filtered, 'adminOrdersList');
   document.querySelectorAll('#adminOrdersList .order-card').forEach(card => {
     const origClick = card.getAttribute('onclick');
-    card.onclick = () => {
-      const id = origClick.match(/'([^']+)'/)?.[1];
-      if (id) { document.getElementById('detailBack').onclick = () => showScreen('adminScreen'); openOrderDetail(id); }
-    };
+    card.onclick = () => { const id = origClick.match(/'([^']+)'/)?.[1]; if (id) { document.getElementById('detailBack').onclick = () => showScreen('adminScreen'); openOrderDetail(id); } };
   });
 }
 
@@ -1346,11 +1160,8 @@ async function openEditOrder(orderId) {
     initEditCitySelect();
     const addr = o.receiver_address || '';
     const addrMatch = addr.match(/^(\d{3,5})\s?(.{2,3}[市縣])(.{2,4}[區鄉鎮市])(.+)$/);
-    if (addrMatch) {
-      document.getElementById('editAddrCity').value = addrMatch[2];
-      onEditCityChange(addrMatch[2], addrMatch[3]);
-      document.getElementById('editAddrDetail').value = addrMatch[4];
-    } else { document.getElementById('editAddrDetail').value = addr; }
+    if (addrMatch) { document.getElementById('editAddrCity').value = addrMatch[2]; onEditCityChange(addrMatch[2], addrMatch[3]); document.getElementById('editAddrDetail').value = addrMatch[4]; }
+    else { document.getElementById('editAddrDetail').value = addr; }
     renderEditItems();
     document.getElementById('editBack').onclick = () => openOrderDetail(orderId);
     showScreen('editScreen');
@@ -1428,16 +1239,8 @@ function renderEditItems() {
   if (!editFormItems.length) { list.innerHTML = ''; return; }
   list.innerHTML = editFormItems.map((item, i) => `
     <div class="item-row">
-      <div class="item-info">
-        <div class="item-name">${escHtml(item.name)}</div>
-        <div class="item-code">${item.sku}</div>
-        <div class="item-stock ${item.stock > 0 ? 'ok' : 'none'}">庫存 ${item.stock}</div>
-      </div>
-      <div class="qty-control">
-        <button class="qty-btn" onclick="changeEditQty(${i},-1)">−</button>
-        <span class="qty-num">${item.qty}</span>
-        <button class="qty-btn" onclick="changeEditQty(${i},1)">＋</button>
-      </div>
+      <div class="item-info"><div class="item-name">${escHtml(item.name)}</div><div class="item-code">${item.sku}</div><div class="item-stock ${item.stock > 0 ? 'ok' : 'none'}">庫存 ${item.stock}</div></div>
+      <div class="qty-control"><button class="qty-btn" onclick="changeEditQty(${i},-1)">−</button><span class="qty-num">${item.qty}</span><button class="qty-btn" onclick="changeEditQty(${i},1)">＋</button></div>
       <button class="item-delete" onclick="removeEditItem(${i})">✕</button>
     </div>`).join('');
 }
@@ -1492,10 +1295,7 @@ function exportCSV() {
     else { items.forEach(item => { rows.push([o.order_no,o.status,o.stores?.name,o.staff?.name,o.staff?.phone,o.receiver_name,o.receiver_phone,o.receiver_address,o.pos_no||'',item.product_name,item.sku,item.quantity,o.note||'',o.tracking_number||'',formatDate(o.created_at)]); }); }
   });
   const csv = '\uFEFF' + rows.map(r => r.map(c => `"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\n');
-  const a = document.createElement('a');
-  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-  a.download = `宅配訂單_${new Date().toISOString().slice(0,10)}.csv`;
-  a.click();
+  const a = document.createElement('a'); a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv); a.download = `宅配訂單_${new Date().toISOString().slice(0,10)}.csv`; a.click();
 }
 
 function generateQR(text, canvasId) {
@@ -1507,6 +1307,9 @@ function generateQR(text, canvasId) {
   img.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(text)}`;
 }
 
+// ════════════════════════════════════════
+// 庫存查詢：有庫存在上(按品號)，無庫存在下(按品號)，字體加大
+// ════════════════════════════════════════
 let stockSearchDebounce2 = null;
 function onStockSearch(val) {
   clearTimeout(stockSearchDebounce2);
@@ -1514,23 +1317,42 @@ function onStockSearch(val) {
   if (!val.trim()) { list.innerHTML = ''; return; }
   stockSearchDebounce2 = setTimeout(async () => {
     const lower = val.toLowerCase();
-    const filtered = allProducts.filter(p => p.product_name?.toLowerCase().includes(lower) || p.sku?.toLowerCase().includes(lower)).slice(0, 30);
-    if (!filtered.length) { list.innerHTML = `<div style="text-align:center;padding:32px;color:#4A6058;">找不到「${escHtml(val)}」相關商品</div>`; return; }
+    const filtered = allProducts.filter(p =>
+      p.product_name?.toLowerCase().includes(lower) || p.sku?.toLowerCase().includes(lower)
+    ).slice(0, 50);
+    if (!filtered.length) {
+      list.innerHTML = `<div style="text-align:center;padding:32px;color:#4A6058;">找不到「${escHtml(val)}」相關商品</div>`;
+      return;
+    }
+    // 先顯示查詢中
     list.innerHTML = filtered.map(p => `
-      <div style="background:#fff;border-radius:10px;padding:12px 14px;margin-bottom:8px;box-shadow:0 2px 8px rgba(0,0,0,0.06);display:flex;justify-content:space-between;align-items:center;">
+      <div style="background:#fff;border-radius:10px;padding:14px 16px;margin-bottom:8px;box-shadow:0 2px 8px rgba(0,0,0,0.06);display:flex;justify-content:space-between;align-items:center;">
         <div style="min-width:0;flex:1;">
-          <div style="font-size:14px;font-weight:500;color:#1a1a18;">${escHtml(p.product_name)}</div>
-          <div style="font-size:11px;color:#4A6058;font-family:'DM Mono',monospace;margin-top:2px;">${p.sku}</div>
+          <div style="font-size:17px;font-weight:500;color:#1a1a18;">${escHtml(p.product_name)}</div>
+          <div style="font-size:13px;color:#4A6058;font-family:'DM Mono',monospace;margin-top:3px;">${p.sku}</div>
         </div>
-        <div id="stock_${p.sku}" style="font-size:13px;font-weight:700;color:#4A6058;flex-shrink:0;margin-left:12px;">查詢中...</div>
+        <div id="stock_${p.sku}" style="font-size:15px;font-weight:700;color:#4A6058;flex-shrink:0;margin-left:12px;">查詢中...</div>
       </div>`).join('');
+
     const stockMap = await ibizaGetStock(filtered.map(p => p.sku));
-    filtered.forEach(p => {
-      const el = document.getElementById(`stock_${p.sku}`); if (!el) return;
-      const s = stockMap?.[p.sku] ?? p.stock ?? 0;
-      el.textContent = s > 0 ? `可用 ${s}` : '無庫存';
-      el.style.color = s > 10 ? '#2a8c5a' : s > 0 ? '#c87a2a' : '#c82a2a';
-    });
+
+    // 有庫存在上(品號排序)，無庫存在下(品號排序)
+    const withStock = filtered.filter(p => (stockMap?.[p.sku] ?? 0) > 0).sort((a,b) => a.sku.localeCompare(b.sku));
+    const noStock   = filtered.filter(p => (stockMap?.[p.sku] ?? 0) <= 0).sort((a,b) => a.sku.localeCompare(b.sku));
+
+    list.innerHTML = [...withStock, ...noStock].map(p => {
+      const s = stockMap?.[p.sku] ?? 0;
+      const color = s > 10 ? '#2a8c5a' : s > 0 ? '#c87a2a' : '#c82a2a';
+      const text = s > 0 ? `可用 ${s}` : '無庫存';
+      return `
+        <div style="background:#fff;border-radius:10px;padding:14px 16px;margin-bottom:8px;box-shadow:0 2px 8px rgba(0,0,0,0.06);display:flex;justify-content:space-between;align-items:center;${s<=0?'opacity:0.55;':''}">
+          <div style="min-width:0;flex:1;">
+            <div style="font-size:17px;font-weight:500;color:#1a1a18;">${escHtml(p.product_name)}</div>
+            <div style="font-size:13px;color:#4A6058;font-family:'DM Mono',monospace;margin-top:3px;">${p.sku}</div>
+          </div>
+          <div style="font-size:16px;font-weight:700;color:${color};flex-shrink:0;margin-left:12px;">${text}</div>
+        </div>`;
+    }).join('');
   }, 300);
 }
 
@@ -1577,4 +1399,3 @@ document.addEventListener('keydown', e => {
 </script>
 </body>
 </html>
-HTMLEOF
