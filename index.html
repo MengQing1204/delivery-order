@@ -188,6 +188,16 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
 .field-hint { font-size: 12px; margin-top: 4px; }
 .field-hint.error { color: var(--danger); }
 .field-hint.ok { color: var(--success); }
+.store-filter-bar { display:flex; align-items:center; gap:8px; padding:10px 16px; background:var(--surface); border-bottom:1px solid var(--border); }
+.store-filter-bar label { font-size:13px; color:var(--text2); font-weight:600; white-space:nowrap; }
+.store-filter-select { flex:1; border:1.5px solid var(--border); border-radius:var(--radius-sm); padding:8px 10px; font-size:14px; font-family:inherit; color:var(--text); background:var(--surface); outline:none; }
+.sync-btn { background:var(--surface2); border:1.5px solid var(--border); border-radius:var(--radius-sm); padding:8px 12px; font-size:13px; font-family:inherit; color:var(--text2); cursor:pointer; white-space:nowrap; }
+/* 門市篩選 */
+.store-filter-bar { padding: 10px 16px; background: var(--surface2); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+.store-filter-bar label { font-size: 13px; font-weight: 600; color: var(--text2); white-space: nowrap; }
+.store-filter-select { flex: 1; border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 8px 12px; font-size: 14px; font-family: inherit; color: var(--text); background: var(--surface); outline: none; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%233A5A48' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; }
+.store-filter-select:focus { border-color: var(--accent); }
+.sync-btn { background: var(--accent2); color: #fff; border: none; border-radius: var(--radius-sm); padding: 8px 12px; font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer; white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -289,7 +299,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
     <div class="name" id="mainHeaderName">載入中...</div>
     <div class="store-tag" id="mainHeaderStore">門市</div>
     <div style="position:absolute;top:16px;right:16px;">
-      <button onclick="doLogout()" style="background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer;font-family:inherit;">登出</button>
+      <button onclick="showScreen('homeScreen')" style="background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer;font-family:inherit;">← 返回</button>
     </div>
   </div>
   <div class="stats-row">
@@ -417,6 +427,14 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
     <div class="topbar-title">訂單管理</div>
     <button class="topbar-action" onclick="exportCSV()">匯出CSV</button>
   </div>
+  <!-- 管理員門市篩選 -->
+  <div class="store-filter-bar" id="adminStoreFilterBar" style="display:none;">
+    <label>門市</label>
+    <select class="store-filter-select" id="adminStoreFilter" onchange="onAdminStoreFilter(this.value)">
+      <option value="">全部門市</option>
+    </select>
+    <button class="sync-btn" onclick="syncProducts()">🔄 同步商品</button>
+  </div>
   <div class="admin-tabs">
     <button class="admin-tab active" onclick="setAdminTab('all',this)">全部</button>
     <button class="admin-tab" onclick="setAdminTab('pending',this)">待處理</button>
@@ -471,6 +489,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
 const SUPABASE_URL = 'https://tlrfxsmrjueaqiectroe.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRscmZ4c21yanVlYXFpZWN0cm9lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1MjI3MjksImV4cCI6MjA5MjA5ODcyOX0.buW3x8ZTNHgaB8ZK14xL-unLsTFrcTVJFm3xYqV18CA';
 const STOCK_QUERY_URL = 'https://tlrfxsmrjueaqiectroe.supabase.co/functions/v1/ibiza-stock-query';
+const SYNC_PRODUCTS_URL = 'https://tlrfxsmrjueaqiectroe.supabase.co/functions/v1/sync-products';
 
 const sb = {
   async get(table, params='') {
@@ -547,6 +566,7 @@ let adminAllOrders = [];
 let adminCurrentTab = 'all';
 let searchDebounce = null;
 let selectedZip = '';
+let adminCurrentStore = '';
 let sameBuyer = false;
 
 const STORE_TERMINALS = { '富邦美術館-賣店': ['001','002','003'] };
@@ -621,7 +641,7 @@ async function loginWithData(u) {
   const _p = _h < 11 ? 'morning' : _h < 14 ? 'noon' : _h < 18 ? 'afternoon' : 'evening';
   const _pool = _gr[_p];
   const _g = _pool[Math.floor(Math.random() * _pool.length)];
-  document.getElementById('headerName').textContent = u.name + '，' + _g;
+  document.getElementById('headerName').textContent = _g + u.name;
 
   initCitySelect();
   showScreen('homeScreen');
@@ -646,6 +666,28 @@ async function ibizaGetStock(skus) {
   } catch(e) { console.log('ibiza stock query error', e); return {}; }
 }
 
+// ════════════════════════════════════════
+// 商品自動同步
+// ════════════════════════════════════════
+async function syncProducts() {
+  if (!confirm('確定要同步商品資料？這將更新所有 ibiza F01 倉的商品庫存，約需 30 秒。')) return;
+  showLoading(true);
+  try {
+    const res = await fetch(SYNC_PRODUCTS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`同步完成！共更新 ${data.upserted} 筆商品`, 'success');
+      await loadProducts();
+    } else {
+      showToast('同步失敗：' + (data.error || '未知錯誤'), 'error');
+    }
+  } catch(e) { showToast('同步失敗：' + e.message, 'error'); }
+  showLoading(false);
+}
+
 async function loadProducts() {
   try {
     const data = await sb.get('products', '?is_active=eq.true&order=product_name.asc');
@@ -664,7 +706,12 @@ function onProductSearch(val) {
 
 function renderDropdown(filtered, stockMap, inputEl) {
   const dd = document.getElementById('productDropdown');
-  dd.innerHTML = filtered.map(p => {
+  // 有 stockMap 時排序：有庫存在上(品號排序)，無庫存在下(品號排序)
+  const list = stockMap
+    ? [...filtered.filter(p=>(stockMap[p.sku]??0)>0).sort((a,b)=>a.sku.localeCompare(b.sku)),
+       ...filtered.filter(p=>(stockMap[p.sku]??0)<=0).sort((a,b)=>a.sku.localeCompare(b.sku))]
+    : filtered;
+  dd.innerHTML = list.map(p => {
     const stock = stockMap ? (stockMap[p.sku] ?? p.stock ?? 0) : (p.stock ?? 0);
     const stockClass = stock > 10 ? 'ok' : stock > 0 ? 'low' : 'none';
     const stockText = stock > 0 ? `可用 ${stock}` : '無庫存';
@@ -964,9 +1011,35 @@ function searchMyOrders(q) {
 
 async function showAllMyOrders() {
   showScreen('adminScreen');
-  if (currentUser?.role === 'admin') { loadAdminOrders(); }
-  else if (currentUser?.role === 'manager') { loadAdminOrders(null, currentUser.store_id); }
-  else { loadAdminOrders(currentUser.id); }
+  if (currentUser?.role === 'admin') {
+    const bar = document.getElementById('adminStoreFilterBar');
+    if (bar) bar.style.display = 'flex';
+    await loadAdminStoreFilter();
+    loadAdminOrders(null, adminCurrentStore || null);
+  } else if (currentUser?.role === 'manager') {
+    const bar = document.getElementById('adminStoreFilterBar');
+    if (bar) bar.style.display = 'none';
+    loadAdminOrders(null, currentUser.store_id);
+  } else {
+    const bar = document.getElementById('adminStoreFilterBar');
+    if (bar) bar.style.display = 'none';
+    loadAdminOrders(currentUser.id);
+  }
+}
+
+async function loadAdminStoreFilter() {
+  try {
+    const stores = await sb.get('stores', '?is_active=eq.true&order=name.asc');
+    const sel = document.getElementById('adminStoreFilter');
+    if (!sel || !stores?.length) return;
+    sel.innerHTML = '<option value="">全部門市</option>' + stores.map(s => `<option value="${s.id}">${escHtml(s.name)}</option>`).join('');
+    if (adminCurrentStore) sel.value = adminCurrentStore;
+  } catch(e) { console.log(e); }
+}
+
+function onAdminStoreFilter(storeId) {
+  adminCurrentStore = storeId;
+  loadAdminOrders(null, storeId || null);
 }
 
 function renderOrderList(orders, containerId) {
@@ -978,7 +1051,7 @@ function renderOrderList(orders, containerId) {
     return `<div class="order-card ${o.status}" onclick="openOrderDetail('${o.id}')">
       <div class="order-card-top"><div class="order-no">${o.order_no}</div><span class="status-badge ${o.status}">${statusMap[o.status]||o.status}</span></div>
       <div class="order-receiver">${escHtml(o.receiver_name)}</div>
-      <div class="order-meta">${escHtml(o.receiver_phone)} · ${formatDate(o.created_at)}</div>
+      <div class="order-meta">${escHtml(o.receiver_phone)} · ${escHtml(o.stores?.name||'')} · ${formatDate(o.created_at)}</div>
       <div class="order-items-preview">${escHtml(preview)}</div>
     </div>`;
   }).join('');
@@ -1210,7 +1283,11 @@ async function renderEditDropdown(q) {
 }
 
 function renderEditDropdownItems(filtered, stockMap, inputEl, dd) {
-  dd.innerHTML = filtered.map(p => {
+  const list = stockMap
+    ? [...filtered.filter(p=>(stockMap[p.sku]??0)>0).sort((a,b)=>a.sku.localeCompare(b.sku)),
+       ...filtered.filter(p=>(stockMap[p.sku]??0)<=0).sort((a,b)=>a.sku.localeCompare(b.sku))]
+    : filtered;
+  dd.innerHTML = list.map(p => {
     const stock = stockMap ? (stockMap[p.sku] ?? p.stock ?? 0) : (p.stock ?? 0);
     const stockClass = stock > 10 ? 'ok' : stock > 0 ? 'low' : 'none';
     const stockText = stock > 0 ? `可用 ${stock}` : '無庫存';
