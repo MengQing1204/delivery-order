@@ -791,9 +791,16 @@ function initForm() {
   const detailHint = document.getElementById('detailHint');
   if (detailHint) { detailHint.textContent = '都市：竹光路100號3樓｜農村：1鄰100號'; detailHint.className = 'field-hint'; }
   const isAdmin = currentUser?.role === 'admin';
-  document.getElementById('adminStoreRow').style.display = isAdmin ? 'block' : 'none';
-  document.getElementById('staffStoreRow').style.display = isAdmin ? 'none' : 'block';
-  if (isAdmin) { loadStoresSelect(); } else { document.getElementById('storeDisplay').value = currentStore?.name || ''; }
+  const isManager = currentUser?.role === 'manager';
+  document.getElementById('adminStoreRow').style.display = (isAdmin || isManager) ? 'block' : 'none';
+  document.getElementById('staffStoreRow').style.display = (isAdmin || isManager) ? 'none' : 'block';
+  if (isAdmin) {
+    loadStoresSelect();
+  } else if (isManager) {
+    loadManagerStoresSelect();
+  } else {
+    document.getElementById('storeDisplay').value = currentStore?.name || '';
+  }
   document.getElementById('sameBuyerCheck').classList.remove('checked');
   document.getElementById('receiverFields').style.display = 'block';
   document.getElementById('addrCity').value = '';
@@ -810,6 +817,24 @@ async function loadStoresSelect() {
     const sel = document.getElementById('formStoreSelect');
     if (!sel || !stores?.length) return;
     sel.innerHTML = '<option value="">請選擇門市</option>' + stores.map(s => `<option value="${s.id}">${escHtml(s.name)}</option>`).join('');
+  } catch(e) { console.log(e); }
+}
+
+async function loadManagerStoresSelect() {
+  try {
+    const storeIds = await getManagerStoreIds(currentUser.id);
+    if (!storeIds.length) {
+      document.getElementById('formStoreSelect').innerHTML = '<option value="">無管轄門市</option>';
+      return;
+    }
+    const inFilter = storeIds.map(id => `"${id}"`).join(',');
+    const stores = await sb.get('stores', `?id=in.(${inFilter})&is_active=eq.true&order=name.asc`);
+    const sel = document.getElementById('formStoreSelect');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">請選擇門市</option>' +
+      (stores||[]).map(s => `<option value="${s.id}">${escHtml(s.name)}</option>`).join('');
+    // 若只有一間門市，自動選取
+    if (stores?.length === 1) { sel.value = stores[0].id; }
   } catch(e) { console.log(e); }
 }
 
@@ -910,8 +935,12 @@ async function submitOrder() {
   if (!detail.includes('號')) { showToast('地址必須包含「號」字', 'error'); return; }
   if (!posNo || posNo.length !== 5) { showToast('POS序號請輸入5碼數字', 'error'); return; }
   if (!formItems.length) { showToast('請至少選擇一項商品', 'error'); return; }
-  const storeId = currentUser?.role === 'admin' ? document.getElementById('formStoreSelect')?.value : currentUser.store_id;
-  const storeName = currentUser?.role === 'admin' ? document.getElementById('formStoreSelect')?.options[document.getElementById('formStoreSelect').selectedIndex]?.text : currentStore?.name || '';
+  const storeId = (currentUser?.role === 'admin' || currentUser?.role === 'manager')
+    ? document.getElementById('formStoreSelect')?.value
+    : currentUser.store_id;
+  const storeName = (currentUser?.role === 'admin' || currentUser?.role === 'manager')
+    ? document.getElementById('formStoreSelect')?.options[document.getElementById('formStoreSelect').selectedIndex]?.text
+    : currentStore?.name || '';
   if (!storeId) { showToast('請選擇門市', 'error'); return; }
   pendingOrderData = { buyerName, buyerPhone, receiverName, receiverPhone, address, posNo, terminal, note, storeId, storeName };
   showLoading(true);
