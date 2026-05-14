@@ -668,12 +668,12 @@ async function ibizaGetStock(skus) {
 // 商品自動同步
 // ════════════════════════════════════════
 async function syncProducts() {
-  if (!confirm('確定要同步商品資料？這將更新所有 ibiza F01 倉的商品庫存，約需 30 秒。')) return;
-  showLoading(true);
+  if (!confirm('確定要同步商品清單？約需 10-30 秒。')) return;
+  showToast('同步中，請稍候...', '');
   try {
-    const res = await fetch(SYNC_PRODUCTS_URL, {
+    const res = await fetch('https://tlrfxsmrjueaqiectroe.supabase.co/functions/v1/sync-products', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+      headers: { 'Content-Type': 'application/json' }
     });
     const data = await res.json();
     if (data.success) {
@@ -682,8 +682,9 @@ async function syncProducts() {
     } else {
       showToast('同步失敗：' + (data.error || '未知錯誤'), 'error');
     }
-  } catch(e) { showToast('同步失敗：' + e.message, 'error'); }
-  showLoading(false);
+  } catch(e) {
+    showToast('同步失敗：' + e.message, 'error');
+  }
 }
 
 async function loadProducts() {
