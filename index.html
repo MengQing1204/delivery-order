@@ -637,7 +637,8 @@ async function loginWithData(u) {
   currentUser = u;
   currentStore = u.stores;
   document.getElementById('loginError').style.display = 'none';
-  document.getElementById('headerStore').textContent = currentStore?.name || '未指定門市';
+  const headerStoreEl = document.getElementById('headerStore');
+  if (headerStoreEl) headerStoreEl.textContent = currentStore?.name || '未指定門市';
   document.getElementById('formStoreName').textContent = currentStore?.name || '';
 
   // 依時段隨機打招呼（強制台灣時間 UTC+8）
