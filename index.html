@@ -230,7 +230,14 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
 <div class="screen" id="homeScreen">
   <div class="main-header" style="position:relative;">
     <div class="greeting" id="headerName">👋 歡迎回來</div>
-    <div class="store-tag" id="headerStore">門市</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap;">
+      <div class="store-tag" id="headerStore">門市</div>
+      <div id="storeSwitcherWrap" style="display:none;">
+        <select id="storeSwitcher" onchange="onStoreSwitcher(this.value)"
+          style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;border-radius:8px;padding:4px 10px;font-size:13px;font-family:inherit;outline:none;cursor:pointer;">
+        </select>
+      </div>
+    </div>
     <button onclick="doLogout()" style="position:absolute;top:16px;right:16px;background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer;font-family:inherit;">登出</button>
   </div>
   <div style="padding:20px 16px;display:flex;flex-direction:column;gap:12px;">
@@ -648,6 +655,13 @@ async function loginWithData(u) {
   document.getElementById('headerName').textContent = _g + u.name;
 
   initCitySelect();
+  // 主管：初始化門市切換器
+  if (currentUser?.role === 'manager') {
+    await initStoreSwitcher();
+  } else {
+    const wrap = document.getElementById('storeSwitcherWrap');
+    if (wrap) wrap.style.display = 'none';
+  }
   showScreen('homeScreen');
   loadProducts();
 }
@@ -656,6 +670,35 @@ function doLogout() {
   localStorage.removeItem('delivery_user');
   currentUser = null;
   showScreen('loginScreen');
+}
+
+async function initStoreSwitcher() {
+  try {
+    const storeIds = await getManagerStoreIds(currentUser.id);
+    if (!storeIds.length) return;
+    const inFilter = storeIds.map(id => `"${id}"`).join(',');
+    const stores = await sb.get('stores', `?id=in.(${inFilter})&is_active=eq.true&order=name.asc`);
+    if (!stores?.length) return;
+    const sel = document.getElementById('storeSwitcher');
+    const wrap = document.getElementById('storeSwitcherWrap');
+    if (!sel || !wrap) return;
+    sel.innerHTML = stores.map(s =>
+      `<option value="${s.id}" data-name="${escHtml(s.name)}">${escHtml(s.name)}</option>`
+    ).join('');
+    // 預設選主門市
+    if (currentStore?.id) sel.value = currentStore.id;
+    wrap.style.display = stores.length > 1 ? 'block' : 'none';
+  } catch(e) { console.log(e); }
+}
+
+function onStoreSwitcher(storeId) {
+  const sel = document.getElementById('storeSwitcher');
+  const opt = sel?.options[sel.selectedIndex];
+  if (!opt) return;
+  // 更新 currentStore
+  currentStore = { id: storeId, name: opt.dataset.name || opt.text };
+  document.getElementById('headerStore').textContent = currentStore.name;
+  document.getElementById('formStoreName').textContent = currentStore.name;
 }
 
 async function ibizaGetStock(skus) {
