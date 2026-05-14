@@ -711,6 +711,9 @@ function onStoreSwitcher(storeId, storeName) {
   currentStore = { id: storeId, name: storeName };
   document.getElementById('formStoreName').textContent = storeName;
   activateStoreTag(storeId);
+  // 直接跳到該門市的訂單管理
+  showScreen('adminScreen');
+  loadAdminOrders(null, storeId);
 }
 
 async function ibizaGetStock(skus) {
@@ -1185,7 +1188,7 @@ async function openOrderDetail(orderId) {
     const o = orders?.[0];
     if (!o) throw new Error('找不到訂單');
     renderDetail(o, 'detailBody', false);
-    document.getElementById('detailBack').onclick = () => showScreen(currentUser?.role === 'admin' ? 'adminScreen' : 'mainScreen');
+    document.getElementById('detailBack').onclick = () => showScreen((currentUser?.role === 'admin' || currentUser?.role === 'manager') ? 'adminScreen' : 'mainScreen');
     showScreen('detailScreen');
   } catch(e) { showToast('載入失敗', 'error'); }
   showLoading(false);
@@ -1327,7 +1330,7 @@ async function deleteOrder(orderId) {
     await fetch(`${SUPABASE_URL}/rest/v1/order_items?order_id=eq.${orderId}`, { method: 'DELETE', headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } });
     await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${orderId}`, { method: 'DELETE', headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } });
     showToast('訂單已刪除', 'success');
-    showScreen(currentUser?.role === 'admin' ? 'adminScreen' : 'mainScreen');
+    showScreen((currentUser?.role === 'admin' || currentUser?.role === 'manager') ? 'adminScreen' : 'mainScreen');
     loadAdminOrders(); loadMyOrders();
   } catch(e) { showToast('刪除失敗', 'error'); }
   showLoading(false);
