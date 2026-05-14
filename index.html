@@ -729,7 +729,7 @@ async function renderDropdownFromLocal(q) {
   const dd = document.getElementById('productDropdown');
   const inputEl = document.getElementById('productSearch');
   const lower = q.toLowerCase();
-  const filtered = allProducts.filter(p => p.product_name?.toLowerCase().includes(lower) || p.sku?.toLowerCase().includes(lower)).slice(0, 50);
+  const filtered = allProducts.filter(p => p.product_name?.toLowerCase().includes(lower) || p.sku?.toLowerCase().includes(lower)).slice(0, 100);
   if (!filtered.length) { dd.innerHTML = `<div class="product-option"><div class="pname">找不到「${escHtml(q)}」相關商品</div></div>`; positionDropdown(inputEl, dd); dd.style.display = 'block'; return; }
   renderDropdown(filtered, null, inputEl);
   const stockMap = await ibizaGetStock(filtered.map(p => p.sku));
@@ -1274,7 +1274,7 @@ async function renderEditDropdown(q) {
   const dd = document.getElementById('editProductDropdown');
   const inputEl = document.getElementById('editProductSearch');
   const lower = q.toLowerCase();
-  const filtered = allProducts.filter(p => p.product_name?.toLowerCase().includes(lower) || p.sku?.toLowerCase().includes(lower)).slice(0, 50);
+  const filtered = allProducts.filter(p => p.product_name?.toLowerCase().includes(lower) || p.sku?.toLowerCase().includes(lower)).slice(0, 100);
   if (!filtered.length) { dd.innerHTML = `<div class="product-option"><div class="pname">找不到相關商品</div></div>`; positionDropdown(inputEl, dd); dd.style.display = 'block'; return; }
   renderEditDropdownItems(filtered, null, inputEl, dd);
   const stockMap = await ibizaGetStock(filtered.map(p => p.sku));
@@ -1393,9 +1393,15 @@ function onStockSearch(val) {
   if (!val.trim()) { list.innerHTML = ''; return; }
   stockSearchDebounce2 = setTimeout(async () => {
     const lower = val.toLowerCase();
-    const filtered = allProducts.filter(p =>
-      p.product_name?.toLowerCase().includes(lower) || p.sku?.toLowerCase().includes(lower)
-    ).slice(0, 50);
+    const matched = allProducts.filter(p =>
+  p.product_name?.toLowerCase().includes(lower) ||
+  p.sku?.toLowerCase().includes(lower)
+);
+// 先用靜態庫存排序（有庫存在上），再取前 100 筆
+const filtered = [
+  ...matched.filter(p => (p.stock ?? 0) > 0).sort((a,b) => a.sku.localeCompare(b.sku)),
+  ...matched.filter(p => (p.stock ?? 0) <= 0).sort((a,b) => a.sku.localeCompare(b.sku))
+].slice(0, 100);
     if (!filtered.length) {
       list.innerHTML = `<div style="text-align:center;padding:32px;color:#4A6058;">找不到「${escHtml(val)}」相關商品</div>`;
       return;
