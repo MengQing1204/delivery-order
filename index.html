@@ -294,9 +294,11 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
 
 <!-- MAIN SCREEN -->
 <div class="screen" id="mainScreen">
-  <div class="main-header" style="position:relative;">
-    <button onclick="showScreen('homeScreen')" style="position:absolute;top:16px;left:16px;background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">← 返回</button>
-    <div class="greeting" style="margin-left:60px;">👋 歡迎回來</div>
+  <div class="main-header">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+      <button onclick="showScreen('homeScreen')" style="background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:8px;padding:5px 10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;">← 返回</button>
+      <div class="greeting">👋 歡迎回來</div>
+    </div>
     <div class="name" id="mainHeaderName">載入中...</div>
     <div class="store-tag" id="mainHeaderStore">門市</div>
   </div>
@@ -518,6 +520,7 @@ const sb = {
 // 打招呼語（依時段隨機，全新句子）
 // ════════════════════════════════════════
 const _gr = {
+  // 早上：開店前到中午 (before 12:00)
   morning: [
     '☀️ 早安！今天訂單也請火力全開～',
     '🔥 新的一天開始啦，業績一起衝高高！',
@@ -527,24 +530,27 @@ const _gr = {
     '📦 倉庫準備好了，你們也準備大賣了嗎？',
     '⚡ 今日 KPI 啟動中，加油各位戰士們！'
   ],
+  // 中午：12:00-14:00
   noon: [
-    '✨ 歡迎回來～下午場準備開衝！',
+    '✨ 歡迎回來，午後繼續衝刺！',
     '🎯 中場休息結束，業績繼續推進！',
-    '💪 下午一起努力，把單塞爆吧！',
+    '💪 中午過了，繼續把單塞爆吧！',
     '🔥 戰鬥力恢復完成，準備再收一波訂單！',
     '🚚 後端待命中，前線請放心開賣～',
     '📈 今天的業績還有很大成長空間喔！',
-    '🌤 下午場開始，大家一起撐起今日業績！'
+    '🌤 午後開始，大家一起撐起今日業績！'
   ],
+  // 下午：14:00-18:00
   afternoon: [
     '🌇 快下班了，最後一波衝刺別放棄！',
     '🔥 撐住！今天的業績可能就差這一單！',
     '💥 最後倒數中，能賣的都賣起來！',
-    '🍵 下午茶喝完了，訂單也該繼續進來了～',
+    '🍵 下午茶時間，訂單繼續衝起來！',
     '🚀 下班前再衝一波，今天一起漂亮收尾！',
     '📦 倉庫還撐得住，你們也要撐住啊！',
     '⚡ 最後加速中，今天一起大爆單！'
   ],
+  // 晚上：18:00 以後
   evening: [
     '⭐ 今天辛苦啦！還有力氣再收幾單嗎～',
     '🌙 收攤前最後一搏，說不定還有大單！',
@@ -636,7 +642,7 @@ async function loginWithData(u) {
 
   // 依時段隨機打招呼
   const _h = new Date().getHours();
-  const _p = _h < 11 ? 'morning' : _h < 14 ? 'noon' : _h < 18 ? 'afternoon' : 'evening';
+  const _p = _h < 12 ? 'morning' : _h < 14 ? 'noon' : _h < 18 ? 'afternoon' : 'evening';
   const _pool = _gr[_p];
   const _g = _pool[Math.floor(Math.random() * _pool.length)];
   document.getElementById('headerName').textContent = _g + u.name;
@@ -668,12 +674,12 @@ async function ibizaGetStock(skus) {
 // 商品自動同步
 // ════════════════════════════════════════
 async function syncProducts() {
-  if (!confirm('確定要同步商品清單？約需 10-30 秒。')) return;
-  showToast('同步中，請稍候...', '');
+  if (!confirm('確定要同步商品資料？這將更新所有 ibiza F01 倉的商品庫存，約需 30 秒。')) return;
+  showLoading(true);
   try {
-    const res = await fetch('https://tlrfxsmrjueaqiectroe.supabase.co/functions/v1/sync-products', {
+    const res = await fetch(SYNC_PRODUCTS_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json', apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
     });
     const data = await res.json();
     if (data.success) {
@@ -682,9 +688,8 @@ async function syncProducts() {
     } else {
       showToast('同步失敗：' + (data.error || '未知錯誤'), 'error');
     }
-  } catch(e) {
-    showToast('同步失敗：' + e.message, 'error');
-  }
+  } catch(e) { showToast('同步失敗：' + e.message, 'error'); }
+  showLoading(false);
 }
 
 async function loadProducts() {
@@ -729,9 +734,15 @@ async function renderDropdownFromLocal(q) {
   const dd = document.getElementById('productDropdown');
   const inputEl = document.getElementById('productSearch');
   const lower = q.toLowerCase();
-  const filtered = allProducts.filter(p => p.product_name?.toLowerCase().includes(lower) || p.sku?.toLowerCase().includes(lower)).slice(0, 100);
+  const matched = allProducts.filter(p => p.product_name?.toLowerCase().includes(lower) || p.sku?.toLowerCase().includes(lower));
+  // 先用靜態庫存排序（有庫存在上按品號），再取前 100 筆
+  const filtered = [
+    ...matched.filter(p => (p.stock ?? 0) > 0).sort((a,b) => a.sku.localeCompare(b.sku)),
+    ...matched.filter(p => (p.stock ?? 0) <= 0).sort((a,b) => a.sku.localeCompare(b.sku))
+  ].slice(0, 100);
   if (!filtered.length) { dd.innerHTML = `<div class="product-option"><div class="pname">找不到「${escHtml(q)}」相關商品</div></div>`; positionDropdown(inputEl, dd); dd.style.display = 'block'; return; }
-  renderDropdown(filtered, null, inputEl);
+  const staticMap = Object.fromEntries(filtered.map(p => [p.sku, p.stock ?? 0]));
+  renderDropdown(filtered, staticMap, inputEl);
   const stockMap = await ibizaGetStock(filtered.map(p => p.sku));
   if (stockMap && dd.style.display !== 'none') renderDropdown(filtered, stockMap, inputEl);
 }
@@ -1274,9 +1285,14 @@ async function renderEditDropdown(q) {
   const dd = document.getElementById('editProductDropdown');
   const inputEl = document.getElementById('editProductSearch');
   const lower = q.toLowerCase();
-  const filtered = allProducts.filter(p => p.product_name?.toLowerCase().includes(lower) || p.sku?.toLowerCase().includes(lower)).slice(0, 100);
+  const matched = allProducts.filter(p => p.product_name?.toLowerCase().includes(lower) || p.sku?.toLowerCase().includes(lower));
+  const filtered = [
+    ...matched.filter(p => (p.stock ?? 0) > 0).sort((a,b) => a.sku.localeCompare(b.sku)),
+    ...matched.filter(p => (p.stock ?? 0) <= 0).sort((a,b) => a.sku.localeCompare(b.sku))
+  ].slice(0, 100);
   if (!filtered.length) { dd.innerHTML = `<div class="product-option"><div class="pname">找不到相關商品</div></div>`; positionDropdown(inputEl, dd); dd.style.display = 'block'; return; }
-  renderEditDropdownItems(filtered, null, inputEl, dd);
+  const staticMap = Object.fromEntries(filtered.map(p => [p.sku, p.stock ?? 0]));
+  renderEditDropdownItems(filtered, staticMap, inputEl, dd);
   const stockMap = await ibizaGetStock(filtered.map(p => p.sku));
   if (stockMap && dd.style.display !== 'none') renderEditDropdownItems(filtered, stockMap, inputEl, dd);
 }
@@ -1393,15 +1409,13 @@ function onStockSearch(val) {
   if (!val.trim()) { list.innerHTML = ''; return; }
   stockSearchDebounce2 = setTimeout(async () => {
     const lower = val.toLowerCase();
-    const matched = allProducts.filter(p =>
-  p.product_name?.toLowerCase().includes(lower) ||
-  p.sku?.toLowerCase().includes(lower)
-);
-// 先用靜態庫存排序（有庫存在上），再取前 100 筆
-const filtered = [
-  ...matched.filter(p => (p.stock ?? 0) > 0).sort((a,b) => a.sku.localeCompare(b.sku)),
-  ...matched.filter(p => (p.stock ?? 0) <= 0).sort((a,b) => a.sku.localeCompare(b.sku))
-].slice(0, 100);
+    const matched2 = allProducts.filter(p =>
+      p.product_name?.toLowerCase().includes(lower) || p.sku?.toLowerCase().includes(lower)
+    );
+    const filtered = [
+      ...matched2.filter(p => (p.stock ?? 0) > 0).sort((a,b) => a.sku.localeCompare(b.sku)),
+      ...matched2.filter(p => (p.stock ?? 0) <= 0).sort((a,b) => a.sku.localeCompare(b.sku))
+    ].slice(0, 100);
     if (!filtered.length) {
       list.innerHTML = `<div style="text-align:center;padding:32px;color:#4A6058;">找不到「${escHtml(val)}」相關商品</div>`;
       return;
