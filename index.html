@@ -260,6 +260,14 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
       </div>
       <div style="font-size:18px;color:#4A6058;">›</div>
     </div>
+    <div onclick="showScreen('salesLogScreen');initSalesLog();" style="background:#fff;border-radius:10px;padding:12px 16px;box-shadow:0 2px 12px rgba(0,0,0,0.08);cursor:pointer;display:flex;align-items:center;gap:12px;">
+      <div style="width:36px;height:36px;background:#e0e8f8;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">📊</div>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:700;color:#1a1a18;">業績補登</div>
+        <div style="font-size:11px;color:#4A6058;">補登 POS 交易業績紀錄</div>
+      </div>
+      <div style="font-size:18px;color:#4A6058;">›</div>
+    </div>
   </div>
 </div>
 
@@ -292,6 +300,70 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
     <div style="font-size:16px;font-weight:700;">即將開放</div>
     <div style="font-size:13px;">功能建置中，敬請期待</div>
   </div>
+</div>
+
+
+<!-- SALES LOG SCREEN -->
+<div class="screen" id="salesLogScreen">
+  <div class="topbar">
+    <button class="topbar-back" onclick="showScreen('homeScreen')">← 返回</button>
+    <div class="topbar-title">📊 業績補登</div>
+  </div>
+  <div class="form-body">
+    <div class="form-section">
+      <div class="form-section-title">📝 補登資訊</div>
+      <div class="form-row"><label class="form-label">門市 <span class="req">*</span></label><select class="form-select" id="slStore" onchange="onSlStoreChange(this.value)"><option value="">請選擇門市</option></select></div>
+      <div class="form-row"><label class="form-label">POS 交易日期 <span class="req">*</span></label><input class="form-input" id="slDate" type="date" style="cursor:pointer;"></div>
+      <div class="form-row"><label class="form-label">機號 <span class="req">*</span></label><select class="form-select" id="slTerminal"><option value="001">001</option></select></div>
+      <div class="form-row"><label class="form-label">POS 交易序號 <span class="req">*</span></label><input class="form-input" id="slPosNo" placeholder="請輸入 POS 交易序號" inputmode="numeric"></div>
+    </div>
+    <div class="form-section">
+      <div class="form-section-title">🛍 商品</div>
+      <div class="form-row">
+        <label class="form-label">快捷分類</label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+          <button type="button" onclick="slQuickSearch('拼圖')" style="padding:8px 16px;background:var(--accent-light);border:1.5px solid var(--accent);border-radius:20px;font-size:14px;font-weight:600;color:var(--accent);cursor:pointer;font-family:inherit;">🧩 拼圖</button>
+          <button type="button" onclick="slQuickSearch('寢具')" style="padding:8px 16px;background:var(--accent-light);border:1.5px solid var(--accent);border-radius:20px;font-size:14px;font-weight:600;color:var(--accent);cursor:pointer;font-family:inherit;">🛏 寢具</button>
+          <button type="button" onclick="slQuickSearch('晶瓷畫')" style="padding:8px 16px;background:var(--accent-light);border:1.5px solid var(--accent);border-radius:20px;font-size:14px;font-weight:600;color:var(--accent);cursor:pointer;font-family:inherit;">🖼 晶瓷畫</button>
+          <button type="button" onclick="slQuickSearch('毯')" style="padding:8px 16px;background:var(--accent-light);border:1.5px solid var(--accent);border-radius:20px;font-size:14px;font-weight:600;color:var(--accent);cursor:pointer;font-family:inherit;">🧶 毯</button>
+        </div>
+      </div>
+      <div class="form-row">
+        <label class="form-label">搜尋商品</label>
+        <div class="product-search-wrap" id="slProductSearchWrap">
+          <span class="product-search-icon">🔍</span>
+          <input class="product-search-input" id="slProductSearch" placeholder="輸入品名或品號搜尋..." oninput="onSlProductSearch(this.value)" autocomplete="off">
+          <div class="product-dropdown" id="slProductDropdown"></div>
+        </div>
+        <div id="slSelectedProduct" style="margin-top:10px;"></div>
+      </div>
+    </div>
+    <div class="form-section">
+      <div class="form-section-title">💰 金額與備註</div>
+      <div class="form-row"><label class="form-label">金額 <span class="req">*</span></label><input class="form-input" id="slAmount" placeholder="請輸入金額" inputmode="numeric"></div>
+      <div class="form-row">
+        <label class="form-label">備註</label>
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <button type="button" onclick="document.getElementById('slNote').value='現場已取補登';" style="padding:6px 14px;background:var(--success-light);border:1.5px solid var(--success);border-radius:20px;font-size:13px;font-weight:600;color:var(--success);cursor:pointer;font-family:inherit;">✓ 現場已取補登</button>
+        </div>
+        <textarea class="form-textarea" id="slNote" placeholder="可點上方快捷或自行填寫" style="min-height:60px;"></textarea>
+      </div>
+    </div>
+  </div>
+  <div class="form-footer">
+    <button onclick="openSalesLogList()" style="width:100%;padding:12px;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;font-weight:600;color:var(--text2);cursor:pointer;font-family:inherit;margin-bottom:10px;">📋 查看補登紀錄</button>
+    <button class="btn-submit" onclick="submitSalesLog()">確認補登</button>
+  </div>
+</div>
+
+<!-- SALES LOG LIST SCREEN -->
+<div class="screen" id="salesLogListScreen">
+  <div class="topbar">
+    <button class="topbar-back" onclick="showScreen('salesLogScreen')">← 返回</button>
+    <div class="topbar-title">📋 補登紀錄</div>
+    <button class="topbar-action" id="slExportBtn" onclick="exportSalesLogCSV()" style="display:none;">匯出CSV</button>
+  </div>
+  <div class="orders-list" id="salesLogList"></div>
 </div>
 
 <!-- MAIN SCREEN -->
@@ -2000,6 +2072,183 @@ async function promptTracking(orderId) {
   } catch(e) { showToast('更新失敗', 'error'); }
   showLoading(false);
 }
+
+// ═══════════════════════════════════════════
+// 業績補登功能
+// ═══════════════════════════════════════════
+let slSelectedItem = null;
+let slSearchDebounce = null;
+
+function initSalesLog() {
+  slSelectedItem = null;
+  // 清空欄位
+  ['slPosNo','slAmount','slNote','slProductSearch'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  document.getElementById('slSelectedProduct').innerHTML = '';
+  // 預設今天日期
+  const today = new Date();
+  const dateStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  document.getElementById('slDate').value = dateStr;
+  // 載入門市下拉
+  loadSlStores();
+  // 機號預設
+  const termEl = document.getElementById('slTerminal');
+  if (termEl) termEl.innerHTML = '<option value="001">001</option>';
+}
+
+async function loadSlStores() {
+  try {
+    const stores = await sb.get('stores', '?is_active=eq.true&order=name.asc');
+    const sel = document.getElementById('slStore');
+    if (!sel || !stores?.length) return;
+    sel.innerHTML = '<option value="">請選擇門市</option>' +
+      stores.map(s => `<option value="${s.id}" data-name="${escHtml(s.name)}">${escHtml(s.name)}</option>`).join('');
+  } catch(e) { console.log('loadSlStores error', e); }
+}
+
+function onSlStoreChange(storeId) {
+  const sel = document.getElementById('slStore');
+  const opt = sel?.querySelector(`option[value="${storeId}"]`);
+  const storeName = opt?.getAttribute('data-name') || '';
+  const terminals = STORE_TERMINALS[storeName] || DEFAULT_TERMINALS;
+  const termEl = document.getElementById('slTerminal');
+  if (termEl) {
+    termEl.innerHTML = terminals.map(t => `<option value="${t}">${t}</option>`).join('');
+    termEl.disabled = terminals.length <= 1;
+  }
+}
+
+function slQuickSearch(keyword) {
+  const input = document.getElementById('slProductSearch');
+  if (input) { input.value = keyword; onSlProductSearch(keyword); }
+}
+
+function onSlProductSearch(val) {
+  clearTimeout(slSearchDebounce);
+  const dd = document.getElementById('slProductDropdown');
+  if (!val.trim()) { dd.style.display = 'none'; return; }
+  slSearchDebounce = setTimeout(() => slRenderDropdown(val.trim()), 200);
+}
+
+function slRenderDropdown(q) {
+  const dd = document.getElementById('slProductDropdown');
+  const inputEl = document.getElementById('slProductSearch');
+  const lower = q.toLowerCase();
+  const matched = allProducts.filter(p => p.product_name?.toLowerCase().includes(lower) || p.sku?.toLowerCase().includes(lower));
+  const filtered = matched.sort((a,b) => a.sku.localeCompare(b.sku)).slice(0, 50);
+  if (!filtered.length) { dd.innerHTML = `<div class="product-option"><div class="pname">找不到「${escHtml(q)}」相關商品</div></div>`; positionDropdown(inputEl, dd); dd.style.display = 'block'; return; }
+  dd.innerHTML = filtered.map(p => `<div class="product-option" onclick="slSelectProduct('${escHtml(p.sku)}','${escHtml(p.product_name)}')">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+      <div style="min-width:0;flex:1;"><div class="pname" style="white-space:normal;line-height:1.4;">${escHtml(p.product_name)}</div><div class="pcode">${p.sku}</div></div>
+    </div></div>`).join('');
+  positionDropdown(inputEl, dd); dd.style.display = 'block';
+}
+
+function slSelectProduct(sku, name) {
+  slSelectedItem = { sku, name };
+  document.getElementById('slProductSearch').value = '';
+  document.getElementById('slProductDropdown').style.display = 'none';
+  document.getElementById('slSelectedProduct').innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--accent-light);border-radius:10px;border:1.5px solid var(--accent);">
+      <div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:600;">${escHtml(name)}</div><div style="font-size:12px;color:var(--text2);font-family:'DM Mono',monospace;">${escHtml(sku)}</div></div>
+      <button onclick="slClearProduct()" style="background:none;border:none;color:var(--danger);font-size:20px;cursor:pointer;">✕</button>
+    </div>`;
+}
+
+function slClearProduct() {
+  slSelectedItem = null;
+  document.getElementById('slSelectedProduct').innerHTML = '';
+}
+
+async function submitSalesLog() {
+  const storeId = document.getElementById('slStore').value;
+  const date = document.getElementById('slDate').value;
+  const terminal = document.getElementById('slTerminal').value;
+  const posNo = document.getElementById('slPosNo').value.trim();
+  const amount = document.getElementById('slAmount').value.trim();
+  const note = document.getElementById('slNote').value.trim();
+
+  if (!storeId) { showToast('請選擇門市', 'error'); return; }
+  if (!date) { showToast('請選擇交易日期', 'error'); return; }
+  if (!posNo) { showToast('請輸入 POS 序號', 'error'); return; }
+  if (!slSelectedItem) { showToast('請選擇商品', 'error'); return; }
+  if (!amount || isNaN(amount)) { showToast('請輸入正確金額', 'error'); return; }
+
+  showLoading(true);
+  try {
+    const row = {
+      staff_id: currentUser.id,
+      store_id: storeId,
+      transaction_date: date,
+      pos_terminal: terminal,
+      pos_no: posNo,
+      sku: slSelectedItem.sku,
+      product_name: slSelectedItem.name,
+      amount: parseInt(amount),
+      note: note || null
+    };
+    const result = await sb.post('sales_logs', row);
+    if (!result || result.error) throw new Error(result?.message || '補登失敗');
+    showLoading(false);
+    showToast('✅ 業績補登成功！', 'success');
+    initSalesLog();
+    setTimeout(() => openSalesLogList(), 600);
+  } catch(e) { showLoading(false); showToast('補登失敗：' + e.message, 'error'); }
+}
+
+let slAllLogs = [];
+
+async function openSalesLogList() {
+  showScreen('salesLogListScreen');
+  showLoading(true);
+  try {
+    const role = currentUser?.role;
+    let filter = '';
+    if (role === 'admin') {
+      filter = ''; // 全部
+    } else if (role === 'manager') {
+      const storeIds = await getManagerStoreIds(currentUser.id);
+      if (storeIds.length) {
+        const inF = storeIds.map(id => `"${id}"`).join(',');
+        filter = `&store_id=in.(${inF})`;
+      } else { filter = `&staff_id=eq.${currentUser.id}`; }
+    } else {
+      filter = `&staff_id=eq.${currentUser.id}`;
+    }
+    const logs = await sb.get('sales_logs', `?order=created_at.desc&limit=500${filter}&select=*,staff(name),stores(name)`);
+    slAllLogs = logs || [];
+    renderSalesLogList();
+    // 店長/督導/管理員顯示匯出按鈕
+    const exportBtn = document.getElementById('slExportBtn');
+    if (exportBtn) exportBtn.style.display = (role === 'admin' || role === 'manager') ? '' : 'none';
+  } catch(e) { showToast('載入失敗', 'error'); }
+  showLoading(false);
+}
+
+function renderSalesLogList() {
+  const el = document.getElementById('salesLogList');
+  if (!slAllLogs.length) { el.innerHTML = `<div class="empty-state"><div class="icon">📋</div><p>尚無補登紀錄</p></div>`; return; }
+  el.innerHTML = slAllLogs.map(o => `
+    <div class="order-card submitted" style="cursor:default;">
+      <div class="order-card-top"><div class="order-no">${o.transaction_date} · 機號${escHtml(o.pos_terminal||'001')}</div><span class="status-badge submitted">$${o.amount}</span></div>
+      <div class="order-receiver">${escHtml(o.product_name||'')}</div>
+      <div class="order-meta">POS序號：${escHtml(o.pos_no)} · ${escHtml(o.stores?.name||'')}</div>
+      <div class="order-items-preview">業務：${escHtml(o.staff?.name||'')}${o.note ? ' · '+escHtml(o.note) : ''}</div>
+    </div>`).join('');
+}
+
+function exportSalesLogCSV() {
+  if (!slAllLogs.length) { showToast('沒有資料可匯出'); return; }
+  const rows = [['交易日期','門市','業務員','機號','POS序號','商品','品號','金額','備註','登記時間']];
+  slAllLogs.forEach(o => {
+    rows.push([o.transaction_date, o.stores?.name||'', o.staff?.name||'', o.pos_terminal||'', o.pos_no||'', o.product_name||'', o.sku||'', o.amount||'', o.note||'', formatDate(o.created_at)]);
+  });
+  const csv = '\uFEFF' + rows.map(r => r.map(c => `"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = `業績補登紀錄_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+
 
 // ═══════════════════════════════════════════
 // 多選功能
