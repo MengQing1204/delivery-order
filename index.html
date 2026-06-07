@@ -313,7 +313,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
     <div class="form-section">
       <div class="form-section-title">📝 補登資訊</div>
       <div class="form-row"><label class="form-label">門市 <span class="req">*</span></label><select class="form-select" id="slStore" onchange="onSlStoreChange(this.value)"><option value="">請選擇門市</option></select></div>
-      <div class="form-row"><label class="form-label">POS 交易日期 <span class="req">*</span></label><input class="form-input" id="slDate" type="date" style="cursor:pointer;"></div>
+      <div class="form-row"><label class="form-label">POS 交易日期 <span class="req">*</span></label><input class="form-input" id="slDate" type="date" style="cursor:pointer;max-width:100%;box-sizing:border-box;-webkit-appearance:none;"></div>
       <div class="form-row"><label class="form-label">機號 <span class="req">*</span></label><select class="form-select" id="slTerminal"><option value="001">001</option></select></div>
       <div class="form-row"><label class="form-label">POS 交易序號 <span class="req">*</span></label><input class="form-input" id="slPosNo" placeholder="請輸入 POS 交易序號" inputmode="numeric"></div>
     </div>
@@ -323,7 +323,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
         <label class="form-label">快捷分類</label>
         <div style="display:flex;flex-wrap:wrap;gap:8px;">
           <button type="button" onclick="slQuickSearch('拼圖')" style="padding:8px 16px;background:var(--accent-light);border:1.5px solid var(--accent);border-radius:20px;font-size:14px;font-weight:600;color:var(--accent);cursor:pointer;font-family:inherit;">🧩 拼圖</button>
-          <button type="button" onclick="slQuickSearch('寢具')" style="padding:8px 16px;background:var(--accent-light);border:1.5px solid var(--accent);border-radius:20px;font-size:14px;font-weight:600;color:var(--accent);cursor:pointer;font-family:inherit;">🛏 寢具</button>
+          <button type="button" onclick="slQuickSearch('A8300')" style="padding:8px 16px;background:var(--accent-light);border:1.5px solid var(--accent);border-radius:20px;font-size:14px;font-weight:600;color:var(--accent);cursor:pointer;font-family:inherit;">🛏 寢具</button>
           <button type="button" onclick="slQuickSearch('晶瓷畫')" style="padding:8px 16px;background:var(--accent-light);border:1.5px solid var(--accent);border-radius:20px;font-size:14px;font-weight:600;color:var(--accent);cursor:pointer;font-family:inherit;">🖼 晶瓷畫</button>
           <button type="button" onclick="slQuickSearch('毯')" style="padding:8px 16px;background:var(--accent-light);border:1.5px solid var(--accent);border-radius:20px;font-size:14px;font-weight:600;color:var(--accent);cursor:pointer;font-family:inherit;">🧶 毯</button>
         </div>
@@ -340,6 +340,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
     </div>
     <div class="form-section">
       <div class="form-section-title">💰 金額與備註</div>
+      <div class="form-row"><label class="form-label">數量 <span class="req">*</span></label><input class="form-input" id="slQty" placeholder="請輸入數量" inputmode="numeric" value="1"></div>
       <div class="form-row"><label class="form-label">金額 <span class="req">*</span></label><input class="form-input" id="slAmount" placeholder="請輸入金額" inputmode="numeric"></div>
       <div class="form-row">
         <label class="form-label">備註</label>
@@ -2083,6 +2084,7 @@ function initSalesLog() {
   slSelectedItem = null;
   // 清空欄位
   ['slPosNo','slAmount','slNote','slProductSearch'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  const _slQty = document.getElementById('slQty'); if (_slQty) _slQty.value = '1';
   document.getElementById('slSelectedProduct').innerHTML = '';
   // 預設今天日期
   const today = new Date();
@@ -2164,6 +2166,7 @@ async function submitSalesLog() {
   const date = document.getElementById('slDate').value;
   const terminal = document.getElementById('slTerminal').value;
   const posNo = document.getElementById('slPosNo').value.trim();
+  const qty = document.getElementById('slQty').value.trim();
   const amount = document.getElementById('slAmount').value.trim();
   const note = document.getElementById('slNote').value.trim();
 
@@ -2171,6 +2174,7 @@ async function submitSalesLog() {
   if (!date) { showToast('請選擇交易日期', 'error'); return; }
   if (!posNo) { showToast('請輸入 POS 序號', 'error'); return; }
   if (!slSelectedItem) { showToast('請選擇商品', 'error'); return; }
+  if (!qty || isNaN(qty) || parseInt(qty) < 1) { showToast('請輸入正確數量', 'error'); return; }
   if (!amount || isNaN(amount)) { showToast('請輸入正確金額', 'error'); return; }
 
   showLoading(true);
@@ -2183,6 +2187,7 @@ async function submitSalesLog() {
       pos_no: posNo,
       sku: slSelectedItem.sku,
       product_name: slSelectedItem.name,
+      quantity: parseInt(qty),
       amount: parseInt(amount),
       note: note || null
     };
@@ -2230,7 +2235,7 @@ function renderSalesLogList() {
   el.innerHTML = slAllLogs.map(o => `
     <div class="order-card submitted" style="cursor:default;">
       <div class="order-card-top"><div class="order-no">${o.transaction_date} · 機號${escHtml(o.pos_terminal||'001')}</div><span class="status-badge submitted">$${o.amount}</span></div>
-      <div class="order-receiver">${escHtml(o.product_name||'')}</div>
+      <div class="order-receiver">${escHtml(o.product_name||'')} ${o.quantity ? '× '+o.quantity : ''}</div>
       <div class="order-meta">POS序號：${escHtml(o.pos_no)} · ${escHtml(o.stores?.name||'')}</div>
       <div class="order-items-preview">業務：${escHtml(o.staff?.name||'')}${o.note ? ' · '+escHtml(o.note) : ''}</div>
     </div>`).join('');
@@ -2238,9 +2243,9 @@ function renderSalesLogList() {
 
 function exportSalesLogCSV() {
   if (!slAllLogs.length) { showToast('沒有資料可匯出'); return; }
-  const rows = [['交易日期','門市','業務員','機號','POS序號','商品','品號','金額','備註','登記時間']];
+  const rows = [['交易日期','門市','業務員','機號','POS序號','商品','品號','數量','金額','備註','登記時間']];
   slAllLogs.forEach(o => {
-    rows.push([o.transaction_date, o.stores?.name||'', o.staff?.name||'', o.pos_terminal||'', o.pos_no||'', o.product_name||'', o.sku||'', o.amount||'', o.note||'', formatDate(o.created_at)]);
+    rows.push([o.transaction_date, o.stores?.name||'', o.staff?.name||'', o.pos_terminal||'', o.pos_no||'', o.product_name||'', o.sku||'', o.quantity||'', o.amount||'', o.note||'', formatDate(o.created_at)]);
   });
   const csv = '\uFEFF' + rows.map(r => r.map(c => `"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\n');
   const a = document.createElement('a');
