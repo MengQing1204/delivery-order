@@ -364,6 +364,16 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
     <div class="topbar-title">📋 補登紀錄</div>
     <button class="topbar-action" id="slExportBtn" onclick="exportSalesLogCSV()" style="display:none;">匯出CSV</button>
   </div>
+  <!-- 管理員/店長篩選器 -->
+  <div id="slFilterBar" style="display:none;padding:10px 14px;background:var(--surface2);border-bottom:1px solid var(--border);">
+    <div style="display:flex;gap:8px;margin-bottom:8px;">
+      <select id="slFilterStore" onchange="applySlFilter()" style="flex:1;border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;background:var(--surface);">
+        <option value="">全部門市</option>
+      </select>
+      <input type="date" id="slFilterDate" onchange="applySlFilter()" style="flex:1;border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;background:var(--surface);max-width:100%;box-sizing:border-box;">
+    </div>
+    <button onclick="clearSlFilter()" style="width:100%;padding:6px;background:var(--surface);border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--text2);cursor:pointer;font-family:inherit;">清除篩選</button>
+  </div>
   <div class="orders-list" id="salesLogList"></div>
 </div>
 
@@ -2079,9 +2089,11 @@ async function promptTracking(orderId) {
 // ═══════════════════════════════════════════
 let slSelectedItem = null;
 let slSearchDebounce = null;
+let editSlId = null;
 
 function initSalesLog() {
   slSelectedItem = null;
+  editSlId = null;
   // 清空欄位
   ['slPosNo','slAmount','slNote','slProductSearch'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   const _slQty = document.getElementById('slQty'); if (_slQty) _slQty.value = '1';
@@ -2191,16 +2203,32 @@ async function submitSalesLog() {
       amount: parseInt(amount),
       note: note || null
     };
-    const result = await sb.post('sales_logs', row);
-    if (!result || result.error) throw new Error(result?.message || '補登失敗');
-    showLoading(false);
-    showToast('✅ 業績補登成功！', 'success');
+    if (editSlId) {
+      const result = await sb.patch('sales_logs', editSlId, row);
+      if (result && result.code) throw new Error(result.message || '更新失敗');
+      editSlId = null;
+      showLoading(false);
+      showToast('✅ 補登已更新！', 'success');
+    } else {
+      const result = await sb.post('sales_logs', row);
+      if (!result || result.error) throw new Error(result?.message || '補登失敗');
+      showLoading(false);
+      showToast('✅ 業績補登成功！', 'success');
+    }
     initSalesLog();
     setTimeout(() => openSalesLogList(), 600);
   } catch(e) { showLoading(false); showToast('補登失敗：' + e.message, 'error'); }
 }
 
 let slAllLogs = [];
+let slFilteredLogs = [];
+
+function isSlToday(createdAt) {
+  if (!createdAt) return false;
+  const d = new Date(createdAt);
+  const now = new Date();
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+}
 
 async function openSalesLogList() {
   showScreen('salesLogListScreen');
@@ -2209,7 +2237,7 @@ async function openSalesLogList() {
     const role = currentUser?.role;
     let filter = '';
     if (role === 'admin') {
-      filter = ''; // 全部
+      filter = '';
     } else if (role === 'manager') {
       const storeIds = await getManagerStoreIds(currentUser.id);
       if (storeIds.length) {
@@ -2221,25 +2249,125 @@ async function openSalesLogList() {
     }
     const logs = await sb.get('sales_logs', `?order=created_at.desc&limit=500${filter}&select=*,staff(name),stores(name)`);
     slAllLogs = logs || [];
-    renderSalesLogList();
-    // 店長/督導/管理員顯示匯出按鈕
+    slFilteredLogs = slAllLogs;
+    // 管理員/店長：顯示篩選器 + 匯出
+    const isManagerUp = (role === 'admin' || role === 'manager');
+    const filterBar = document.getElementById('slFilterBar');
+    if (filterBar) filterBar.style.display = isManagerUp ? 'block' : 'none';
     const exportBtn = document.getElementById('slExportBtn');
-    if (exportBtn) exportBtn.style.display = (role === 'admin' || role === 'manager') ? '' : 'none';
+    if (exportBtn) exportBtn.style.display = isManagerUp ? '' : 'none';
+    if (isManagerUp) loadSlFilterStores();
+    renderSalesLogList();
   } catch(e) { showToast('載入失敗', 'error'); }
   showLoading(false);
 }
 
+function loadSlFilterStores() {
+  const sel = document.getElementById('slFilterStore');
+  if (!sel) return;
+  const stores = [...new Map(slAllLogs.filter(o=>o.stores?.name).map(o=>[o.store_id, o.stores.name])).entries()];
+  sel.innerHTML = '<option value="">全部門市</option>' + stores.map(([id,name])=>`<option value="${id}">${escHtml(name)}</option>`).join('');
+}
+
+function applySlFilter() {
+  const storeId = document.getElementById('slFilterStore')?.value || '';
+  const date = document.getElementById('slFilterDate')?.value || '';
+  slFilteredLogs = slAllLogs.filter(o => {
+    if (storeId && o.store_id !== storeId) return false;
+    if (date && o.transaction_date !== date) return false;
+    return true;
+  });
+  renderSalesLogList();
+}
+
+function clearSlFilter() {
+  const s = document.getElementById('slFilterStore'); if (s) s.value = '';
+  const d = document.getElementById('slFilterDate'); if (d) d.value = '';
+  slFilteredLogs = slAllLogs;
+  renderSalesLogList();
+}
+
 function renderSalesLogList() {
   const el = document.getElementById('salesLogList');
-  if (!slAllLogs.length) { el.innerHTML = `<div class="empty-state"><div class="icon">📋</div><p>尚無補登紀錄</p></div>`; return; }
-  el.innerHTML = slAllLogs.map(o => `
-    <div class="order-card submitted" style="cursor:default;">
-      <div class="order-card-top"><div class="order-no">${o.transaction_date} · 機號${escHtml(o.pos_terminal||'001')}</div><span class="status-badge submitted">$${o.amount}</span></div>
+  const list = slFilteredLogs;
+  if (!list.length) { el.innerHTML = `<div class="empty-state"><div class="icon">📋</div><p>尚無補登紀錄</p></div>`; return; }
+  const isAdmin = currentUser?.role === 'admin';
+  const role = currentUser?.role;
+  // 管理員顯示總金額統計
+  let summary = '';
+  if (role === 'admin' || role === 'manager') {
+    const total = list.reduce((s,o)=>s+(o.amount||0),0);
+    const cnt = list.length;
+    summary = `<div style="padding:10px 14px;background:var(--accent-light);border-radius:10px;margin-bottom:10px;font-size:14px;font-weight:600;color:var(--accent2);">共 ${cnt} 筆 · 總金額 $${total.toLocaleString()}</div>`;
+  }
+  el.innerHTML = summary + list.map(o => {
+    const done = o.status === 'done';
+    const canEdit = isSlToday(o.created_at) && (isAdmin || o.staff_id === currentUser?.id);
+    // 綠色打勾提示（已完成）
+    const doneBadge = done ? `<span style="display:inline-flex;align-items:center;gap:3px;background:var(--success-light);color:var(--success);padding:3px 8px;border-radius:20px;font-size:11px;font-weight:700;">✅ 已完成</span>` : `<span class="status-badge submitted">$${o.amount}</span>`;
+    // 管理員的狀態變更按鈕
+    const adminStatusBtn = isAdmin ? `
+      <button onclick="event.stopPropagation();toggleSlStatus('${o.id}','${done?'pending':'done'}')" style="margin-top:8px;padding:6px 12px;background:${done?'var(--surface2)':'var(--success)'};color:${done?'var(--text2)':'#fff'};border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">${done?'↩ 改回待處理':'✓ 標記已完成補登'}</button>` : '';
+    // 業務/管理員當日可取消修改
+    const editBtns = canEdit ? `
+      <div style="display:flex;gap:6px;margin-top:8px;">
+        <button onclick="event.stopPropagation();editSalesLog('${o.id}')" style="padding:6px 12px;background:var(--accent-light);color:var(--accent);border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">✏️ 修改</button>
+        <button onclick="event.stopPropagation();cancelSalesLog('${o.id}')" style="padding:6px 12px;background:var(--danger-light);color:var(--danger);border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🗑️ 取消</button>
+      </div>` : '';
+    return `
+    <div class="order-card ${done?'shipped':'submitted'}" style="cursor:default;">
+      <div class="order-card-top"><div class="order-no">${o.transaction_date} · 機號${escHtml(o.pos_terminal||'001')}</div>${doneBadge}</div>
       <div class="order-receiver">${escHtml(o.product_name||'')} ${o.quantity ? '× '+o.quantity : ''}</div>
-      <div class="order-meta">POS序號：${escHtml(o.pos_no)} · ${escHtml(o.stores?.name||'')}</div>
+      <div class="order-meta">POS序號：${escHtml(o.pos_no)} · ${escHtml(o.stores?.name||'')} · $${o.amount}</div>
       <div class="order-items-preview">業務：${escHtml(o.staff?.name||'')}${o.note ? ' · '+escHtml(o.note) : ''}</div>
-    </div>`).join('');
+      ${adminStatusBtn}
+      ${editBtns}
+    </div>`;
+  }).join('');
 }
+
+async function toggleSlStatus(id, newStatus) {
+  showLoading(true);
+  try {
+    await sb.patch('sales_logs', id, { status: newStatus });
+    showToast(newStatus === 'done' ? '✅ 已標記完成' : '已改回待處理', 'success');
+    await openSalesLogList();
+  } catch(e) { showToast('更新失敗', 'error'); }
+  showLoading(false);
+}
+
+async function cancelSalesLog(id) {
+  if (!confirm('確定要取消這筆補登紀錄？')) return;
+  showLoading(true);
+  try {
+    await sb.delete('sales_logs', id);
+    showToast('已取消補登', 'success');
+    await openSalesLogList();
+  } catch(e) { showToast('取消失敗', 'error'); }
+  showLoading(false);
+}
+
+function editSalesLog(id) {
+  const o = slAllLogs.find(x => x.id === id);
+  if (!o) return;
+  editSlId = id;
+  showScreen('salesLogScreen');
+  initSalesLog();
+  // 帶入原資料
+  setTimeout(() => {
+    document.getElementById('slStore').value = o.store_id || '';
+    onSlStoreChange(o.store_id);
+    document.getElementById('slDate').value = o.transaction_date || '';
+    setTimeout(()=>{ document.getElementById('slTerminal').value = o.pos_terminal || '001'; }, 100);
+    document.getElementById('slPosNo').value = o.pos_no || '';
+    document.getElementById('slQty').value = o.quantity || 1;
+    document.getElementById('slAmount').value = o.amount || '';
+    document.getElementById('slNote').value = o.note || '';
+    if (o.sku) slSelectProduct(o.sku, o.product_name);
+  }, 200);
+  showToast('修改模式：改完按確認補登即可更新', 'success');
+}
+
 
 function exportSalesLogCSV() {
   if (!slAllLogs.length) { showToast('沒有資料可匯出'); return; }
