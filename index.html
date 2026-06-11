@@ -2320,6 +2320,7 @@ function renderSalesLogList() {
       <div class="order-receiver">${escHtml(o.product_name||'')} ${o.quantity ? '× '+o.quantity : ''}</div>
       <div class="order-meta">POS序號：${escHtml(o.pos_no)} · ${escHtml(o.stores?.name||'')} · $${o.amount}</div>
       <div class="order-items-preview">業務：${escHtml(o.staff?.name||'')}${o.note ? ' · '+escHtml(o.note) : ''}</div>
+      <div style="font-size:11px;color:var(--text2);margin-top:4px;">🕐 登記時間：${formatDate(o.created_at)}</div>
       ${adminStatusBtn}
       ${editBtns}
     </div>`;
