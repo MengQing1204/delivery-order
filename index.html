@@ -320,7 +320,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
       <div class="form-row"><label class="form-label">POS 交易序號 <span class="req">*</span></label><input class="form-input" id="slPosNo" placeholder="請輸入 POS 交易序號" inputmode="numeric"></div>
     </div>
     <div class="form-section">
-      <div class="form-section-title">🛍 商品</div>
+      <div class="form-section-title">🛍 商品品項 <span style="font-size:12px;color:var(--text2);font-weight:400;">（最多 10 項，每項各自填數量金額）</span></div>
       <div class="form-row">
         <label class="form-label">快捷分類</label>
         <div style="display:flex;flex-wrap:wrap;gap:8px;">
@@ -331,21 +331,18 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
         </div>
       </div>
       <div class="form-row">
-        <label class="form-label">搜尋商品</label>
+        <label class="form-label">搜尋商品加入</label>
         <div class="product-search-wrap" id="slProductSearchWrap">
           <span class="product-search-icon">🔍</span>
-          <input class="product-search-input" id="slProductSearch" placeholder="輸入品名或品號搜尋..." oninput="onSlProductSearch(this.value)" autocomplete="off">
+          <input class="product-search-input" id="slProductSearch" placeholder="輸入品名或品號搜尋，點選即加入下方清單..." oninput="onSlProductSearch(this.value)" autocomplete="off">
           <div class="product-dropdown" id="slProductDropdown"></div>
         </div>
-        <div id="slSelectedProduct" style="margin-top:10px;"></div>
       </div>
+      <div id="slItemsList" style="margin-top:10px;"></div>
     </div>
     <div class="form-section">
-      <div class="form-section-title">💰 金額與備註</div>
-      <div class="form-row"><label class="form-label">數量 <span class="req">*</span></label><input class="form-input" id="slQty" placeholder="請輸入數量" inputmode="numeric" value="1"></div>
-      <div class="form-row"><label class="form-label">金額 <span class="req">*</span></label><input class="form-input" id="slAmount" placeholder="請輸入金額" inputmode="numeric"></div>
+      <div class="form-section-title">📝 備註</div>
       <div class="form-row">
-        <label class="form-label">備註</label>
         <div style="display:flex;gap:8px;margin-bottom:8px;">
           <button type="button" onclick="document.getElementById('slNote').value='現場已取補登';" style="padding:6px 14px;background:var(--success-light);border:1.5px solid var(--success);border-radius:20px;font-size:13px;font-weight:600;color:var(--success);cursor:pointer;font-family:inherit;">✓ 現場已取補登</button>
         </div>
@@ -2090,24 +2087,19 @@ async function promptTracking(orderId) {
 // ═══════════════════════════════════════════
 // 業績補登功能
 // ═══════════════════════════════════════════
-let slSelectedItem = null;
+let slItems = [];
 let slSearchDebounce = null;
 let editSlId = null;
 
 function initSalesLog() {
-  slSelectedItem = null;
+  slItems = [];
   editSlId = null;
-  // 清空欄位
-  ['slPosNo','slAmount','slNote','slProductSearch'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-  const _slQty = document.getElementById('slQty'); if (_slQty) _slQty.value = '1';
-  document.getElementById('slSelectedProduct').innerHTML = '';
-  // 預設今天日期
+  ['slPosNo','slNote','slProductSearch'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  renderSlItems();
   const today = new Date();
   const dateStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
   document.getElementById('slDate').value = dateStr;
-  // 載入門市下拉
   loadSlStores();
-  // 機號預設
   const termEl = document.getElementById('slTerminal');
   if (termEl) termEl.innerHTML = '<option value="001">001</option>';
 }
@@ -2153,27 +2145,47 @@ function slRenderDropdown(q) {
   const matched = allProducts.filter(p => p.product_name?.toLowerCase().includes(lower) || p.sku?.toLowerCase().includes(lower));
   const filtered = matched.sort((a,b) => a.sku.localeCompare(b.sku)).slice(0, 50);
   if (!filtered.length) { dd.innerHTML = `<div class="product-option"><div class="pname">找不到「${escHtml(q)}」相關商品</div></div>`; positionDropdown(inputEl, dd); dd.style.display = 'block'; return; }
-  dd.innerHTML = filtered.map(p => `<div class="product-option" onclick="slSelectProduct('${escHtml(p.sku)}','${escHtml(p.product_name)}')">
+  dd.innerHTML = filtered.map(p => `<div class="product-option" onclick="slAddItem('${escHtml(p.sku)}','${escHtml(p.product_name)}')">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
       <div style="min-width:0;flex:1;"><div class="pname" style="white-space:normal;line-height:1.4;">${escHtml(p.product_name)}</div><div class="pcode">${p.sku}</div></div>
     </div></div>`).join('');
   positionDropdown(inputEl, dd); dd.style.display = 'block';
 }
 
-function slSelectProduct(sku, name) {
-  slSelectedItem = { sku, name };
+function slAddItem(sku, name) {
   document.getElementById('slProductSearch').value = '';
   document.getElementById('slProductDropdown').style.display = 'none';
-  document.getElementById('slSelectedProduct').innerHTML = `
-    <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--accent-light);border-radius:10px;border:1.5px solid var(--accent);">
-      <div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:600;">${escHtml(name)}</div><div style="font-size:12px;color:var(--text2);font-family:'DM Mono',monospace;">${escHtml(sku)}</div></div>
-      <button onclick="slClearProduct()" style="background:none;border:none;color:var(--danger);font-size:20px;cursor:pointer;">✕</button>
-    </div>`;
+  if (slItems.length >= 10) { showToast('最多只能加入 10 個品項', 'error'); return; }
+  slItems.push({ sku, name, qty: 1, amount: '' });
+  renderSlItems();
 }
 
-function slClearProduct() {
-  slSelectedItem = null;
-  document.getElementById('slSelectedProduct').innerHTML = '';
+function slRemoveItem(idx) {
+  slItems.splice(idx, 1);
+  renderSlItems();
+}
+
+function slUpdateItem(idx, field, val) {
+  if (!slItems[idx]) return;
+  slItems[idx][field] = val;
+}
+
+function renderSlItems() {
+  const el = document.getElementById('slItemsList');
+  if (!el) return;
+  if (!slItems.length) { el.innerHTML = `<div style="padding:16px;text-align:center;color:var(--text2);font-size:13px;background:var(--surface2);border-radius:10px;">尚未加入品項，請從上方搜尋商品加入</div>`; return; }
+  el.innerHTML = slItems.map((it, idx) => `
+    <div style="padding:12px 14px;background:var(--accent-light);border-radius:10px;border:1.5px solid var(--accent);margin-bottom:10px;">
+      <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;">
+        <div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:600;line-height:1.4;">${escHtml(it.name)}</div><div style="font-size:12px;color:var(--text2);font-family:'DM Mono',monospace;">${escHtml(it.sku)}</div></div>
+        <button onclick="slRemoveItem(${idx})" style="background:none;border:none;color:var(--danger);font-size:20px;cursor:pointer;flex-shrink:0;">✕</button>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <div style="flex:1;"><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">數量</label><input type="text" inputmode="numeric" value="${it.qty}" oninput="slUpdateItem(${idx},'qty',this.value)" style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-size:14px;font-family:inherit;box-sizing:border-box;"></div>
+        <div style="flex:1;"><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">金額</label><input type="text" inputmode="numeric" value="${it.amount}" placeholder="金額" oninput="slUpdateItem(${idx},'amount',this.value)" style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-size:14px;font-family:inherit;box-sizing:border-box;"></div>
+      </div>
+    </div>`).join('') +
+    `<div style="text-align:right;font-size:13px;color:var(--text2);padding:4px 4px 0;">共 ${slItems.length} 項 · 合計 $${slItems.reduce((s,it)=>s+(parseInt(it.amount)||0),0).toLocaleString()}</div>`;
 }
 
 async function submitSalesLog() {
@@ -2181,47 +2193,55 @@ async function submitSalesLog() {
   const date = document.getElementById('slDate').value;
   const terminal = document.getElementById('slTerminal').value;
   const posNo = document.getElementById('slPosNo').value.trim();
-  const qty = document.getElementById('slQty').value.trim();
-  const amount = document.getElementById('slAmount').value.trim();
   const note = document.getElementById('slNote').value.trim();
 
   if (!storeId) { showToast('請選擇門市', 'error'); return; }
   if (!date) { showToast('請選擇交易日期', 'error'); return; }
   if (!posNo) { showToast('請輸入 POS 序號', 'error'); return; }
-  if (!slSelectedItem) { showToast('請選擇商品', 'error'); return; }
-  if (!qty || isNaN(qty) || parseInt(qty) < 1) { showToast('請輸入正確數量', 'error'); return; }
-  if (!amount || isNaN(amount)) { showToast('請輸入正確金額', 'error'); return; }
+  if (!slItems.length) { showToast('請至少加入一個品項', 'error'); return; }
+  for (let i = 0; i < slItems.length; i++) {
+    const it = slItems[i];
+    if (!it.qty || isNaN(it.qty) || parseInt(it.qty) < 1) { showToast(`第 ${i+1} 項數量錯誤`, 'error'); return; }
+    if (!it.amount || isNaN(it.amount)) { showToast(`第 ${i+1} 項金額錯誤`, 'error'); return; }
+  }
 
   showLoading(true);
   try {
-    const row = {
-      staff_id: currentUser.id,
-      store_id: storeId,
-      transaction_date: date,
-      pos_terminal: terminal,
-      pos_no: posNo,
-      sku: slSelectedItem.sku,
-      product_name: slSelectedItem.name,
-      quantity: parseInt(qty),
-      amount: parseInt(amount),
-      note: note || null
-    };
     if (editSlId) {
+      // 編輯模式：只更新單筆（編輯時只有一個品項）
+      const it = slItems[0];
+      const row = {
+        staff_id: currentUser.id, store_id: storeId, transaction_date: date,
+        pos_terminal: terminal, pos_no: posNo,
+        sku: it.sku, product_name: it.name, quantity: parseInt(it.qty), amount: parseInt(it.amount),
+        note: note || null
+      };
       const result = await sb.patch('sales_logs', editSlId, row);
       if (result && result.code) throw new Error(result.message || '更新失敗');
       editSlId = null;
       showLoading(false);
       showToast('✅ 補登已更新！', 'success');
     } else {
-      const result = await sb.post('sales_logs', row);
-      if (!result || result.error) throw new Error(result?.message || '補登失敗');
+      // 新增模式：每個品項存一筆（共用同序號）
+      let ok = 0;
+      for (const it of slItems) {
+        const row = {
+          staff_id: currentUser.id, store_id: storeId, transaction_date: date,
+          pos_terminal: terminal, pos_no: posNo,
+          sku: it.sku, product_name: it.name, quantity: parseInt(it.qty), amount: parseInt(it.amount),
+          note: note || null
+        };
+        const result = await sb.post('sales_logs', row);
+        if (result && !result.error) ok++;
+      }
       showLoading(false);
-      showToast('✅ 業績補登成功！', 'success');
+      showToast(`✅ 已補登 ${ok} 個品項！`, 'success');
     }
     initSalesLog();
     setTimeout(() => openSalesLogList(), 600);
   } catch(e) { showLoading(false); showToast('補登失敗：' + e.message, 'error'); }
 }
+
 
 let slAllLogs = [];
 let slFilteredLogs = [];
@@ -2354,20 +2374,19 @@ async function cancelSalesLog(id) {
 function editSalesLog(id) {
   const o = slAllLogs.find(x => x.id === id);
   if (!o) return;
-  editSlId = id;
   showScreen('salesLogScreen');
   initSalesLog();
-  // 帶入原資料
+  // 帶入原資料（編輯模式：單筆載入成一個品項）
   setTimeout(() => {
+    editSlId = id;
     document.getElementById('slStore').value = o.store_id || '';
     onSlStoreChange(o.store_id);
     document.getElementById('slDate').value = o.transaction_date || '';
     setTimeout(()=>{ document.getElementById('slTerminal').value = o.pos_terminal || '001'; }, 100);
     document.getElementById('slPosNo').value = o.pos_no || '';
-    document.getElementById('slQty').value = o.quantity || 1;
-    document.getElementById('slAmount').value = o.amount || '';
     document.getElementById('slNote').value = o.note || '';
-    if (o.sku) slSelectProduct(o.sku, o.product_name);
+    slItems = [{ sku: o.sku||'', name: o.product_name||'', qty: o.quantity||1, amount: o.amount||'' }];
+    renderSlItems();
   }, 200);
   showToast('修改模式：改完按確認補登即可更新', 'success');
 }
