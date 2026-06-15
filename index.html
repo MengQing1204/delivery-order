@@ -2090,10 +2090,12 @@ async function promptTracking(orderId) {
 let slItems = [];
 let slSearchDebounce = null;
 let editSlId = null;
+let slEditGroupIds = null;
 
 function initSalesLog() {
   slItems = [];
   editSlId = null;
+  slEditGroupIds = null;
   ['slPosNo','slNote','slProductSearch'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   renderSlItems();
   const today = new Date();
@@ -2207,36 +2209,27 @@ async function submitSalesLog() {
 
   showLoading(true);
   try {
-    if (editSlId) {
-      // 編輯模式：只更新單筆（編輯時只有一個品項）
-      const it = slItems[0];
+    // 編輯模式：先刪除整張序號的舊紀錄
+    if (slEditGroupIds && slEditGroupIds.length) {
+      for (const oldId of slEditGroupIds) {
+        await sb.delete('sales_logs', oldId);
+      }
+      slEditGroupIds = null;
+    }
+    // 每個品項存一筆（共用同序號）
+    let ok = 0;
+    for (const it of slItems) {
       const row = {
         staff_id: currentUser.id, store_id: storeId, transaction_date: date,
         pos_terminal: terminal, pos_no: posNo,
         sku: it.sku, product_name: it.name, quantity: parseInt(it.qty), amount: parseInt(it.amount),
         note: note || null
       };
-      const result = await sb.patch('sales_logs', editSlId, row);
-      if (result && result.code) throw new Error(result.message || '更新失敗');
-      editSlId = null;
-      showLoading(false);
-      showToast('✅ 補登已更新！', 'success');
-    } else {
-      // 新增模式：每個品項存一筆（共用同序號）
-      let ok = 0;
-      for (const it of slItems) {
-        const row = {
-          staff_id: currentUser.id, store_id: storeId, transaction_date: date,
-          pos_terminal: terminal, pos_no: posNo,
-          sku: it.sku, product_name: it.name, quantity: parseInt(it.qty), amount: parseInt(it.amount),
-          note: note || null
-        };
-        const result = await sb.post('sales_logs', row);
-        if (result && !result.error) ok++;
-      }
-      showLoading(false);
-      showToast(`✅ 已補登 ${ok} 個品項！`, 'success');
+      const result = await sb.post('sales_logs', row);
+      if (result && !result.error) ok++;
     }
+    showLoading(false);
+    showToast(`✅ 已補登 ${ok} 個品項！`, 'success');
     initSalesLog();
     setTimeout(() => openSalesLogList(), 600);
   } catch(e) { showLoading(false); showToast('補登失敗：' + e.message, 'error'); }
@@ -2310,85 +2303,122 @@ function clearSlFilter() {
   renderSalesLogList();
 }
 
+function slGroupKey(o) {
+  // 同一張交易：序號+門市+日期+機號+業務
+  return [o.pos_no, o.store_id, o.transaction_date, o.pos_terminal, o.staff_id].join('||');
+}
+
 function renderSalesLogList() {
   const el = document.getElementById('salesLogList');
   const list = slFilteredLogs;
   if (!list.length) { el.innerHTML = `<div class="empty-state"><div class="icon">📋</div><p>尚無補登紀錄</p></div>`; return; }
   const isAdmin = currentUser?.role === 'admin';
   const role = currentUser?.role;
-  // 管理員顯示總金額統計
+
+  // 依序號分組
+  const groups = new Map();
+  list.forEach(o => {
+    const k = slGroupKey(o);
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(o);
+  });
+
+  // 統計（管理員/店長）
   let summary = '';
   if (role === 'admin' || role === 'manager') {
     const total = list.reduce((s,o)=>s+(o.amount||0),0);
-    const cnt = list.length;
-    summary = `<div style="padding:10px 14px;background:var(--accent-light);border-radius:10px;margin-bottom:10px;font-size:14px;font-weight:600;color:var(--accent2);">共 ${cnt} 筆 · 總金額 $${total.toLocaleString()}</div>`;
+    summary = `<div style="padding:10px 14px;background:var(--accent-light);border-radius:10px;margin-bottom:10px;font-size:14px;font-weight:600;color:var(--accent2);">共 ${groups.size} 筆交易 · ${list.length} 個品項 · 總金額 $${total.toLocaleString()}</div>`;
   }
-  el.innerHTML = summary + list.map(o => {
-    const done = o.status === 'done';
-    const canEdit = isSlToday(o.created_at) && (isAdmin || o.staff_id === currentUser?.id);
-    // 綠色打勾提示（已完成）
-    const doneBadge = done ? `<span style="display:inline-flex;align-items:center;gap:3px;background:var(--success-light);color:var(--success);padding:3px 8px;border-radius:20px;font-size:11px;font-weight:700;">✅ 已完成</span>` : `<span class="status-badge submitted">$${o.amount}</span>`;
-    // 管理員的狀態變更按鈕
+
+  // 每組依最新 created_at 排序
+  const sortedGroups = [...groups.values()].sort((a,b) => new Date(b[0].created_at) - new Date(a[0].created_at));
+
+  el.innerHTML = summary + sortedGroups.map(items => {
+    const first = items[0];
+    const done = items.every(it => it.status === 'done');
+    const groupTotal = items.reduce((s,it)=>s+(it.amount||0),0);
+    const ids = items.map(it => it.id);
+    // 是否可編輯（當日 + 自己的或管理員）
+    const canEdit = isSlToday(first.created_at) && (isAdmin || first.staff_id === currentUser?.id);
+
+    const doneBadge = done
+      ? `<span style="display:inline-flex;align-items:center;gap:3px;background:var(--success-light);color:var(--success);padding:3px 8px;border-radius:20px;font-size:11px;font-weight:700;">✅ 已完成</span>`
+      : `<span class="status-badge submitted">$${groupTotal.toLocaleString()}</span>`;
+
+    // 明細（直接展開）
+    const detail = items.map(it => `
+      <div style="display:flex;justify-content:space-between;gap:8px;padding:6px 10px;background:var(--surface);border-radius:8px;margin-top:6px;">
+        <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:600;line-height:1.4;">${escHtml(it.product_name||'')} × ${it.quantity||1}</div><div style="font-size:11px;color:var(--text2);font-family:'DM Mono',monospace;">${escHtml(it.sku||'')}</div></div>
+        <div style="font-size:13px;font-weight:700;color:var(--accent2);white-space:nowrap;">$${(it.amount||0).toLocaleString()}</div>
+      </div>`).join('');
+
+    // 管理員整張標記
     const adminStatusBtn = isAdmin ? `
-      <button onclick="event.stopPropagation();toggleSlStatus('${o.id}','${done?'pending':'done'}')" style="margin-top:8px;padding:6px 12px;background:${done?'var(--surface2)':'var(--success)'};color:${done?'var(--text2)':'#fff'};border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">${done?'↩ 改回待處理':'✓ 標記已完成補登'}</button>` : '';
-    // 業務/管理員當日可取消修改
+      <button onclick="toggleSlStatusGroup(${JSON.stringify(ids).replace(/"/g,'&quot;')},'${done?'pending':'done'}')" style="margin-top:8px;padding:6px 12px;background:${done?'var(--surface2)':'var(--success)'};color:${done?'var(--text2)':'#fff'};border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">${done?'↩ 改回待處理':'✓ 標記已完成補登'}</button>` : '';
+
+    // 業務/管理員當日整張修改/取消
     const editBtns = canEdit ? `
       <div style="display:flex;gap:6px;margin-top:8px;">
-        <button onclick="event.stopPropagation();editSalesLog('${o.id}')" style="padding:6px 12px;background:var(--accent-light);color:var(--accent);border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">✏️ 修改</button>
-        <button onclick="event.stopPropagation();cancelSalesLog('${o.id}')" style="padding:6px 12px;background:var(--danger-light);color:var(--danger);border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🗑️ 取消</button>
+        <button onclick="editSalesLogGroup(${JSON.stringify(ids).replace(/"/g,'&quot;')})" style="padding:6px 12px;background:var(--accent-light);color:var(--accent);border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">✏️ 修改</button>
+        <button onclick="cancelSalesLogGroup(${JSON.stringify(ids).replace(/"/g,'&quot;')})" style="padding:6px 12px;background:var(--danger-light);color:var(--danger);border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🗑️ 取消</button>
       </div>` : '';
+
     return `
     <div class="order-card ${done?'shipped':'submitted'}" style="cursor:default;">
-      <div class="order-card-top"><div class="order-no">${o.transaction_date} · 機號${escHtml(o.pos_terminal||'001')}</div>${doneBadge}</div>
-      <div class="order-receiver">${escHtml(o.product_name||'')} ${o.quantity ? '× '+o.quantity : ''}</div>
-      <div class="order-meta">POS序號：${escHtml(o.pos_no)} · ${escHtml(o.stores?.name||'')} · $${o.amount}</div>
-      <div class="order-items-preview">業務：${escHtml(o.staff?.name||'')}${o.note ? ' · '+escHtml(o.note) : ''}</div>
-      <div style="font-size:11px;color:var(--text2);margin-top:4px;">🕐 登記時間：${formatDate(o.created_at)}</div>
+      <div class="order-card-top"><div class="order-no">${first.transaction_date} · 機號${escHtml(first.pos_terminal||'001')}</div>${doneBadge}</div>
+      <div class="order-meta" style="margin-bottom:2px;">POS序號：${escHtml(first.pos_no)} · ${escHtml(first.stores?.name||'')} · 共 ${items.length} 項</div>
+      ${detail}
+      <div class="order-items-preview" style="margin-top:8px;">業務：${escHtml(first.staff?.name||'')}${first.note ? ' · '+escHtml(first.note) : ''}</div>
+      <div style="font-size:11px;color:var(--text2);margin-top:4px;">🕐 登記時間：${formatDate(first.created_at)}</div>
       ${adminStatusBtn}
       ${editBtns}
     </div>`;
   }).join('');
 }
 
-async function toggleSlStatus(id, newStatus) {
+async function toggleSlStatusGroup(ids, newStatus) {
   showLoading(true);
   try {
-    await sb.patch('sales_logs', id, { status: newStatus });
+    for (const id of ids) {
+      await sb.patch('sales_logs', id, { status: newStatus });
+    }
     showToast(newStatus === 'done' ? '✅ 已標記完成' : '已改回待處理', 'success');
     await openSalesLogList();
   } catch(e) { showToast('更新失敗', 'error'); }
   showLoading(false);
 }
 
-async function cancelSalesLog(id) {
-  if (!confirm('確定要取消這筆補登紀錄？')) return;
+async function cancelSalesLogGroup(ids) {
+  if (!confirm(`確定要取消這張序號的補登（共 ${ids.length} 個品項）？`)) return;
   showLoading(true);
   try {
-    await sb.delete('sales_logs', id);
+    for (const id of ids) {
+      await sb.delete('sales_logs', id);
+    }
     showToast('已取消補登', 'success');
     await openSalesLogList();
   } catch(e) { showToast('取消失敗', 'error'); }
   showLoading(false);
 }
 
-function editSalesLog(id) {
-  const o = slAllLogs.find(x => x.id === id);
-  if (!o) return;
+function editSalesLogGroup(ids) {
+  const items = slAllLogs.filter(o => ids.includes(o.id));
+  if (!items.length) return;
+  const first = items[0];
   showScreen('salesLogScreen');
   initSalesLog();
-  // 帶入原資料（編輯模式：單筆載入成一個品項）
   setTimeout(() => {
-    editSlId = id;
-    document.getElementById('slStore').value = o.store_id || '';
-    onSlStoreChange(o.store_id);
-    document.getElementById('slDate').value = o.transaction_date || '';
-    setTimeout(()=>{ document.getElementById('slTerminal').value = o.pos_terminal || '001'; }, 100);
-    document.getElementById('slPosNo').value = o.pos_no || '';
-    document.getElementById('slNote').value = o.note || '';
-    slItems = [{ sku: o.sku||'', name: o.product_name||'', qty: o.quantity||1, amount: o.amount||'' }];
+    slEditGroupIds = ids;  // 記住要刪除的舊紀錄
+    document.getElementById('slStore').value = first.store_id || '';
+    onSlStoreChange(first.store_id);
+    document.getElementById('slDate').value = first.transaction_date || '';
+    setTimeout(()=>{ document.getElementById('slTerminal').value = first.pos_terminal || '001'; }, 100);
+    document.getElementById('slPosNo').value = first.pos_no || '';
+    document.getElementById('slNote').value = first.note || '';
+    slItems = items.map(it => ({ sku: it.sku||'', name: it.product_name||'', qty: it.quantity||1, amount: it.amount||'' }));
     renderSlItems();
   }, 200);
-  showToast('修改模式：改完按確認補登即可更新', 'success');
+  showToast('修改模式：改完按確認補登即可更新整張序號', 'success');
 }
 
 
