@@ -201,6 +201,8 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
 .store-filter-select:focus { border-color: var(--accent); }
 .sync-btn { background: var(--accent2); color: #fff; border: none; border-radius: var(--radius-sm); padding: 8px 12px; font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer; white-space: nowrap; }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
 
@@ -544,6 +546,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
     <button onclick="batchAction('push')" style="background:rgba(255,255,255,0.2);border:none;border-radius:6px;padding:6px 12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">🚀 批次拋單</button>
     <button onclick="batchAction('status')" style="background:rgba(255,255,255,0.2);border:none;border-radius:6px;padding:6px 12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">📋 更新狀態</button>
     <button onclick="batchAction('csv')" style="background:rgba(255,255,255,0.2);border:none;border-radius:6px;padding:6px 12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">📥 匯出CSV</button>
+    <button onclick="batchAction('erp')" style="background:rgba(255,255,255,0.95);border:none;border-radius:6px;padding:6px 12px;color:var(--accent2);font-size:13px;font-weight:700;cursor:pointer;">📦 匯出鼎新</button>
     <button onclick="batchAction('delete')" style="background:rgba(220,50,50,0.7);border:none;border-radius:6px;padding:6px 12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">🗑️ 批次刪除</button>
     <button onclick="clearSelection()" style="background:rgba(255,255,255,0.15);border:none;border-radius:6px;padding:6px 10px;color:#fff;font-size:13px;cursor:pointer;">✕</button>
   </div>
@@ -1617,7 +1620,7 @@ async function loadAdminOrders(staffIdFilter, storeIdFilter) {
   showLoading(true);
   try {
     const filter = staffIdFilter ? `&staff_id=eq.${staffIdFilter}` : storeIdFilter ? `&store_id=eq.${storeIdFilter}` : '';
-    const orders = await sb.get('orders', `?order=created_at.desc&limit=500${filter}&select=*,order_items(*),stores(name),staff(name,phone)`);
+    const orders = await sb.get('orders', `?order=created_at.desc&limit=500${filter}&select=*,order_items(*),stores(name,dept_code,warehouse_code),staff(name,phone)`);
     adminAllOrders = orders || [];
     renderAdminOrders();
   } catch(e) { showToast('載入失敗', 'error'); }
@@ -2432,6 +2435,12 @@ async function batchAction(action) {
     return;
   }
 
+  if (action === 'erp') {
+    const selected = adminAllOrders.filter(o => ids.includes(o.id));
+    await exportErpExcel(selected);
+    return;
+  }
+
   if (action === 'status') {
     const status = prompt('請輸入要更新的狀態：\npending=待處理\nsubmitted=已拋單\nprocessing=作業中\nshipped=已完成\ncancelled=已取消');
     const validStatus = ['pending','submitted','processing','shipped','cancelled'];
@@ -2584,6 +2593,89 @@ function exportCSVData(orders, filename) {
   a.download = filename;
   a.click();
 }
+
+// ═══════════════════════════════════════════
+// 匯出鼎新轉撥單格式（每張單號一個 Excel，打包 zip）
+// ═══════════════════════════════════════════
+async function exportErpExcel(orders) {
+  if (!orders || !orders.length) { showToast('請先選取訂單', 'error'); return; }
+  if (typeof XLSX === 'undefined' || typeof JSZip === 'undefined') { showToast('匯出元件載入中，請稍候再試', 'error'); return; }
+
+  // 檢查門市對照值是否齊全
+  const missing = [];
+  orders.forEach(o => {
+    const st = o.stores || {};
+    if (!st.dept_code || !st.warehouse_code) {
+      const nm = st.name || o.store_id;
+      if (!missing.includes(nm)) missing.push(nm);
+    }
+  });
+  if (missing.length) {
+    showToast('門市未設定鼎新代號：' + missing.join('、') + '，請先設定', 'error');
+    return;
+  }
+
+  showLoading(true);
+  try {
+    const zip = new JSZip();
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}${String(today.getMonth()+1).padStart(2,'0')}${String(today.getDate()).padStart(2,'0')}`;
+    const headers = ['異動日期','單別','單號','部門代號','轉出庫','轉入庫','門市','聯絡人','電話','地址','品號','品名','數量','備註'];
+
+    let fileCount = 0;
+    for (const o of orders) {
+      const st = o.stores || {};
+      const items = (o.order_items && o.order_items.length) ? o.order_items : [{ sku:'', product_name:'', quantity:'' }];
+      const rows = [headers];
+      items.forEach(it => {
+        rows.push([
+          dateStr,                          // 異動日期
+          '1203',                           // 單別（固定）
+          o.order_no || '',                 // 單號
+          st.dept_code || '',               // 部門代號
+          'B0003',                          // 轉出庫（固定）
+          st.warehouse_code || '',          // 轉入庫
+          st.name || '',                    // 門市
+          o.receiver_name || '',            // 聯絡人
+          o.receiver_phone || '',           // 電話
+          o.receiver_address || '',         // 地址
+          it.sku || '',                     // 品號
+          it.product_name || '',            // 品名
+          it.quantity || '',                // 數量
+          o.note || ''                      // 備註
+        ]);
+      });
+      // 建立工作表
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      // 欄寬
+      ws['!cols'] = [{wch:10},{wch:6},{wch:14},{wch:10},{wch:8},{wch:8},{wch:16},{wch:10},{wch:12},{wch:30},{wch:14},{wch:24},{wch:6},{wch:16}];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, o.order_no || 'sheet');
+      // 轉成 binary
+      const wbout = XLSX.write(wb, { bookType:'xlsx', type:'array' });
+      zip.file(`${o.order_no || ('order'+fileCount)}.xlsx`, wbout);
+      fileCount++;
+    }
+
+    // 產生 zip 並下載
+    const blob = await zip.generateAsync({ type:'blob' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `鼎新轉撥單_${dateStr}_共${fileCount}張.zip`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+
+    showLoading(false);
+    showToast(`✅ 已匯出 ${fileCount} 張轉撥單`, 'success');
+    clearSelection();
+  } catch(e) {
+    showLoading(false);
+    showToast('匯出失敗：' + e.message, 'error');
+    console.error('exportErpExcel error', e);
+  }
+}
+
 
 function exportCSV() {
   if (!adminAllOrders.length) { showToast('沒有訂單可匯出'); return; }
