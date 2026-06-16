@@ -2340,6 +2340,7 @@ function renderSalesLogList() {
     const ids = items.map(it => it.id);
     // 是否可編輯（當日 + 自己的或管理員）
     const canEdit = isSlToday(first.created_at) && (isAdmin || first.staff_id === currentUser?.id);
+    const canCancel = isAdmin || (isSlToday(first.created_at) && first.staff_id === currentUser?.id);
 
     const doneBadge = done
       ? `<span style="display:inline-flex;align-items:center;gap:3px;background:var(--success-light);color:var(--success);padding:3px 8px;border-radius:20px;font-size:11px;font-weight:700;">✅ 已完成</span>`
@@ -2357,11 +2358,9 @@ function renderSalesLogList() {
       <button onclick="toggleSlStatusGroup(${JSON.stringify(ids).replace(/"/g,'&quot;')},'${done?'pending':'done'}')" style="margin-top:8px;padding:6px 12px;background:${done?'var(--surface2)':'var(--success)'};color:${done?'var(--text2)':'#fff'};border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">${done?'↩ 改回待處理':'✓ 標記已完成補登'}</button>` : '';
 
     // 業務/管理員當日整張修改/取消
-    const editBtns = canEdit ? `
-      <div style="display:flex;gap:6px;margin-top:8px;">
-        <button onclick="editSalesLogGroup(${JSON.stringify(ids).replace(/"/g,'&quot;')})" style="padding:6px 12px;background:var(--accent-light);color:var(--accent);border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">✏️ 修改</button>
-        <button onclick="cancelSalesLogGroup(${JSON.stringify(ids).replace(/"/g,'&quot;')})" style="padding:6px 12px;background:var(--danger-light);color:var(--danger);border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🗑️ 取消</button>
-      </div>` : '';
+    const editBtn = canEdit ? `<button onclick="editSalesLogGroup(${JSON.stringify(ids).replace(/"/g,'&quot;')})" style="padding:6px 12px;background:var(--accent-light);color:var(--accent);border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">✏️ 修改</button>` : '';
+    const cancelBtn = canCancel ? `<button onclick="cancelSalesLogGroup(${JSON.stringify(ids).replace(/"/g,'&quot;')})" style="padding:6px 12px;background:var(--danger-light);color:var(--danger);border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🗑️ 取消</button>` : '';
+    const editBtns = (editBtn || cancelBtn) ? `<div style="display:flex;gap:6px;margin-top:8px;">${editBtn}${cancelBtn}</div>` : '';
 
     return `
     <div class="order-card ${done?'shipped':'submitted'}" style="cursor:default;">
