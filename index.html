@@ -938,11 +938,11 @@ function onProductSearch(val) {
 
 function renderDropdown(filtered, stockMap, inputEl) {
   const dd = document.getElementById('productDropdown');
-  // 有 stockMap 時排序：有庫存在上(品號排序)，無庫存在下(品號排序)
-  const list = stockMap
-    ? [...filtered.filter(p=>(stockMap[p.sku]??0)>0).sort((a,b)=>a.sku.localeCompare(b.sku)),
-       ...filtered.filter(p=>(stockMap[p.sku]??0)<=0).sort((a,b)=>a.sku.localeCompare(b.sku))]
-    : filtered;
+  // 三段排序：有庫存 → 可預購（白名單無庫存）→ 無庫存鎖住，各段內按品號
+  const inStock = filtered.filter(p=>(stockMap[p.sku]??0)>0).sort((a,b)=>a.sku.localeCompare(b.sku));
+  const preOrder = filtered.filter(p=>(stockMap[p.sku]??0)<=0 && isPreorderable(p.sku)).sort((a,b)=>a.sku.localeCompare(b.sku));
+  const locked = filtered.filter(p=>(stockMap[p.sku]??0)<=0 && !isPreorderable(p.sku)).sort((a,b)=>a.sku.localeCompare(b.sku));
+  const list = stockMap ? [...inStock, ...preOrder, ...locked] : filtered;
   dd.innerHTML = list.map(p => {
     const stock = stockMap ? (stockMap[p.sku] ?? 0) : (p.stock ?? 0);
     const canPreorder = stock <= 0 && isPreorderable(p.sku);
