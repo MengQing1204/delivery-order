@@ -725,8 +725,11 @@ let preorderWhitelist = new Set();
 async function loadPreorderWhitelist() {
   try {
     const rows = await sb.get('preorder_whitelist', '?is_active=eq.true&select=sku');
-    preorderWhitelist = new Set((rows || []).map(r => r.sku));
-  } catch(e) { preorderWhitelist = new Set(); }
+    if (Array.isArray(rows)) {
+      preorderWhitelist = new Set(rows.map(r => r.sku));
+      console.log(`可預購白名單載入：${preorderWhitelist.size} 筆`);
+    }
+  } catch(e) { console.log('白名單載入失敗', e); }
 }
 function isPreorderable(sku) { return preorderWhitelist.has(sku); }
 const PREORDER_BADGE = '<span class="preorder-badge">預</span>';
@@ -1201,6 +1204,8 @@ async function submitOrder() {
   // ── 送出前即時驗證庫存 ──────────────────────────
   showLoading(true);
   try {
+    // 送出前重查白名單，避免登入時快取未載入導致誤判
+    if (!preorderWhitelist || preorderWhitelist.size === 0) { await loadPreorderWhitelist(); }
     const skus = formItems.map(i => i.sku);
     const liveStock = await ibizaGetStock(skus);
     // 若 ibiza 查詢失敗（liveStock 全空），擋住送出
