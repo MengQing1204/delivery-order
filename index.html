@@ -1213,16 +1213,18 @@ async function submitOrder() {
     if (allNull) { showLoading(false); showToast('⚠️ 庫存查詢失敗，無法確認庫存，請稍後再試', 'error'); return; }
 
     // 逐項標記現貨 / 預購；分出「白名單外無庫存」（要擋）
-    const blocked = [];      // 清單外無庫存 → 擋
-    const preorderItems = []; // 清單內無庫存 → 預購
+    const blocked = [];      // 清單外、明確無庫存 → 擋
+    const preorderItems = []; // 清單內無庫存或查不到 → 預購
     formItems.forEach(i => {
       const avail = liveStock?.[i.sku] ?? null;
-      const noStock = (avail !== null && avail <= 0);
-      if (noStock) {
-        if (isPreorderable(i.sku)) { i.item_type = 'preorder'; preorderItems.push(i); }
-        else { blocked.push(i); }
+      if (isPreorderable(i.sku)) {
+        // 白名單品：查到 >0 為現貨；查到 ≤0 或查不到(null) 皆為預購
+        if (avail !== null && avail > 0) { i.item_type = 'stock'; }
+        else { i.item_type = 'preorder'; preorderItems.push(i); }
       } else {
+        // 非白名單品：只有明確查到 ≤0 才擋；其餘（>0 或 null）放行為現貨
         i.item_type = 'stock';
+        if (avail !== null && avail <= 0) { blocked.push(i); }
       }
     });
 
