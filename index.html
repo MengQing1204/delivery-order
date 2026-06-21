@@ -371,6 +371,45 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
       </div>
     </div>
 
+    <!-- 常見問題 QA -->
+    <div style="background:#fff;border-radius:12px;padding:16px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,0.06);">
+      <div style="font-size:16px;font-weight:800;color:#1A3A28;margin-bottom:12px;">❓ 常見問題 Q&amp;A</div>
+      <div style="font-size:14px;line-height:1.65;">
+        <div style="padding:8px 0;border-bottom:1px solid #eef2ee;">
+          <div style="font-weight:700;color:#3A6A52;margin-bottom:2px;">Q1：我賣了直銷商品，業績沒算到我？</div>
+          <div style="color:#444;">結帳時很可能沒輸入「員工代號」。請到「業績補登」，輸入門市、POS 交易日期、序號、品名與金額補回來。</div>
+        </div>
+        <div style="padding:8px 0;border-bottom:1px solid #eef2ee;">
+          <div style="font-weight:700;color:#3A6A52;margin-bottom:2px;">Q2：什麼商品要算個人業績？</div>
+          <div style="color:#444;">「直銷商品」會計算個人業績，所以結帳一定要輸入員工代號。現場直銷的拼圖、寢具、晶瓷畫等都算個人業績。</div>
+        </div>
+        <div style="padding:8px 0;border-bottom:1px solid #eef2ee;">
+          <div style="font-weight:700;color:#3A6A52;margin-bottom:2px;">Q3：直銷商品客人要宅配，業績怎麼算？</div>
+          <div style="color:#444;">業績看 POS 有沒有輸入員工代號，跟宅配無關。POS 輸入完員工代號後，再到「宅配訂單」登配送資料，兩者分開處理。</div>
+        </div>
+        <div style="padding:8px 0;border-bottom:1px solid #eef2ee;">
+          <div style="font-weight:700;color:#3A6A52;margin-bottom:2px;">Q4：宅配訂單和業績補登有什麼不同？</div>
+          <div style="color:#444;">宅配訂單＝送貨登記，沒金額、不算業績；業績補登＝忘記輸入員工代號時補金額、補業績。是兩件事，該做哪個就做哪個。</div>
+        </div>
+        <div style="padding:8px 0;border-bottom:1px solid #eef2ee;">
+          <div style="font-weight:700;color:#3A6A52;margin-bottom:2px;">Q5：搜尋商品找不到品項？</div>
+          <div style="color:#444;">換不同關鍵字試試（品名中任一個詞）。若確認有此商品仍找不到，請聯絡管理員確認庫存狀態。</div>
+        </div>
+        <div style="padding:8px 0;border-bottom:1px solid #eef2ee;">
+          <div style="font-weight:700;color:#3A6A52;margin-bottom:2px;">Q6：什麼是預購商品？怎麼知道可不可以預購？</div>
+          <div style="color:#444;">部分指定商品無庫存時可接單預購。搜尋時若顯示橘色「可預購」就能下，選後勾「預訂單」即可送出；沒顯示可預購的無庫存品仍無法送出。</div>
+        </div>
+        <div style="padding:8px 0;border-bottom:1px solid #eef2ee;">
+          <div style="font-weight:700;color:#3A6A52;margin-bottom:2px;">Q7：填錯或要取消訂單怎麼辦？</div>
+          <div style="color:#444;">「待處理」狀態可自行點「修改訂單」更正；待處理／已拋單前可取消（出貨後無法取消，需聯絡管理員）。</div>
+        </div>
+        <div style="padding:8px 0;">
+          <div style="font-weight:700;color:#3A6A52;margin-bottom:2px;">Q8：忘記密碼或登不進去？</div>
+          <div style="color:#444;">請聯絡管理員（孟青）重設密碼，或確認帳號（手機號碼）輸入正確。</div>
+        </div>
+      </div>
+    </div>
+
     <!-- 一句話 -->
     <div style="background:linear-gradient(135deg,#1A3A28,#3A6A52);color:#fff;border-radius:12px;padding:16px;text-align:center;font-size:14px;line-height:1.7;">
       一句話記住：<br><b style="color:#F2C75B;">賣直銷 → POS 輸入員工代號（宅配/自取都要）</b><br>要宅配 → 登宅配訂單　｜　忘了輸入 → 業績補登
@@ -422,10 +461,6 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
     </div>
   </div>
 </div>
-
-<!-- STOCK SCREEN -->
-<div class="screen" id="stockScreen">
-  <div class="topbar">
     <button class="topbar-back" onclick="showScreen('homeScreen')">← 返回</button>
     <div class="topbar-title">庫存查詢</div>
   </div>
