@@ -1988,9 +1988,10 @@ function renderEditDropdownItems(filtered, stockMap, inputEl, dd) {
     : filtered;
   dd.innerHTML = list.map(p => {
     const stock = stockMap ? (stockMap[p.sku] ?? 0) : (p.stock ?? 0);
-    const stockClass = stock > 10 ? 'ok' : stock > 0 ? 'low' : 'none';
-    const stockText = stock > 0 ? `可用 ${stock}` : '無庫存';
-    const disabled = stock <= 0 ? 'style="opacity:0.5;pointer-events:none;"' : '';
+    const canPreorder = stock <= 0 && isPreorderable(p.sku);
+    const stockClass = stock > 10 ? 'ok' : stock > 0 ? 'low' : (canPreorder ? 'low' : 'none');
+    const stockText = stock > 0 ? `可用 ${stock}` : (canPreorder ? '可預購' : '無庫存');
+    const disabled = (stock <= 0 && !canPreorder) ? 'style="opacity:0.5;pointer-events:none;"' : '';
     return `<div class="product-option" onclick="addEditItem('${escHtml(p.sku)}','${escHtml(p.product_name)}',${stock})" ${disabled}>
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
         <div style="min-width:0;flex:1;"><div class="pname" style="white-space:normal;line-height:1.4;">${escHtml(p.product_name)}</div><div class="pcode">${p.sku}</div></div>
