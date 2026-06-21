@@ -459,6 +459,12 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
       <div style="padding:0 16px 12px;"><div style="font-size:12px;color:var(--text2);" id="itemCountHint">已選 0 / 5 項</div></div>
     </div>
   </div>
+  <div id="preorderBox" style="display:none;margin:0 16px 4px;padding:12px 14px;background:#FBF2E9;border:1.5px solid #E0A042;border-radius:10px;">
+    <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;">
+      <input type="checkbox" id="preorderCheck" style="width:20px;height:20px;margin-top:2px;flex-shrink:0;cursor:pointer;">
+      <span style="font-size:14px;line-height:1.5;color:#7a5520;"><b style="color:#C0392B;">此訂單含預購商品（目前無庫存）</b><br>勾選後即可送出，商品到貨後再由倉庫出貨。</span>
+    </label>
+  </div>
   <div class="form-footer"><button class="btn-submit" id="submitBtn" onclick="submitOrder()">確認送出登記</button></div>
 </div>
 
@@ -703,6 +709,16 @@ let sameBuyer = false;
 const STORE_TERMINALS = { '富邦美術館-賣店': ['001','002','003'], '世界古文明-高雄': ['001','002'] };
 const DEFAULT_TERMINALS = ['001'];
 
+// ── 可預購白名單（第一階段）──────────────────
+let preorderWhitelist = new Set();
+async function loadPreorderWhitelist() {
+  try {
+    const rows = await sb.get('preorder_whitelist', '?is_active=eq.true&select=sku');
+    preorderWhitelist = new Set((rows || []).map(r => r.sku));
+  } catch(e) { preorderWhitelist = new Set(); }
+}
+function isPreorderable(sku) { return preorderWhitelist.has(sku); }
+
 const TW_DISTRICTS = {
   '基隆市':{'仁愛區':'200','信義區':'201','中正區':'202','中山區':'203','安樂區':'204','暖暖區':'205','七堵區':'206'},
   '台北市':{'中正區':'100','大同區':'103','中山區':'104','松山區':'105','大安區':'106','萬華區':'108','信義區':'110','士林區':'111','北投區':'112','內湖區':'114','南港區':'115','文山區':'116'},
@@ -899,6 +915,7 @@ async function syncProducts() {
 
 async function loadProducts() {
   try {
+    await loadPreorderWhitelist();
     const data = await sb.get('products', '?is_active=eq.true&order=product_name.asc');
     allProducts = (data || []).map(p => ({ sku: p.sku, product_name: p.product_name, stock: p.stock ?? 0 }));
     console.log(`品項載入完成：共 ${allProducts.length} 筆`);
@@ -922,9 +939,11 @@ function renderDropdown(filtered, stockMap, inputEl) {
     : filtered;
   dd.innerHTML = list.map(p => {
     const stock = stockMap ? (stockMap[p.sku] ?? 0) : (p.stock ?? 0);
-    const stockClass = stock > 10 ? 'ok' : stock > 0 ? 'low' : 'none';
-    const stockText = stock > 0 ? `可用 ${stock}` : '無庫存';
-    const disabled = stock <= 0 ? 'style="opacity:0.5;pointer-events:none;"' : '';
+    const canPreorder = stock <= 0 && isPreorderable(p.sku);
+    const stockClass = stock > 10 ? 'ok' : stock > 0 ? 'low' : (canPreorder ? 'low' : 'none');
+    const stockText = stock > 0 ? `可用 ${stock}` : (canPreorder ? '可預購' : '無庫存');
+    // 白名單內無庫存品 → 可選（預購）；清單外無庫存 → 維持鎖住
+    const disabled = (stock <= 0 && !canPreorder) ? 'style="opacity:0.5;pointer-events:none;"' : '';
     return `<div class="product-option" onclick="addItem('${escHtml(p.sku)}','${escHtml(p.product_name)}',${stock})" ${disabled}>
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
         <div style="min-width:0;flex:1;"><div class="pname" style="white-space:normal;line-height:1.4;">${escHtml(p.product_name)}</div><div class="pcode">${p.sku}</div></div>
@@ -958,6 +977,11 @@ function addItem(sku, name, stock) {
   if (formItems.find(i => i.sku === sku)) { showToast('此商品已加入'); closeDropdown(); return; }
   if (formItems.length >= 5) { showToast('最多只能選5項商品'); closeDropdown(); return; }
   formItems.push({ sku, name, stock, qty: 1 });
+  // 選到可預購且無庫存的品項 → 自動顯示預訂單勾選區
+  if (stock <= 0 && isPreorderable(sku)) {
+    const box = document.getElementById('preorderBox');
+    if (box) box.style.display = 'block';
+  }
   renderItems(); closeDropdown();
   document.getElementById('productSearch').value = '';
 }
@@ -994,6 +1018,10 @@ function removeItem(i) { formItems.splice(i, 1); renderItems(); }
 function initForm() {
   formItems = []; sameBuyer = false;
   ['buyerName','buyerPhone','receiverName','receiverPhone','addrDetail','posNo','orderNote','productSearch','deliveryDate'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  // 重置預訂單勾選與提示框
+  const _pc = document.getElementById('preorderCheck'); if (_pc) _pc.checked = false;
+  const _pb = document.getElementById('preorderBox'); if (_pb) _pb.style.display = 'none';
+  window._hasPreorder = false;
   generateOrderNo().then(no => {
     const el = document.getElementById('customOrderNo');
     if (el) el.value = no;
@@ -1160,19 +1188,45 @@ async function submitOrder() {
   try {
     const skus = formItems.map(i => i.sku);
     const liveStock = await ibizaGetStock(skus);
-    const outOfStock = formItems.filter(i => {
-      const avail = liveStock?.[i.sku] ?? null;
-      return avail !== null && avail <= 0;
-    });
-    if (outOfStock.length > 0) {
-      const names = outOfStock.map(i => `「${i.name}」`).join('、');
-      showLoading(false);
-      showToast(`以下商品庫存不足，無法送出：${names}`, 'error');
-      return;
-    }
     // 若 ibiza 查詢失敗（liveStock 全空），擋住送出
     const allNull = formItems.every(i => liveStock?.[i.sku] == null);
     if (allNull) { showLoading(false); showToast('⚠️ 庫存查詢失敗，無法確認庫存，請稍後再試', 'error'); return; }
+
+    // 逐項標記現貨 / 預購；分出「白名單外無庫存」（要擋）
+    const blocked = [];      // 清單外無庫存 → 擋
+    const preorderItems = []; // 清單內無庫存 → 預購
+    formItems.forEach(i => {
+      const avail = liveStock?.[i.sku] ?? null;
+      const noStock = (avail !== null && avail <= 0);
+      if (noStock) {
+        if (isPreorderable(i.sku)) { i.item_type = 'preorder'; preorderItems.push(i); }
+        else { blocked.push(i); }
+      } else {
+        i.item_type = 'stock';
+      }
+    });
+
+    if (blocked.length > 0) {
+      const names = blocked.map(i => `「${i.name}」`).join('、');
+      showLoading(false);
+      showToast(`以下商品無庫存且非可預購品，無法送出：${names}`, 'error');
+      return;
+    }
+
+    // 有預購品 → 需勾「預訂單」才放行
+    if (preorderItems.length > 0) {
+      const preCheck = document.getElementById('preorderCheck');
+      if (!preCheck || !preCheck.checked) {
+        showLoading(false);
+        const names = preorderItems.map(i => `「${i.name}」`).join('、');
+        showToast(`以下為預購商品（目前無庫存）：${names}，請勾選「預訂單」後再送出`, 'error');
+        // 自動顯示預訂單勾選區，提示業務
+        const box = document.getElementById('preorderBox');
+        if (box) box.style.display = 'block';
+        return;
+      }
+    }
+    window._hasPreorder = preorderItems.length > 0;
   } catch(e) {
     showLoading(false);
     showToast('庫存驗證失敗：' + e.message, 'error');
@@ -1225,11 +1279,11 @@ async function doSubmitOrder() {
     const customNo = (currentUser?.role === 'admin') ? document.getElementById('customOrderNo')?.value.trim() : '';
     const orderNo = customNo || await generateOrderNo();
     const deliveryDate = document.getElementById('deliveryDate')?.value || null;
-    const orderData = { order_no: orderNo, delivery_date: deliveryDate, store_id: d.storeId, staff_id: currentUser.id, buyer_name: d.buyerName, buyer_phone: d.buyerPhone, receiver_name: d.receiverName, receiver_phone: d.receiverPhone, receiver_address: d.address, pos_no: d.posNo, pos_terminal: d.terminal, note: d.note || null, status: 'pending' };
+    const orderData = { order_no: orderNo, delivery_date: deliveryDate, store_id: d.storeId, staff_id: currentUser.id, buyer_name: d.buyerName, buyer_phone: d.buyerPhone, receiver_name: d.receiverName, receiver_phone: d.receiverPhone, receiver_address: d.address, pos_no: d.posNo, pos_terminal: d.terminal, note: d.note || null, status: 'pending', is_preorder: !!window._hasPreorder };
     const newOrder = await sb.post('orders', orderData);
     if (!newOrder || newOrder.error) throw new Error(newOrder?.message || '建立訂單失敗');
     const orderId = Array.isArray(newOrder) ? newOrder[0].id : newOrder.id;
-    for (const item of formItems) { await sb.post('order_items', { order_id: orderId, sku: item.sku, product_name: item.name, quantity: item.qty }); }
+    for (const item of formItems) { await sb.post('order_items', { order_id: orderId, sku: item.sku, product_name: item.name, quantity: item.qty, item_type: item.item_type || 'stock' }); }
     showLoading(false);
     showToast('訂單登記成功！', 'success');
     showScreen('mainScreen');
