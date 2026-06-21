@@ -450,6 +450,15 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
     <div class="form-section">
       <div class="form-section-title">📦 訂購品項（最多5項）</div>
       <div class="form-row">
+        <label class="form-label">快捷分類</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button type="button" onclick="quickSearch('拼圖')" style="padding:8px 16px;background:var(--accent-light);border:1.5px solid var(--accent);border-radius:20px;font-size:14px;font-weight:600;color:var(--accent);cursor:pointer;font-family:inherit;">🧩 拼圖</button>
+          <button type="button" onclick="quickSearch('A8300')" style="padding:8px 16px;background:var(--accent-light);border:1.5px solid var(--accent);border-radius:20px;font-size:14px;font-weight:600;color:var(--accent);cursor:pointer;font-family:inherit;">🛏 寢具</button>
+          <button type="button" onclick="quickSearch('晶瓷畫')" style="padding:8px 16px;background:var(--accent-light);border:1.5px solid var(--accent);border-radius:20px;font-size:14px;font-weight:600;color:var(--accent);cursor:pointer;font-family:inherit;">🖼 晶瓷畫</button>
+          <button type="button" onclick="quickSearch('毯')" style="padding:8px 16px;background:var(--accent-light);border:1.5px solid var(--accent);border-radius:20px;font-size:14px;font-weight:600;color:var(--accent);cursor:pointer;font-family:inherit;">🧶 毯</button>
+        </div>
+      </div>
+      <div class="form-row">
         <label class="form-label">搜尋商品</label>
         <div class="product-search-wrap" id="productSearchWrap">
           <span class="product-search-icon">🔍</span>
@@ -2194,6 +2203,11 @@ function onSlStoreChange(storeId) {
 function slQuickSearch(keyword) {
   const input = document.getElementById('slProductSearch');
   if (input) { input.value = keyword; onSlProductSearch(keyword); }
+}
+
+function quickSearch(keyword) {
+  const input = document.getElementById('productSearch');
+  if (input) { input.value = keyword; onProductSearch(keyword); }
 }
 
 function onSlProductSearch(val) {
