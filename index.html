@@ -274,12 +274,154 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
       </div>
       <div style="font-size:18px;color:#4A6058;">›</div>
     </div>
+    <div onclick="showScreen('helpScreen');" style="background:#fff;border-radius:10px;padding:12px 16px;box-shadow:0 2px 12px rgba(0,0,0,0.08);cursor:pointer;display:flex;align-items:center;gap:12px;">
+      <div style="width:36px;height:36px;background:#E8EEE8;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">📖</div>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:700;color:#1a1a18;">使用說明</div>
+        <div style="font-size:11px;color:#4A6058;">操作教學・業績/宅配/預購</div>
+      </div>
+      <div style="font-size:18px;color:#4A6058;">›</div>
+    </div>
+    <div onclick="showScreen('wishScreen');initWishBox();" style="background:#fff;border-radius:10px;padding:12px 16px;box-shadow:0 2px 12px rgba(0,0,0,0.08);cursor:pointer;display:flex;align-items:center;gap:12px;">
+      <div style="width:36px;height:36px;background:#FBF2E9;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">💡</div>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:700;color:#1a1a18;">許願意見箱</div>
+        <div style="font-size:11px;color:#4A6058;">系統問題・流程建議・許願</div>
+      </div>
+      <div style="font-size:18px;color:#4A6058;">›</div>
+    </div>
   </div>
 </div>
 
-<!-- STOCK SCREEN -->
-<div class="screen" id="stockScreen">
+<!-- HELP / 使用說明 SCREEN -->
+<div class="screen" id="helpScreen">
   <div class="topbar">
+    <button class="back-btn" onclick="showScreen('homeScreen')">← 返回</button>
+    <div class="topbar-title">📖 使用說明</div>
+  </div>
+  <div style="padding:16px;max-width:680px;margin:0 auto;">
+
+    <div style="background:linear-gradient(135deg,#1A3A28,#3A6A52);color:#fff;border-radius:14px;padding:18px 20px;margin-bottom:16px;">
+      <div style="font-size:19px;font-weight:800;margin-bottom:4px;">翡冷翠文創 · 宅配系統</div>
+      <div style="font-size:13px;opacity:0.9;">業務操作說明 · 隨系統更新，永不過期</div>
+    </div>
+
+    <!-- 核心觀念 -->
+    <div style="background:#FBF2E9;border:1.5px solid #E0A042;border-radius:12px;padding:16px;margin-bottom:14px;">
+      <div style="color:#C0392B;font-size:17px;font-weight:800;margin-bottom:8px;">★ 最重要：直銷商品 = 有算個人業績</div>
+      <div style="font-size:14px;line-height:1.7;color:#5a4520;">賣出直銷商品時，<b>POS 結帳一定要輸入「員工代號」</b>，不論宅配或自取都要輸入，業績才會算到您身上。</div>
+      <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:200px;background:#fff;border:1px solid #2C6FBF;border-radius:8px;padding:10px 12px;">
+          <div style="color:#2C6FBF;font-weight:700;font-size:14px;margin-bottom:3px;">🚚 要宅配？</div>
+          <div style="font-size:13px;line-height:1.6;color:#333;">POS 輸入完員工代號後，再到「宅配訂單」登配送資料。</div>
+        </div>
+        <div style="flex:1;min-width:200px;background:#fff;border:1px solid #C0392B;border-radius:8px;padding:10px 12px;">
+          <div style="color:#C0392B;font-weight:700;font-size:14px;margin-bottom:3px;">⚠️ 忘記輸入代號？</div>
+          <div style="font-size:13px;line-height:1.6;color:#333;">不論宅配或自取，都到「業績補登」補打。</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 三大功能 -->
+    <div style="background:#fff;border-radius:12px;padding:16px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,0.06);">
+      <div style="font-size:16px;font-weight:800;color:#1A3A28;margin-bottom:10px;">📋 三大功能</div>
+      <div style="font-size:14px;line-height:1.7;color:#333;">
+        <div style="margin-bottom:8px;"><b style="color:#3A6A52;">📦 宅配訂單</b>　商品要宅配到府時，登打收件人、地址、品項。只管送貨，不算業績。</div>
+        <div style="margin-bottom:8px;"><b style="color:#3A6A52;">🔍 庫存查詢</b>　結帳前查商品即時庫存，避免賣到沒貨。</div>
+        <div><b style="color:#3A6A52;">📊 業績補登</b>　忘記在 POS 輸入員工代號時，事後補金額、補個人業績。</div>
+      </div>
+    </div>
+
+    <!-- 宅配訂單步驟 -->
+    <div style="background:#fff;border-radius:12px;padding:16px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,0.06);">
+      <div style="font-size:16px;font-weight:800;color:#2C6FBF;margin-bottom:10px;">📦 宅配訂單怎麼填</div>
+      <ol style="margin:0;padding-left:22px;font-size:14px;line-height:1.8;color:#333;">
+        <li>首頁點「宅配訂單」→「＋ 新增宅配登記」</li>
+        <li>選門市與機號（支援別家活動記得選對門市）</li>
+        <li>填訂購人、收件人姓名電話，地址選縣市→區→詳細（含「號」）</li>
+        <li>可用快捷鍵（拼圖/寢具/晶瓷畫/毯/大書/涼被）或搜尋品名加入商品</li>
+        <li>填 POS 序號、備註，確認送出</li>
+      </ol>
+    </div>
+
+    <!-- 業績補登步驟 -->
+    <div style="background:#fff;border-radius:12px;padding:16px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,0.06);">
+      <div style="font-size:16px;font-weight:800;color:#C0392B;margin-bottom:10px;">📊 業績補登怎麼填</div>
+      <ol style="margin:0;padding-left:22px;font-size:14px;line-height:1.8;color:#333;">
+        <li>首頁點「業績補登」→「＋ 新增補登」</li>
+        <li>選門市、POS 交易日期</li>
+        <li>填機號（富邦選 001/002/003）與 POS 序號</li>
+        <li>用快捷鍵或關鍵字選商品，填金額（要和 POS 一致）</li>
+        <li>備註後儲存</li>
+      </ol>
+    </div>
+
+    <!-- 預購功能（今天新增）-->
+    <div style="background:#FBF2E9;border:1.5px solid #E0A042;border-radius:12px;padding:16px;margin-bottom:14px;">
+      <div style="font-size:16px;font-weight:800;color:#C8881C;margin-bottom:10px;">🆕 預購功能（無庫存也能下單）</div>
+      <div style="font-size:14px;line-height:1.7;color:#5a4520;">
+        <div style="margin-bottom:8px;">部分指定商品（如天絲涼被、掛毯系列）即使<b>目前無庫存</b>也能接單預購，等到貨再由倉庫出貨。</div>
+        <div style="margin-bottom:6px;"><b>怎麼操作：</b></div>
+        <ol style="margin:0 0 8px;padding-left:22px;line-height:1.8;">
+          <li>搜尋商品時，可預購的無庫存品會顯示橘色<b>「可預購」</b></li>
+          <li>點選後會跳出橘色<b>「☑ 預訂單」</b>勾選框</li>
+          <li>勾選後即可送出，訂單品項會標上圓圈<span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border:1.5px solid #E0A042;color:#C8881C;border-radius:50%;font-size:11px;font-weight:800;">預</span>標記</li>
+        </ol>
+        <div style="background:#fff;border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.6;color:#333;"><b>注意：</b>不在預購清單內的商品，無庫存時仍無法送出。一張訂單可同時有現貨＋預購，由管理員視到貨狀況分批出貨。</div>
+      </div>
+    </div>
+
+    <!-- 一句話 -->
+    <div style="background:linear-gradient(135deg,#1A3A28,#3A6A52);color:#fff;border-radius:12px;padding:16px;text-align:center;font-size:14px;line-height:1.7;">
+      一句話記住：<br><b style="color:#F2C75B;">賣直銷 → POS 輸入員工代號（宅配/自取都要）</b><br>要宅配 → 登宅配訂單　｜　忘了輸入 → 業績補登
+    </div>
+
+    <div style="text-align:center;color:#999;font-size:12px;margin-top:16px;">如有疑問請洽管理員（孟青）</div>
+  </div>
+</div>
+
+<!-- WISH BOX / 許願意見箱 SCREEN -->
+<div class="screen" id="wishScreen">
+  <div class="topbar">
+    <button class="back-btn" onclick="showScreen('homeScreen')">← 返回</button>
+    <div class="topbar-title">💡 許願意見箱</div>
+  </div>
+  <div style="padding:16px;max-width:680px;margin:0 auto;">
+
+    <!-- 投遞區 -->
+    <div style="background:#fff;border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 2px 10px rgba(0,0,0,0.06);">
+      <div style="font-size:15px;font-weight:800;color:#1A3A28;margin-bottom:12px;">✍️ 我要許願 / 提建議</div>
+
+      <label style="display:block;font-size:13px;color:#4A6058;margin-bottom:5px;">分類</label>
+      <select id="wishCategory" style="width:100%;padding:10px;border:1.5px solid #d8e0ce;border-radius:8px;font-size:14px;margin-bottom:12px;font-family:inherit;background:#fff;">
+        <option value="系統問題">🐞 系統問題</option>
+        <option value="流程建議">💭 流程建議</option>
+        <option value="其他">✨ 其他</option>
+      </select>
+
+      <label style="display:block;font-size:13px;color:#4A6058;margin-bottom:5px;">內容</label>
+      <textarea id="wishContent" rows="4" placeholder="想說的話、遇到的問題、希望的功能..." style="width:100%;padding:10px;border:1.5px solid #d8e0ce;border-radius:8px;font-size:14px;font-family:inherit;resize:vertical;margin-bottom:12px;box-sizing:border-box;"></textarea>
+
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:14px;background:#FBF2E9;padding:10px 12px;border-radius:8px;">
+        <input type="checkbox" id="wishAnonymous" style="width:18px;height:18px;cursor:pointer;accent-color:#E0A042;">
+        <span style="font-size:13px;color:#5a4520;line-height:1.5;">匿名投遞（勾選後，連管理員也看不到是誰寫的）</span>
+      </label>
+
+      <button onclick="submitWish()" style="width:100%;padding:12px;background:linear-gradient(135deg,#1A3A28,#3A6A52);color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;">📮 投遞</button>
+    </div>
+
+    <!-- 管理員：所有許願列表 -->
+    <div id="wishAdminSection" style="display:none;">
+      <div style="font-size:15px;font-weight:800;color:#1A3A28;margin-bottom:10px;">📬 所有許願（僅管理員可見）</div>
+      <div id="wishList"></div>
+    </div>
+
+    <!-- 一般業務：投遞後的小提示 -->
+    <div id="wishStaffNote" style="text-align:center;color:#999;font-size:13px;line-height:1.7;padding:10px;">
+      您的許願會直接送到管理員 💚<br>管理員會看，但不一定會做 🤣
+    </div>
+  </div>
+</div>
     <button class="topbar-back" onclick="showScreen('homeScreen')">← 返回</button>
     <div class="topbar-title">庫存查詢</div>
   </div>
@@ -2214,6 +2356,100 @@ async function promptTracking(orderId) {
     await openOrderDetail(orderId); loadAdminOrders();
   } catch(e) { showToast('更新失敗', 'error'); }
   showLoading(false);
+}
+
+// ═══════════════════════════════════════════
+// 許願意見箱
+// ═══════════════════════════════════════════
+function initWishBox() {
+  // 清空表單
+  const c = document.getElementById('wishContent'); if (c) c.value = '';
+  const a = document.getElementById('wishAnonymous'); if (a) a.checked = false;
+  const cat = document.getElementById('wishCategory'); if (cat) cat.value = '系統問題';
+  const isAdmin = currentUser?.role === 'admin';
+  document.getElementById('wishAdminSection').style.display = isAdmin ? 'block' : 'none';
+  document.getElementById('wishStaffNote').style.display = isAdmin ? 'none' : 'block';
+  if (isAdmin) loadWishes();
+}
+
+async function submitWish() {
+  const content = document.getElementById('wishContent').value.trim();
+  if (!content) { showToast('請先寫點內容再投遞 🙂', 'error'); return; }
+  const category = document.getElementById('wishCategory').value;
+  const anonymous = document.getElementById('wishAnonymous').checked;
+  showLoading(true);
+  try {
+    const payload = {
+      content, category, is_anonymous: anonymous,
+      staff_id: anonymous ? null : (currentUser?.id || null),
+      staff_name: anonymous ? null : (currentUser?.name || ''),
+      status: 'new'
+    };
+    const r = await sb.post('wishes', payload);
+    showLoading(false);
+    if (r && !r.error) {
+      document.getElementById('wishContent').value = '';
+      document.getElementById('wishAnonymous').checked = false;
+      showToast('投遞成功，謝謝你的許願 💚', 'success');
+      if (currentUser?.role === 'admin') loadWishes();
+    } else {
+      showToast('投遞失敗，請再試一次', 'error');
+    }
+  } catch(e) { showLoading(false); showToast('投遞失敗：' + e.message, 'error'); }
+}
+
+async function loadWishes() {
+  const el = document.getElementById('wishList');
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;color:#999;padding:20px;">載入中...</div>';
+  try {
+    const rows = await sb.get('wishes', '?order=created_at.desc&limit=200');
+    if (!Array.isArray(rows) || rows.length === 0) {
+      el.innerHTML = '<div style="text-align:center;color:#999;padding:24px;">目前還沒有許願 🌱</div>';
+      return;
+    }
+    const catIcon = { '系統問題':'🐞', '流程建議':'💭', '其他':'✨' };
+    const statusMap = { 'new':'🆕 未讀', 'read':'👀 已讀', 'considering':'🤔 考慮中', 'done':'✅ 已處理' };
+    const statusColor = { 'new':'#C0392B', 'read':'#4A6058', 'considering':'#C8881C', 'done':'#2C9E54' };
+    el.innerHTML = rows.map(w => {
+      const who = w.is_anonymous ? '🥷 匿名' : `👤 ${escHtml(w.staff_name || '未具名')}`;
+      const st = statusMap[w.status] || w.status;
+      const sc = statusColor[w.status] || '#4A6058';
+      return `<div style="background:#fff;border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,0.06);border-left:4px solid ${sc};">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;">
+          <span style="font-size:13px;font-weight:700;color:#3A6A52;">${catIcon[w.category]||'✨'} ${escHtml(w.category)}</span>
+          <span style="font-size:12px;color:${sc};font-weight:700;">${st}</span>
+        </div>
+        <div style="font-size:14px;line-height:1.6;color:#222;margin-bottom:8px;white-space:pre-wrap;">${escHtml(w.content)}</div>
+        <div style="font-size:11px;color:#999;margin-bottom:8px;">${who} · ${formatDate(w.created_at)}</div>
+        ${w.admin_reply?`<div style="background:#EAF3EC;border-radius:8px;padding:8px 10px;font-size:13px;color:#2c4a37;margin-bottom:8px;"><b>管理員回覆：</b>${escHtml(w.admin_reply)}</div>`:''}
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button onclick="setWishStatus('${w.id}','read')" style="padding:5px 10px;font-size:12px;border:1px solid #d8e0ce;background:#fff;border-radius:6px;cursor:pointer;">已讀</button>
+          <button onclick="setWishStatus('${w.id}','considering')" style="padding:5px 10px;font-size:12px;border:1px solid #E0A042;background:#fff;color:#C8881C;border-radius:6px;cursor:pointer;">考慮中</button>
+          <button onclick="setWishStatus('${w.id}','done')" style="padding:5px 10px;font-size:12px;border:1px solid #2C9E54;background:#fff;color:#2C9E54;border-radius:6px;cursor:pointer;">已處理</button>
+          <button onclick="replyWish('${w.id}')" style="padding:5px 10px;font-size:12px;border:1px solid #3A6A52;background:#fff;color:#3A6A52;border-radius:6px;cursor:pointer;">💬 回覆</button>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) { el.innerHTML = '<div style="text-align:center;color:#C0392B;padding:20px;">載入失敗</div>'; }
+}
+
+async function setWishStatus(id, status) {
+  try {
+    await sb.patch('wishes', id, { status });
+    showToast('狀態已更新', 'success');
+    loadWishes();
+  } catch(e) { showToast('更新失敗', 'error'); }
+}
+
+async function replyWish(id) {
+  const reply = prompt('輸入回覆內容：');
+  if (reply === null) return;
+  try {
+    await sb.patch('wishes', id, { admin_reply: reply.trim(), replied_at: new Date().toISOString(), status: 'done' });
+    showToast('回覆已送出', 'success');
+    loadWishes();
+  } catch(e) { showToast('回覆失敗', 'error'); }
 }
 
 // ═══════════════════════════════════════════
