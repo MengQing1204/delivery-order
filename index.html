@@ -79,6 +79,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
 .order-card { background: var(--surface); border-radius: var(--radius); padding: 14px; margin-bottom: 10px; box-shadow: var(--shadow); cursor: pointer; transition: transform 0.1s; border-left: 4px solid transparent; }
 .order-card:active { transform: scale(0.99); }
 .order-card.pending { border-left-color: var(--warning); }
+.order-card.partial { border-left-color: #E0A042; }
 .order-card.submitted { border-left-color: var(--accent2); }
 .order-card.processing { border-left-color: var(--accent); }
 .order-card.shipped { border-left-color: var(--success); }
@@ -89,6 +90,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
 .order-no { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text2); }
 .status-badge { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 20px; white-space: nowrap; }
 .status-badge.pending { background: var(--warning-light); color: var(--warning); }
+.status-badge.partial { background: #FBF2E9; color: #C8881C; }
 .status-badge.submitted { background: #e0e8f8; color: var(--accent2); }
 .status-badge.processing { background: var(--accent-light); color: var(--accent); }
 .status-badge.shipped { background: var(--success-light); color: var(--success); }
@@ -552,6 +554,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
   <div class="admin-tabs">
     <button class="admin-tab active" onclick="setAdminTab('all',this)">全部</button>
     <button class="admin-tab" onclick="setAdminTab('pending',this)">待處理</button>
+    <button class="admin-tab" onclick="setAdminTab('partial',this)">部分已拋</button>
     <button class="admin-tab" onclick="setAdminTab('submitted',this)">已拋單</button>
     <button class="admin-tab" onclick="setAdminTab('processing',this)">作業中</button>
     <button class="admin-tab" onclick="setAdminTab('shipped',this)">已完成</button>
@@ -1542,7 +1545,7 @@ function onAdminStoreFilter(storeId) {
 function renderOrderList(orders, containerId) {
   const el = document.getElementById(containerId);
   if (!orders?.length) { el.innerHTML = `<div class="empty-state"><div class="icon">📋</div><p>尚無訂單</p></div>`; return; }
-  const statusMap = { pending:'待處理', submitted:'已拋單', processing:'作業中', shipped:'已完成', cancelled:'已取消' };
+  const statusMap = { pending:'待處理', partial:'部分已拋', submitted:'已拋單', processing:'作業中', shipped:'已完成', cancelled:'已取消' };
   el.innerHTML = orders.map(o => {
     const preview = (o.order_items||[]).map(i => `${isPreorderItem(i)?'⟨預⟩':''}${i.product_name} x${i.quantity}`).join('、');
     const cardBadge = orderHasPreorder(o) ? PREORDER_BADGE_SM : '';
@@ -1575,8 +1578,8 @@ async function openOrderDetail(orderId) {
 function renderDetail(o, containerId, isPublic) {
   console.log('[renderDetail] currentUser:', JSON.stringify(currentUser));
   console.log('[renderDetail] isPublic:', isPublic, 'role:', currentUser?.role, 'status:', o.status);
-  const statusMap = { pending:'待處理', submitted:'已拋單', processing:'作業中', shipped:'已完成', cancelled:'已取消' };
-  const statusIcon = { pending:'⏳', submitted:'📤', processing:'📦', shipped:'✅', cancelled:'❌' };
+  const statusMap = { pending:'待處理', partial:'部分已拋', submitted:'已拋單', processing:'作業中', shipped:'已完成', cancelled:'已取消' };
+  const statusIcon = { pending:'⏳', partial:'📤', submitted:'📤', processing:'📦', shipped:'✅', cancelled:'❌' };
   const items = o.order_items || [];
   const qrUrl = `${location.origin}${location.pathname}?token=${o.qr_token}`;
   let adminBtns = '';
@@ -1646,7 +1649,14 @@ function renderDetail(o, containerId, isPublic) {
     </div>
     <div class="detail-card">
       <div class="detail-card-title">📦 訂購品項</div>
-      ${items.map(i=>`<div class="detail-row"><div class="detail-row-label">品項</div><div class="detail-row-value"><div>${isPreorderItem(i)?PREORDER_BADGE_SM+' ':''}${escHtml(i.product_name)}</div><div style="font-size:12px;color:var(--text2);font-family:'DM Mono',monospace;">${i.sku} × ${i.quantity}${isPreorderItem(i)?' <span style="color:#C8881C;font-weight:700;">（預購）</span>':''}</div></div></div>`).join('')}
+      ${items.map(i=>{
+        const isAdmin = !isPublic && currentUser?.role === 'admin';
+        const canSplit = isAdmin && (o.status==='pending'||o.status==='partial'||o.status==='submitted'||o.status==='processing');
+        const pushedTag = i.pushed ? '<span style="display:inline-block;margin-left:6px;padding:1px 8px;background:#e0e8f8;color:#2C6FBF;border-radius:10px;font-size:11px;font-weight:700;">已拋</span>' : '<span style="display:inline-block;margin-left:6px;padding:1px 8px;background:#FBF2E9;color:#C8881C;border-radius:10px;font-size:11px;font-weight:700;">未拋</span>';
+        const chk = (canSplit && !i.pushed) ? `<input type="checkbox" class="split-item-chk" data-item-id="${i.id}" data-sku="${escHtml(i.sku)}" data-qty="${i.quantity}" style="width:18px;height:18px;margin-right:8px;flex-shrink:0;cursor:pointer;accent-color:var(--accent);">` : (canSplit?'<span style="display:inline-block;width:18px;margin-right:8px;flex-shrink:0;"></span>':'');
+        return `<div class="detail-row"><div class="detail-row-label">品項</div><div class="detail-row-value"><div style="display:flex;align-items:flex-start;">${chk}<div style="flex:1;"><div>${isPreorderItem(i)?PREORDER_BADGE_SM+' ':''}${escHtml(i.product_name)}${isAdmin?pushedTag:''}</div><div style="font-size:12px;color:var(--text2);font-family:'DM Mono',monospace;">${i.sku} × ${i.quantity}${isPreorderItem(i)?' <span style="color:#C8881C;font-weight:700;">（預購）</span>':''}${i.pushed&&i.ibiza_order_no?` · ibiza:${escHtml(i.ibiza_order_no)}`:''}</div></div></div></div></div>`;
+      }).join('')}
+      ${(!isPublic && currentUser?.role==='admin' && (o.status==='pending'||o.status==='partial'||o.status==='submitted'||o.status==='processing') && items.some(i=>!i.pushed))?`<div style="padding:10px 14px;"><button onclick="pushSelectedItems('${o.id}')" style="width:100%;padding:11px;background:#1a6b3a;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">🚀 拋選取的品項至倉庫</button><div style="font-size:11px;color:var(--text2);text-align:center;margin-top:4px;">勾選上方未拋品項後點此，只拋這些品項（分批拋單）</div></div>`:''}
       ${adminBtns}
     </div>
     <div class="detail-card">
@@ -1718,7 +1728,7 @@ function renderAdminOrders() {
   const filtered = base;
   const el = document.getElementById('adminOrdersList');
   if (!filtered?.length) { el.innerHTML = '<div class="empty-state"><div class="icon">📋</div><p>尚無訂單</p></div>'; return; }
-  const statusMap = { pending:'待處理', submitted:'已拋單', processing:'作業中', shipped:'已完成', cancelled:'已取消' };
+  const statusMap = { pending:'待處理', partial:'部分已拋', submitted:'已拋單', processing:'作業中', shipped:'已完成', cancelled:'已取消' };
   el.innerHTML = filtered.map(o => {
     const preview = (o.order_items||[]).map(i => `${isPreorderItem(i)?'⟨預⟩':''}${i.product_name} x${i.quantity}`).join('、');
     const cardBadge = orderHasPreorder(o) ? PREORDER_BADGE_SM : '';
@@ -1832,6 +1842,38 @@ function showErpConfirmModal() {
   });
 }
 
+async function pushSelectedItems(orderId) {
+  const chks = Array.from(document.querySelectorAll('.split-item-chk:checked'));
+  if (!chks.length) { showToast('請先勾選要拋的品項', 'error'); return; }
+  const itemIds = chks.map(c => c.getAttribute('data-item-id'));
+  const names = chks.map(c => c.closest('.detail-row-value')?.querySelector('div>div')?.textContent?.trim()).filter(Boolean);
+  if (!confirm(`確定只拋這 ${itemIds.length} 個品項至倉庫？\n${names.join('、')}`)) return;
+  const confirmed = await showErpConfirmModal();
+  if (!confirmed) return;
+  showLoading(true);
+  try {
+    const res = await fetch(IBIZA_PUSH_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+      body: JSON.stringify({ order_id: orderId, item_ids: itemIds })
+    });
+    const data = await res.json();
+    if (data.success) {
+      const msg = data.order_status === 'submitted'
+        ? `✅ 已拋 ${data.pushed_count} 個品項！（全部品項已拋完）`
+        : `✅ 已拋 ${data.pushed_count} 個品項！（仍有 ${data.remaining_count} 項未拋）`;
+      showToast(msg, 'success');
+      await openOrderDetail(orderId);
+      loadAdminOrders();
+    } else {
+      showToast('❌ 拋單失敗：' + (data.error || '請洽系統管理員'), 'error');
+    }
+  } catch(e) {
+    showToast('❌ 連線失敗：' + e.message, 'error');
+  }
+  showLoading(false);
+}
+
 async function pushToIbiza(orderId) {
   const confirmed = await showErpConfirmModal();
   if (!confirmed) return;
@@ -1849,6 +1891,12 @@ async function pushToIbiza(orderId) {
     const data = await res.json();
     if (data.success) {
       await sb.patch('orders', orderId, { status: 'submitted', ibiza_order_no: data.ibiza_order_no || null, updated_at: new Date().toISOString() });
+      // 整張拋：標記所有品項已拋
+      await fetch(`${SUPABASE_URL}/rest/v1/order_items?order_id=eq.${orderId}`, {
+        method: 'PATCH',
+        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pushed: true, pushed_at: new Date().toISOString(), ibiza_order_no: data.ibiza_order_no || null })
+      });
       showToast(`✅ 拋單成功！ibiza 單號：${data.ibiza_order_no || '已收單'}`, 'success');
       // 發送推播通知給業務員
       const pushOrder = adminAllOrders.find(o => o.id === orderId);
@@ -2709,7 +2757,7 @@ async function doExportCSV() {
 }
 
 function exportCSVData(orders, filename) {
-  const statusMap = { pending:'待處理', submitted:'已拋單', processing:'作業中', shipped:'已完成', cancelled:'已取消' };
+  const statusMap = { pending:'待處理', partial:'部分已拋', submitted:'已拋單', processing:'作業中', shipped:'已完成', cancelled:'已取消' };
   const rows = [['訂單編號','狀態','門市','業務員','業務電話','收件人','收件電話','收件地址','郵遞區號','POS序號','品名','品號','數量','預約到貨日','預約出貨日','備註','托運單號','建立時間']];
   orders.forEach(o => {
     const items = o.order_items || [];
