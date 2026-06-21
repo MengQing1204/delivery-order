@@ -83,6 +83,8 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
 .order-card.processing { border-left-color: var(--accent); }
 .order-card.shipped { border-left-color: var(--success); }
 .order-card.cancelled { border-left-color: #ccc; opacity: 0.6; }
+.preorder-badge { display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border:1.5px solid #E0A042; color:#C8881C; border-radius:50%; font-size:11px; font-weight:800; line-height:1; flex-shrink:0; vertical-align:middle; }
+.preorder-badge.sm { width:17px; height:17px; font-size:10px; }
 .order-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .order-no { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text2); }
 .status-badge { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 20px; white-space: nowrap; }
@@ -718,6 +720,10 @@ async function loadPreorderWhitelist() {
   } catch(e) { preorderWhitelist = new Set(); }
 }
 function isPreorderable(sku) { return preorderWhitelist.has(sku); }
+const PREORDER_BADGE = '<span class="preorder-badge">預</span>';
+const PREORDER_BADGE_SM = '<span class="preorder-badge sm">預</span>';
+function isPreorderItem(it) { return it?.item_type === 'preorder'; }
+function orderHasPreorder(o) { return !!o?.is_preorder || (o?.order_items||[]).some(isPreorderItem); }
 
 const TW_DISTRICTS = {
   '基隆市':{'仁愛區':'200','信義區':'201','中正區':'202','中山區':'203','安樂區':'204','暖暖區':'205','七堵區':'206'},
@@ -1518,9 +1524,10 @@ function renderOrderList(orders, containerId) {
   if (!orders?.length) { el.innerHTML = `<div class="empty-state"><div class="icon">📋</div><p>尚無訂單</p></div>`; return; }
   const statusMap = { pending:'待處理', submitted:'已拋單', processing:'作業中', shipped:'已完成', cancelled:'已取消' };
   el.innerHTML = orders.map(o => {
-    const preview = (o.order_items||[]).map(i => `${i.product_name} x${i.quantity}`).join('、');
+    const preview = (o.order_items||[]).map(i => `${isPreorderItem(i)?'⟨預⟩':''}${i.product_name} x${i.quantity}`).join('、');
+    const cardBadge = orderHasPreorder(o) ? PREORDER_BADGE_SM : '';
     return `<div class="order-card ${o.status}" data-order-id="${o.id}" onclick="openOrderDetail('${o.id}')">
-      <div class="order-card-top"><div class="order-no">${o.order_no}</div><span class="status-badge ${o.status}">${statusMap[o.status]||o.status}</span></div>
+      <div class="order-card-top"><div class="order-no">${cardBadge} ${o.order_no}</div><span class="status-badge ${o.status}">${statusMap[o.status]||o.status}</span></div>
       <div class="order-receiver">${escHtml(o.receiver_name)}</div>
       <div class="order-meta">${escHtml(o.receiver_phone)} · ${escHtml(o.stores?.name||'')} · ${formatDate(o.created_at)}</div>
       <div class="order-items-preview">${escHtml(preview)}</div>
@@ -1619,7 +1626,7 @@ function renderDetail(o, containerId, isPublic) {
     </div>
     <div class="detail-card">
       <div class="detail-card-title">📦 訂購品項</div>
-      ${items.map(i=>`<div class="detail-row"><div class="detail-row-label">品項</div><div class="detail-row-value"><div>${escHtml(i.product_name)}</div><div style="font-size:12px;color:var(--text2);font-family:'DM Mono',monospace;">${i.sku} × ${i.quantity}</div></div></div>`).join('')}
+      ${items.map(i=>`<div class="detail-row"><div class="detail-row-label">品項</div><div class="detail-row-value"><div>${isPreorderItem(i)?PREORDER_BADGE_SM+' ':''}${escHtml(i.product_name)}</div><div style="font-size:12px;color:var(--text2);font-family:'DM Mono',monospace;">${i.sku} × ${i.quantity}${isPreorderItem(i)?' <span style="color:#C8881C;font-weight:700;">（預購）</span>':''}</div></div></div>`).join('')}
       ${adminBtns}
     </div>
     <div class="detail-card">
@@ -1693,11 +1700,12 @@ function renderAdminOrders() {
   if (!filtered?.length) { el.innerHTML = '<div class="empty-state"><div class="icon">📋</div><p>尚無訂單</p></div>'; return; }
   const statusMap = { pending:'待處理', submitted:'已拋單', processing:'作業中', shipped:'已完成', cancelled:'已取消' };
   el.innerHTML = filtered.map(o => {
-    const preview = (o.order_items||[]).map(i => `${i.product_name} x${i.quantity}`).join('、');
+    const preview = (o.order_items||[]).map(i => `${isPreorderItem(i)?'⟨預⟩':''}${i.product_name} x${i.quantity}`).join('、');
+    const cardBadge = orderHasPreorder(o) ? PREORDER_BADGE_SM : '';
     return `<div class="order-card ${o.status}" data-order-id="${o.id}" style="display:flex;align-items:flex-start;gap:10px;cursor:default;">
       <input type="checkbox" class="order-select-chk" data-id="${o.id}" onchange="onOrderCheckChange()" onclick="event.stopPropagation()" style="width:20px;height:20px;margin-top:6px;flex-shrink:0;cursor:pointer;accent-color:var(--accent);">
       <div style="flex:1;min-width:0;cursor:pointer;" onclick="(function(){document.getElementById('detailBack').onclick=()=>showScreen('adminScreen');openOrderDetail('${o.id}');})()">
-        <div class="order-card-top"><div class="order-no">${o.order_no}</div><span class="status-badge ${o.status}">${statusMap[o.status]||o.status}</span></div>
+        <div class="order-card-top"><div class="order-no">${cardBadge} ${o.order_no}</div><span class="status-badge ${o.status}">${statusMap[o.status]||o.status}</span></div>
         <div class="order-receiver">${escHtml(o.receiver_name)}</div>
         <div class="order-meta">${escHtml(o.receiver_phone)} · ${escHtml(o.stores?.name||'')} · ${formatDate(o.created_at)}</div>
         <div class="order-items-preview">${escHtml(preview)}</div>
