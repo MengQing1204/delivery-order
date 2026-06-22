@@ -751,6 +751,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
     <div style="flex:1;"></div>
     <button onclick="batchAction('push')" style="background:rgba(255,255,255,0.2);border:none;border-radius:6px;padding:6px 12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">🚀 批次拋單</button>
     <button onclick="batchAction('status')" style="background:rgba(255,255,255,0.2);border:none;border-radius:6px;padding:6px 12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">📋 更新狀態</button>
+    <button onclick="batchChangeDate()" style="background:rgba(255,255,255,0.2);border:none;border-radius:6px;padding:6px 12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">📅 批次改日期</button>
     <button onclick="batchAction('csv')" style="background:rgba(255,255,255,0.2);border:none;border-radius:6px;padding:6px 12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">📥 匯出CSV</button>
     <button onclick="batchAction('erp')" style="background:rgba(255,255,255,0.95);border:none;border-radius:6px;padding:6px 12px;color:var(--accent2);font-size:13px;font-weight:700;cursor:pointer;">📦 匯出鼎新</button>
     <button onclick="batchAction('delete')" style="background:rgba(220,50,50,0.7);border:none;border-radius:6px;padding:6px 12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">🗑️ 批次刪除</button>
@@ -2897,6 +2898,49 @@ function clearSelection() {
   document.getElementById('batchToolbar').style.display = 'none';
   const allChk = document.getElementById('selectAllChk');
   if (allChk) allChk.checked = false;
+}
+
+async function batchChangeDate() {
+  if (!selectedOrderIds.size) { showToast('請先勾選要改日期的訂單'); return; }
+  const ids = [...selectedOrderIds];
+  // 跳出日期輸入（用 prompt 取 YYYY-MM-DD）
+  const today = new Date().toISOString().slice(0,10);
+  const input = prompt(`要把選取的 ${ids.length} 張訂單改成哪一天？\n（對齊鼎新匯入日期，格式 YYYY-MM-DD）`, today);
+  if (!input) return;
+  const m = input.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) { showToast('日期格式錯誤，請用 YYYY-MM-DD', 'error'); return; }
+  const yy = m[1].slice(2), mm = m[2], dd = m[3];
+  const dateStr = `${yy}${mm}${dd}`;          // 例 260626
+  const prefix = `1203-${dateStr}`;
+  if (!confirm(`確定把 ${ids.length} 張訂單的單號日期改成 ${input}？\n流水號會接續該日現有最大號往下排。`)) return;
+
+  showLoading(true);
+  try {
+    // 查該日現有最大流水號
+    const rows = await sb.get('orders', `?order_no=like.${encodeURIComponent(prefix+'%')}&select=order_no&order=order_no.desc&limit=1`);
+    let seq = 0;
+    if (rows?.length) seq = parseInt(rows[0].order_no.slice(-5)) || 0;
+
+    // 依建單時間排序選取的訂單，逐一改號
+    const selected = adminAllOrders.filter(o => ids.includes(o.id))
+      .sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
+
+    let okCount = 0;
+    for (const o of selected) {
+      seq += 1;
+      const newNo = `${prefix}${String(seq).padStart(5,'0')}`;
+      // 避免與現有單號衝突（同號就再加）
+      const dup = await sb.get('orders', `?order_no=eq.${encodeURIComponent(newNo)}&id=neq.${o.id}&select=id&limit=1`);
+      if (dup?.length) { seq += 1; }
+      const finalNo = `${prefix}${String(seq).padStart(5,'0')}`;
+      const r = await sb.patch('orders', o.id, { order_no: finalNo, updated_at: new Date().toISOString() });
+      if (r && !r.error) okCount++;
+    }
+    showLoading(false);
+    showToast(`✅ 已改 ${okCount} 張訂單日期為 ${input}`, 'success');
+    clearSelection();
+    loadAdminOrders();
+  } catch(e) { showLoading(false); showToast('批次改日期失敗：' + e.message, 'error'); }
 }
 
 async function batchAction(action) {
