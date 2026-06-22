@@ -1222,7 +1222,13 @@ function renderItems() {
     </div>`).join('');
 }
 
-function changeQty(i, d) { formItems[i].qty = Math.max(1, Math.min(formItems[i].stock, formItems[i].qty + d)); renderItems(); }
+function changeQty(i, d) {
+  const it = formItems[i];
+  // 白名單預購品（無庫存）不受庫存上限，可訂多條；一般品維持庫存上限
+  const cap = (it.stock > 0) ? it.stock : (isPreorderable(it.sku) ? 999 : it.stock);
+  it.qty = Math.max(1, Math.min(cap, it.qty + d));
+  renderItems();
+}
 function removeItem(i) { formItems.splice(i, 1); renderItems(); }
 
 function initForm() {
