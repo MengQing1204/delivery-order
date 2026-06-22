@@ -1400,9 +1400,11 @@ async function submitOrder() {
     if (!preorderWhitelist || preorderWhitelist.size === 0) { await loadPreorderWhitelist(); }
     const skus = formItems.map(i => i.sku);
     const liveStock = await ibizaGetStock(skus);
-    // 若 ibiza 查詢失敗（liveStock 全空），擋住送出
-    const allNull = formItems.every(i => liveStock?.[i.sku] == null);
-    if (allNull) { showLoading(false); showToast('⚠️ 庫存查詢失敗，無法確認庫存，請稍後再試', 'error'); return; }
+    // 庫存查詢失敗防呆：只看「非白名單品」是否全查不到。
+    // 白名單預購品 ibiza 回 null 是正常（無庫存），不算查詢失敗。
+    const nonWhitelistItems = formItems.filter(i => !isPreorderable(i.sku));
+    const nonWhitelistAllNull = nonWhitelistItems.length > 0 && nonWhitelistItems.every(i => liveStock?.[i.sku] == null);
+    if (nonWhitelistAllNull) { showLoading(false); showToast('⚠️ 庫存查詢失敗，無法確認庫存，請稍後再試', 'error'); return; }
 
     // 逐項標記現貨 / 預購；分出「白名單外無庫存」（要擋）
     const blocked = [];      // 清單外、明確無庫存 → 擋
@@ -2285,14 +2287,17 @@ async function saveEditOrder() {
     showLoading(true);
     try {
       const liveStock = await ibizaGetStock(editFormItems.map(i => i.sku));
-      const outOfStock = editFormItems.filter(i => (liveStock?.[i.sku] ?? null) !== null && (liveStock?.[i.sku] ?? 0) <= 0);
+      // 非白名單品才檢查庫存不足；白名單預購品無庫存可保留
+      const outOfStock = editFormItems.filter(i => !isPreorderable(i.sku) && (liveStock?.[i.sku] ?? null) !== null && (liveStock?.[i.sku] ?? 0) <= 0);
       if (outOfStock.length > 0) {
         showLoading(false);
         showToast(`庫存不足，無法儲存：${outOfStock.map(i=>`「${i.name}」`).join('、')}`, 'error');
         return;
       }
-      const allNull = editFormItems.every(i => liveStock?.[i.sku] == null);
-      if (allNull) { showLoading(false); showToast('⚠️ 庫存查詢失敗，請稍後再試', 'error'); return; }
+      // 庫存查詢失敗防呆：只看非白名單品是否全 null
+      const nonWL = editFormItems.filter(i => !isPreorderable(i.sku));
+      const nonWLAllNull = nonWL.length > 0 && nonWL.every(i => liveStock?.[i.sku] == null);
+      if (nonWLAllNull) { showLoading(false); showToast('⚠️ 庫存查詢失敗，請稍後再試', 'error'); return; }
     } catch(e) { showLoading(false); showToast('庫存驗證失敗：' + e.message, 'error'); return; }
     showLoading(false);
   }
