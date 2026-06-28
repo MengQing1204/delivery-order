@@ -931,6 +931,22 @@ const PREORDER_BADGE_SM = '<span class="preorder-badge sm">預</span>';
 function isPreorderItem(it) { return it?.item_type === 'preorder'; }
 function orderHasPreorder(o) { return !!o?.is_preorder || (o?.order_items||[]).some(isPreorderItem); }
 
+// ── 南崁自倉商品白名單（黑貓出貨，不走 ibiza）──────────────
+let nankanWhitelist = new Set();
+async function loadNankanWhitelist() {
+  try {
+    const rows = await sb.get('nankan_products', '?is_active=eq.true&select=sku');
+    if (Array.isArray(rows)) {
+      nankanWhitelist = new Set(rows.map(r => r.sku));
+      console.log(`南崁商品白名單載入：${nankanWhitelist.size} 筆`);
+    }
+  } catch(e) { console.log('南崁白名單載入失敗', e); }
+}
+function isNankan(sku) { return nankanWhitelist.has(sku); }
+const NANKAN_BADGE_SM = '<span style="display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border:1.5px solid #8B2A3A;color:#8B2A3A;border-radius:50%;font-size:10px;font-weight:800;line-height:1;flex-shrink:0;vertical-align:middle;">崁</span>';
+function isNankanItem(it) { return it?.fulfill_source === 'nankan'; }
+function orderHasNankan(o) { return (o?.order_items||[]).some(isNankanItem); }
+
 const TW_DISTRICTS = {
   '基隆市':{'仁愛區':'200','信義區':'201','中正區':'202','中山區':'203','安樂區':'204','暖暖區':'205','七堵區':'206'},
   '台北市':{'中正區':'100','大同區':'103','中山區':'104','松山區':'105','大安區':'106','萬華區':'108','信義區':'110','士林區':'111','北投區':'112','內湖區':'114','南港區':'115','文山區':'116'},
@@ -1128,6 +1144,7 @@ async function syncProducts() {
 async function loadProducts() {
   try {
     await loadPreorderWhitelist();
+    await loadNankanWhitelist();
     const data = await sb.get('products', '?is_active=eq.true&order=product_name.asc');
     allProducts = (data || []).map(p => ({ sku: p.sku, product_name: p.product_name, stock: p.stock ?? 0 }));
     console.log(`品項載入完成：共 ${allProducts.length} 筆`);
@@ -1144,22 +1161,26 @@ function onProductSearch(val) {
 
 function renderDropdown(filtered, stockMap, inputEl) {
   const dd = document.getElementById('productDropdown');
-  // 三段排序：有庫存 → 可預購（白名單無庫存）→ 無庫存鎖住，各段內按品號
-  const inStock = filtered.filter(p=>(stockMap[p.sku]??0)>0).sort((a,b)=>a.sku.localeCompare(b.sku));
-  const preOrder = filtered.filter(p=>(stockMap[p.sku]??0)<=0 && isPreorderable(p.sku)).sort((a,b)=>a.sku.localeCompare(b.sku));
-  const locked = filtered.filter(p=>(stockMap[p.sku]??0)<=0 && !isPreorderable(p.sku)).sort((a,b)=>a.sku.localeCompare(b.sku));
-  const list = stockMap ? [...inStock, ...preOrder, ...locked] : filtered;
+  // 排序：南崁自倉品 → 有庫存 → 可預購（白名單無庫存）→ 無庫存鎖住，各段內按品號
+  const nankan = filtered.filter(p=>isNankan(p.sku)).sort((a,b)=>a.sku.localeCompare(b.sku));
+  const inStock = filtered.filter(p=>!isNankan(p.sku) && (stockMap[p.sku]??0)>0).sort((a,b)=>a.sku.localeCompare(b.sku));
+  const preOrder = filtered.filter(p=>!isNankan(p.sku) && (stockMap[p.sku]??0)<=0 && isPreorderable(p.sku)).sort((a,b)=>a.sku.localeCompare(b.sku));
+  const locked = filtered.filter(p=>!isNankan(p.sku) && (stockMap[p.sku]??0)<=0 && !isPreorderable(p.sku)).sort((a,b)=>a.sku.localeCompare(b.sku));
+  const list = stockMap ? [...nankan, ...inStock, ...preOrder, ...locked] : filtered;
   dd.innerHTML = list.map(p => {
+    const nankanItem = isNankan(p.sku);
     const stock = stockMap ? (stockMap[p.sku] ?? 0) : (p.stock ?? 0);
     const canPreorder = stock <= 0 && isPreorderable(p.sku);
-    const stockClass = stock > 10 ? 'ok' : stock > 0 ? 'low' : (canPreorder ? 'low' : 'none');
-    const stockText = stock > 0 ? `可用 ${stock}` : (canPreorder ? '可預購' : '無庫存');
-    // 白名單內無庫存品 → 可選（預購）；清單外無庫存 → 維持鎖住
-    const disabled = (stock <= 0 && !canPreorder) ? 'style="opacity:0.5;pointer-events:none;"' : '';
-    return `<div class="product-option" onclick="addItem('${escHtml(p.sku)}','${escHtml(p.product_name)}',${stock})" ${disabled}>
+    // 南崁品：不看 ibiza 庫存，永遠可選，顯示「南崁出貨」
+    const stockClass = nankanItem ? 'ok' : (stock > 10 ? 'ok' : stock > 0 ? 'low' : (canPreorder ? 'low' : 'none'));
+    const stockText = nankanItem ? '🍷 南崁出貨' : (stock > 0 ? `可用 ${stock}` : (canPreorder ? '可預購' : '無庫存'));
+    // 南崁品永遠可選；白名單內無庫存品 → 可選（預購）；清單外無庫存 → 維持鎖住
+    const disabled = (!nankanItem && stock <= 0 && !canPreorder) ? 'style="opacity:0.5;pointer-events:none;"' : '';
+    const stockStyle = nankanItem ? 'color:#8B2A3A;' : '';
+    return `<div class="product-option" onclick="addItem('${escHtml(p.sku)}','${escHtml(p.product_name)}',${nankanItem?999:stock})" ${disabled}>
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-        <div style="min-width:0;flex:1;"><div class="pname" style="white-space:normal;line-height:1.4;">${escHtml(p.product_name)}</div><div class="pcode">${p.sku}</div></div>
-        <div class="pstock ${stockClass}" style="flex-shrink:0;">${stockText}</div>
+        <div style="min-width:0;flex:1;"><div class="pname" style="white-space:normal;line-height:1.4;">${nankanItem?NANKAN_BADGE_SM+' ':''}${escHtml(p.product_name)}</div><div class="pcode">${p.sku}</div></div>
+        <div class="pstock ${stockClass}" style="flex-shrink:0;${stockStyle}">${stockText}</div>
       </div>
     </div>`;
   }).join('');
@@ -1188,9 +1209,10 @@ async function renderDropdownFromLocal(q) {
 function addItem(sku, name, stock) {
   if (formItems.find(i => i.sku === sku)) { showToast('此商品已加入'); closeDropdown(); return; }
   if (formItems.length >= 5) { showToast('最多只能選5項商品'); closeDropdown(); return; }
-  formItems.push({ sku, name, stock, qty: 1 });
-  // 選到可預購且無庫存的品項 → 自動顯示預訂單勾選區
-  if (stock <= 0 && isPreorderable(sku)) {
+  const nankanItem = isNankan(sku);
+  formItems.push({ sku, name, stock, qty: 1, fulfill_source: nankanItem ? 'nankan' : 'wms' });
+  // 選到可預購且無庫存的品項 → 自動顯示預訂單勾選區（南崁品不算預購）
+  if (!nankanItem && stock <= 0 && isPreorderable(sku)) {
     const box = document.getElementById('preorderBox');
     if (box) box.style.display = 'block';
   }
@@ -1218,7 +1240,7 @@ function renderItems() {
   if (!formItems.length) { list.innerHTML = ''; return; }
   list.innerHTML = formItems.map((item, i) => `
     <div class="item-row">
-      <div class="item-info"><div class="item-name">${escHtml(item.name)}</div><div class="item-code">${item.sku}</div><div class="item-stock ${item.stock > 0 ? 'ok' : 'none'}">庫存 ${item.stock}</div></div>
+      <div class="item-info"><div class="item-name">${item.fulfill_source==='nankan'?NANKAN_BADGE_SM+' ':''}${escHtml(item.name)}</div><div class="item-code">${item.sku}</div><div class="item-stock ${item.fulfill_source==='nankan'?'ok':(item.stock > 0 ? 'ok' : 'none')}" ${item.fulfill_source==='nankan'?'style="color:#8B2A3A;"':''}>${item.fulfill_source==='nankan'?'🍷 南崁自倉出貨':'庫存 '+item.stock}</div></div>
       <div class="qty-control"><button class="qty-btn" onclick="changeQty(${i},-1)">−</button><span class="qty-num">${item.qty}</span><button class="qty-btn" onclick="changeQty(${i},1)">＋</button></div>
       <button class="item-delete" onclick="removeItem(${i})">✕</button>
     </div>`).join('');
@@ -1226,8 +1248,8 @@ function renderItems() {
 
 function changeQty(i, d) {
   const it = formItems[i];
-  // 白名單預購品（無庫存）不受庫存上限，可訂多條；一般品維持庫存上限
-  const cap = (it.stock > 0) ? it.stock : (isPreorderable(it.sku) ? 999 : it.stock);
+  // 南崁品 / 白名單預購品 不受庫存上限；一般品維持庫存上限
+  const cap = (it.fulfill_source === 'nankan') ? 999 : ((it.stock > 0) ? it.stock : (isPreorderable(it.sku) ? 999 : it.stock));
   it.qty = Math.max(1, Math.min(cap, it.qty + d));
   renderItems();
 }
@@ -1414,18 +1436,27 @@ async function submitOrder() {
   try {
     // 送出前重查白名單，避免登入時快取未載入導致誤判
     if (!preorderWhitelist || preorderWhitelist.size === 0) { await loadPreorderWhitelist(); }
-    const skus = formItems.map(i => i.sku);
-    const liveStock = await ibizaGetStock(skus);
-    // 庫存查詢失敗防呆：只看「非白名單品」是否全查不到。
+    if (!nankanWhitelist || nankanWhitelist.size === 0) { await loadNankanWhitelist(); }
+    // 南崁品不查 ibiza（自倉、不走委外倉），只查非南崁品
+    const skus = formItems.filter(i => !isNankan(i.sku)).map(i => i.sku);
+    const liveStock = skus.length ? await ibizaGetStock(skus) : {};
+    // 庫存查詢失敗防呆：只看「非南崁、非白名單品」是否全查不到。
     // 白名單預購品 ibiza 回 null 是正常（無庫存），不算查詢失敗。
-    const nonWhitelistItems = formItems.filter(i => !isPreorderable(i.sku));
+    const nonWhitelistItems = formItems.filter(i => !isNankan(i.sku) && !isPreorderable(i.sku));
     const nonWhitelistAllNull = nonWhitelistItems.length > 0 && nonWhitelistItems.every(i => liveStock?.[i.sku] == null);
     if (nonWhitelistAllNull) { showLoading(false); showToast('⚠️ 庫存查詢失敗，無法確認庫存，請稍後再試', 'error'); return; }
 
-    // 逐項標記現貨 / 預購；分出「白名單外無庫存」（要擋）
+    // 逐項標記出貨來源 / 現貨 / 預購；分出「白名單外無庫存」（要擋）
     const blocked = [];      // 清單外、明確無庫存 → 擋
     const preorderItems = []; // 清單內無庫存或查不到 → 預購
     formItems.forEach(i => {
+      if (isNankan(i.sku)) {
+        // 南崁自倉品：不查庫存、不擋，標記來源
+        i.fulfill_source = 'nankan';
+        i.item_type = 'stock';
+        return;
+      }
+      i.fulfill_source = 'wms';
       const avail = liveStock?.[i.sku] ?? null;
       if (isPreorderable(i.sku)) {
         // 白名單品：查到 >0 為現貨；查到 ≤0 或查不到(null) 皆為預購
@@ -1517,7 +1548,7 @@ async function doSubmitOrder() {
     const newOrder = await sb.post('orders', orderData);
     if (!newOrder || newOrder.error) throw new Error(newOrder?.message || '建立訂單失敗');
     const orderId = Array.isArray(newOrder) ? newOrder[0].id : newOrder.id;
-    for (const item of formItems) { await sb.post('order_items', { order_id: orderId, sku: item.sku, product_name: item.name, quantity: item.qty, item_type: item.item_type || 'stock' }); }
+    for (const item of formItems) { await sb.post('order_items', { order_id: orderId, sku: item.sku, product_name: item.name, quantity: item.qty, item_type: item.item_type || 'stock', fulfill_source: item.fulfill_source || 'wms' }); }
     showLoading(false);
     showToast('訂單登記成功！', 'success');
     showScreen('mainScreen');
@@ -1753,7 +1784,7 @@ function renderOrderList(orders, containerId) {
   const statusMap = { pending:'待處理', partial:'部分已拋', submitted:'已拋單', processing:'作業中', shipped:'已完成', cancelled:'已取消' };
   el.innerHTML = orders.map(o => {
     const preview = (o.order_items||[]).map(i => `${isPreorderItem(i)?'⟨預⟩':''}${i.product_name} x${i.quantity}`).join('、');
-    const cardBadge = orderHasPreorder(o) ? PREORDER_BADGE_SM : '';
+    const cardBadge = (orderHasPreorder(o) ? PREORDER_BADGE_SM : '') + (orderHasNankan(o) ? NANKAN_BADGE_SM : '');
     return `<div class="order-card ${o.status}" data-order-id="${o.id}" onclick="openOrderDetail('${o.id}')">
       <div class="order-card-top"><div class="order-no">${cardBadge} ${o.order_no}</div><span class="status-badge ${o.status}">${statusMap[o.status]||o.status}</span></div>
       <div class="order-receiver">${escHtml(o.receiver_name)}</div>
@@ -1854,15 +1885,60 @@ function renderDetail(o, containerId, isPublic) {
     </div>
     <div class="detail-card">
       <div class="detail-card-title">📦 訂購品項</div>
-      ${items.map(i=>{
+      ${(() => {
         const isAdmin = !isPublic && currentUser?.role === 'admin';
-        const isStaff = !isPublic && !!currentUser;  // 登入的業務或管理員
+        const isStaff = !isPublic && !!currentUser;
         const canSplit = isAdmin && (o.status==='pending'||o.status==='partial'||o.status==='submitted'||o.status==='processing');
-        const pushedTag = i.pushed ? '<span style="display:inline-block;margin-left:6px;padding:1px 8px;background:#e0e8f8;color:#2C6FBF;border-radius:10px;font-size:11px;font-weight:700;">已拋</span>' : '<span style="display:inline-block;margin-left:6px;padding:1px 8px;background:#FBF2E9;color:#C8881C;border-radius:10px;font-size:11px;font-weight:700;">未拋</span>';
-        const chk = (canSplit && !i.pushed) ? `<input type="checkbox" class="split-item-chk" data-item-id="${i.id}" data-sku="${escHtml(i.sku)}" data-qty="${i.quantity}" style="width:18px;height:18px;margin-right:8px;flex-shrink:0;cursor:pointer;accent-color:var(--accent);">` : (canSplit?'<span style="display:inline-block;width:18px;margin-right:8px;flex-shrink:0;"></span>':'');
-        return `<div class="detail-row"><div class="detail-row-label">品項</div><div class="detail-row-value"><div style="display:flex;align-items:flex-start;">${chk}<div style="flex:1;"><div>${isPreorderItem(i)?PREORDER_BADGE_SM+' ':''}${escHtml(i.product_name)}${isStaff?pushedTag:''}</div><div style="font-size:12px;color:var(--text2);font-family:'DM Mono',monospace;">${i.sku} × ${i.quantity}${isPreorderItem(i)?' <span style="color:#C8881C;font-weight:700;">（預購）</span>':''}${isStaff&&i.pushed&&i.ibiza_order_no?` · ibiza:${escHtml(i.ibiza_order_no)}`:''}</div></div></div></div></div>`;
-      }).join('')}
-      ${(!isPublic && currentUser?.role==='admin' && (o.status==='pending'||o.status==='partial'||o.status==='submitted'||o.status==='processing') && items.some(i=>!i.pushed))?`<div style="padding:10px 14px;"><button onclick="pushSelectedItems('${o.id}')" style="width:100%;padding:11px;background:#1a6b3a;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">🚀 拋選取的品項至倉庫</button><div style="font-size:11px;color:var(--text2);text-align:center;margin-top:4px;">勾選上方未拋品項後點此，只拋這些品項（分批拋單）</div></div>`:''}
+        const wmsItems = items.filter(i => !isNankanItem(i));
+        const nankanItems = items.filter(i => isNankanItem(i));
+
+        // 單一品項列渲染
+        const renderItemRow = (i, isNankanGroup) => {
+          let tag;
+          if (isNankanGroup) {
+            tag = i.nankan_shipped
+              ? '<span style="display:inline-block;margin-left:6px;padding:1px 8px;background:#e8d8dc;color:#8B2A3A;border-radius:10px;font-size:11px;font-weight:700;">已出貨</span>'
+              : '<span style="display:inline-block;margin-left:6px;padding:1px 8px;background:#FBF2E9;color:#C8881C;border-radius:10px;font-size:11px;font-weight:700;">未出貨</span>';
+          } else {
+            tag = i.pushed
+              ? '<span style="display:inline-block;margin-left:6px;padding:1px 8px;background:#e0e8f8;color:#2C6FBF;border-radius:10px;font-size:11px;font-weight:700;">已拋</span>'
+              : '<span style="display:inline-block;margin-left:6px;padding:1px 8px;background:#FBF2E9;color:#C8881C;border-radius:10px;font-size:11px;font-weight:700;">未拋</span>';
+          }
+          const chk = (!isNankanGroup && canSplit && !i.pushed)
+            ? `<input type="checkbox" class="split-item-chk" data-item-id="${i.id}" data-sku="${escHtml(i.sku)}" data-qty="${i.quantity}" style="width:18px;height:18px;margin-right:8px;flex-shrink:0;cursor:pointer;accent-color:var(--accent);">`
+            : ((!isNankanGroup && canSplit) ? '<span style="display:inline-block;width:18px;margin-right:8px;flex-shrink:0;"></span>' : '');
+          const badge = isNankanGroup ? NANKAN_BADGE_SM+' ' : (isPreorderItem(i)?PREORDER_BADGE_SM+' ':'');
+          const extra = isNankanGroup
+            ? (isStaff&&i.nankan_shipped&&o.tracking_number_nankan?` · 黑貓:${escHtml(o.tracking_number_nankan)}`:'')
+            : (isPreorderItem(i)?' <span style="color:#C8881C;font-weight:700;">（預購）</span>':'') + (isStaff&&i.pushed&&i.ibiza_order_no?` · ibiza:${escHtml(i.ibiza_order_no)}`:'');
+          return `<div class="detail-row"><div class="detail-row-label">品項</div><div class="detail-row-value"><div style="display:flex;align-items:flex-start;">${chk}<div style="flex:1;"><div>${badge}${escHtml(i.product_name)}${isStaff?tag:''}</div><div style="font-size:12px;color:var(--text2);font-family:'DM Mono',monospace;">${i.sku} × ${i.quantity}${extra}</div></div></div></div></div>`;
+        };
+
+        let html = '';
+
+        // ─ 委外倉群（新竹貨運）─
+        if (wmsItems.length) {
+          html += `<div style="padding:8px 14px 2px;font-size:12px;font-weight:800;color:#2C6FBF;background:#f4f7fc;">🏭 委外倉 · 新竹貨運（${wmsItems.length} 項）</div>`;
+          html += wmsItems.map(i => renderItemRow(i, false)).join('');
+          if (isAdmin && (o.status==='pending'||o.status==='partial'||o.status==='submitted'||o.status==='processing') && wmsItems.some(i=>!i.pushed)) {
+            html += `<div style="padding:10px 14px;"><button onclick="pushSelectedItems('${o.id}')" style="width:100%;padding:11px;background:#1a6b3a;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">🚀 拋選取的品項至倉庫</button><div style="font-size:11px;color:var(--text2);text-align:center;margin-top:4px;">勾選上方未拋品項後點此，只拋這些品項（分批拋單）</div></div>`;
+          }
+        }
+
+        // ─ 南崁自倉群（黑貓）─
+        if (nankanItems.length) {
+          html += `<div style="padding:10px 14px 2px;font-size:12px;font-weight:800;color:#8B2A3A;background:#fbf5f6;border-top:${wmsItems.length?'1px solid var(--border)':'none'};">📦 南崁自倉 · 黑貓宅急便（${nankanItems.length} 項）</div>`;
+          html += nankanItems.map(i => renderItemRow(i, true)).join('');
+          if (o.tracking_number_nankan) {
+            html += `<div class="detail-row"><div class="detail-row-label">黑貓單號</div><div class="detail-row-value" style="font-family:'DM Mono',monospace;font-weight:700;color:#8B2A3A;">${escHtml(o.tracking_number_nankan)} <button onclick="openHCTTracking('${escHtml(o.tracking_number_nankan)}')" style="margin-left:6px;padding:2px 8px;background:#8B2A3A;color:#fff;border:none;border-radius:5px;font-size:11px;cursor:pointer;">查件</button></div></div>`;
+          }
+          if (isAdmin && o.status!=='cancelled' && nankanItems.some(i=>!i.nankan_shipped)) {
+            html += `<div style="padding:10px 14px;"><button onclick="registerNankanShipping('${o.id}')" style="width:100%;padding:11px;background:#8B2A3A;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">📦 登記南崁出貨（填黑貓單號）</button><div style="font-size:11px;color:var(--text2);text-align:center;margin-top:4px;">南崁倉自行叫黑貓出貨後，於此登記托運單號</div></div>`;
+          }
+        }
+
+        return html;
+      })()}
       ${adminBtns}
     </div>
     <div class="detail-card">
@@ -1938,7 +2014,7 @@ function renderAdminOrders() {
   const statusMap = { pending:'待處理', partial:'部分已拋', submitted:'已拋單', processing:'作業中', shipped:'已完成', cancelled:'已取消' };
   el.innerHTML = filtered.map(o => {
     const preview = (o.order_items||[]).map(i => `${isPreorderItem(i)?'⟨預⟩':''}${i.product_name} x${i.quantity}`).join('、');
-    const cardBadge = orderHasPreorder(o) ? PREORDER_BADGE_SM : '';
+    const cardBadge = (orderHasPreorder(o) ? PREORDER_BADGE_SM : '') + (orderHasNankan(o) ? NANKAN_BADGE_SM : '');
     return `<div class="order-card ${o.status}" data-order-id="${o.id}" style="display:flex;align-items:flex-start;gap:10px;cursor:default;">
       <input type="checkbox" class="order-select-chk" data-id="${o.id}" onchange="onOrderCheckChange()" onclick="event.stopPropagation()" style="width:20px;height:20px;margin-top:6px;flex-shrink:0;cursor:pointer;accent-color:var(--accent);">
       <div style="flex:1;min-width:0;cursor:pointer;" onclick="(function(){document.getElementById('detailBack').onclick=()=>showScreen('adminScreen');openOrderDetail('${o.id}');})()">
@@ -2078,6 +2154,51 @@ async function pushSelectedItems(orderId) {
   } catch(e) {
     showToast('❌ 連線失敗：' + e.message, 'error');
   }
+  showLoading(false);
+}
+
+// ═══════════════════════════════════════════
+// 南崁自倉出貨登記（黑貓，不走 ibiza）
+// ═══════════════════════════════════════════
+async function registerNankanShipping(orderId) {
+  const num = prompt('請輸入南崁出貨的黑貓托運單號：');
+  if (num === null) return;
+  const tracking = num.trim();
+  if (!tracking) { showToast('托運單號不能空白', 'error'); return; }
+  showLoading(true);
+  try {
+    // 取訂單完整品項
+    const orders = await sb.get('orders', `?id=eq.${orderId}&select=*,order_items(*)`);
+    const o = orders?.[0];
+    if (!o) throw new Error('找不到訂單');
+    const allItems = o.order_items || [];
+    const nankanItems = allItems.filter(i => i.fulfill_source === 'nankan');
+    if (!nankanItems.length) { showLoading(false); showToast('此訂單沒有南崁品項', 'error'); return; }
+
+    // 標記所有南崁品已出貨
+    const nowIso = new Date().toISOString();
+    const nankanIds = nankanItems.map(i => i.id);
+    await fetch(`${SUPABASE_URL}/rest/v1/order_items?id=in.(${nankanIds.join(',')})`, {
+      method: 'PATCH',
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nankan_shipped: true })
+    });
+
+    // 計算訂單整體狀態：所有 WMS 品已拋 + 所有南崁品已出 → shipped；否則 partial
+    const wmsItems = allItems.filter(i => i.fulfill_source !== 'nankan');
+    const wmsAllDone = wmsItems.length === 0 || wmsItems.every(i => i.pushed);
+    const newStatus = wmsAllDone ? 'shipped' : 'partial';
+    await sb.patch('orders', orderId, { tracking_number_nankan: tracking, status: newStatus, updated_at: nowIso });
+
+    showToast(wmsAllDone ? '✅ 南崁已出貨，訂單全部完成！' : '✅ 南崁已出貨（委外倉品項尚未拋完）', 'success');
+
+    // 推播通知業務
+    if (o.staff_id) {
+      sendPushToStaff(o.staff_id, '🍷 南崁商品已出貨', `訂單 ${o.order_no}｜黑貓單號：${tracking}`, `${location.origin}${location.pathname}?order=${orderId}`);
+    }
+    await openOrderDetail(orderId);
+    loadAdminOrders();
+  } catch(e) { showToast('登記失敗：' + e.message, 'error'); }
   showLoading(false);
 }
 
@@ -3105,16 +3226,17 @@ async function doExportCSV() {
 
 function exportCSVData(orders, filename) {
   const statusMap = { pending:'待處理', partial:'部分已拋', submitted:'已拋單', processing:'作業中', shipped:'已完成', cancelled:'已取消' };
-  const rows = [['訂單編號','狀態','門市','業務員','業務電話','收件人','收件電話','收件地址','郵遞區號','POS序號','品名','品號','數量','預約到貨日','預約出貨日','備註','托運單號','建立時間']];
+  const rows = [['訂單編號','狀態','門市','業務員','業務電話','收件人','收件電話','收件地址','郵遞區號','POS序號','品名','品號','數量','出貨倉別','預約到貨日','預約出貨日','備註','新竹托運單號','黑貓托運單號','建立時間']];
   orders.forEach(o => {
     const items = o.order_items || [];
     const addrMatch = (o.receiver_address||'').match(/^(\d{3,5})\s/);
     const zip = addrMatch ? addrMatch[1] : '';
     if (!items.length) {
-      rows.push([o.order_no, statusMap[o.status]||o.status, o.stores?.name||'', o.staff?.name||'', o.staff?.phone||'', o.receiver_name||'', o.receiver_phone||'', o.receiver_address||'', zip, o.pos_no||'', '', '', '', o.delivery_date||'', o.scheduled_shipping_date||'', o.note||'', o.tracking_number||'', formatDate(o.created_at)]);
+      rows.push([o.order_no, statusMap[o.status]||o.status, o.stores?.name||'', o.staff?.name||'', o.staff?.phone||'', o.receiver_name||'', o.receiver_phone||'', o.receiver_address||'', zip, o.pos_no||'', '', '', '', '', o.delivery_date||'', o.scheduled_shipping_date||'', o.note||'', o.tracking_number||'', o.tracking_number_nankan||'', formatDate(o.created_at)]);
     } else {
       items.forEach(item => {
-        rows.push([o.order_no, statusMap[o.status]||o.status, o.stores?.name||'', o.staff?.name||'', o.staff?.phone||'', o.receiver_name||'', o.receiver_phone||'', o.receiver_address||'', zip, o.pos_no||'', item.product_name||'', item.sku||'', item.quantity||'', o.delivery_date||'', o.scheduled_shipping_date||'', o.note||'', o.tracking_number||'', formatDate(o.created_at)]);
+        const src = item.fulfill_source === 'nankan' ? '南崁自倉' : '委外倉';
+        rows.push([o.order_no, statusMap[o.status]||o.status, o.stores?.name||'', o.staff?.name||'', o.staff?.phone||'', o.receiver_name||'', o.receiver_phone||'', o.receiver_address||'', zip, o.pos_no||'', item.product_name||'', item.sku||'', item.quantity||'', src, o.delivery_date||'', o.scheduled_shipping_date||'', o.note||'', o.tracking_number||'', o.tracking_number_nankan||'', formatDate(o.created_at)]);
       });
     }
   });
@@ -3156,36 +3278,45 @@ async function exportErpExcel(orders) {
     let fileCount = 0;
     for (const o of orders) {
       const st = o.stores || {};
-      const items = (o.order_items && o.order_items.length) ? o.order_items : [{ sku:'', product_name:'', quantity:'' }];
-      const rows = [headers];
-      items.forEach(it => {
-        rows.push([
-          dateStr,                          // 異動日期
-          '1203',                           // 單別（固定）
-          o.order_no || '',                 // 單號
-          st.dept_code || '',               // 部門代號
-          'B0003',                          // 轉出庫（固定）
-          st.warehouse_code || '',          // 轉入庫
-          st.name || '',                    // 門市
-          o.receiver_name || '',            // 聯絡人
-          o.receiver_phone || '',           // 電話
-          o.receiver_address || '',         // 地址
-          it.sku || '',                     // 品號
-          it.product_name || '',            // 品名
-          it.quantity || '',                // 數量
-          o.note || ''                      // 備註
-        ]);
-      });
-      // 建立工作表
-      const ws = XLSX.utils.aoa_to_sheet(rows);
-      // 欄寬
-      ws['!cols'] = [{wch:10},{wch:6},{wch:14},{wch:10},{wch:8},{wch:8},{wch:16},{wch:10},{wch:12},{wch:30},{wch:14},{wch:24},{wch:6},{wch:16}];
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, o.order_no || 'sheet');
-      // 轉成 binary
-      const wbout = XLSX.write(wb, { bookType:'xlsx', type:'array' });
-      zip.file(`${o.order_no || ('order'+fileCount)}.xlsx`, wbout);
-      fileCount++;
+      const allItems = (o.order_items && o.order_items.length) ? o.order_items : [{ sku:'', product_name:'', quantity:'', fulfill_source:'wms' }];
+      // 依出貨倉別分組：一張轉撥單只能一個轉出庫，混單拆兩張
+      // 委外倉 → 轉出庫 B0003；南崁自倉 → 轉出庫 A0001
+      const groups = [
+        { source:'wms',    transOut:'B0003', suffix:'委外', items: allItems.filter(it => it.fulfill_source !== 'nankan') },
+        { source:'nankan', transOut:'A0001', suffix:'南崁', items: allItems.filter(it => it.fulfill_source === 'nankan') },
+      ];
+      for (const g of groups) {
+        if (!g.items.length) continue;  // 該倉別沒品項就不產這張
+        const rows = [headers];
+        g.items.forEach(it => {
+          rows.push([
+            dateStr,                          // 異動日期
+            '1203',                           // 單別（固定）
+            o.order_no || '',                 // 單號
+            st.dept_code || '',               // 部門代號
+            g.transOut,                       // 轉出庫（依倉別：B0003 委外 / A0001 南崁）
+            st.warehouse_code || '',          // 轉入庫
+            st.name || '',                    // 門市
+            o.receiver_name || '',            // 聯絡人
+            o.receiver_phone || '',           // 電話
+            o.receiver_address || '',         // 地址
+            it.sku || '',                     // 品號
+            it.product_name || '',            // 品名
+            it.quantity || '',                // 數量
+            o.note || ''                      // 備註
+          ]);
+        });
+        const ws = XLSX.utils.aoa_to_sheet(rows);
+        ws['!cols'] = [{wch:10},{wch:6},{wch:14},{wch:10},{wch:8},{wch:8},{wch:16},{wch:10},{wch:12},{wch:30},{wch:14},{wch:24},{wch:6},{wch:16}];
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, (o.order_no || 'sheet').slice(0,28));
+        const wbout = XLSX.write(wb, { bookType:'xlsx', type:'array' });
+        // 混單時檔名標倉別後綴；純單則不加
+        const hasBoth = groups.every(gg => gg.items.length > 0);
+        const fname = hasBoth ? `${o.order_no || ('order'+fileCount)}_${g.suffix}.xlsx` : `${o.order_no || ('order'+fileCount)}.xlsx`;
+        zip.file(fname, wbout);
+        fileCount++;
+      }
     }
 
     // 產生 zip 並下載
