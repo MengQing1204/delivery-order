@@ -613,6 +613,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
     </div>
     <div class="form-section">
       <div class="form-section-title">🧾 訂購人資訊</div>
+      <div class="form-row"><label class="form-label">實際銷售日期 <span class="req">*</span> <span style="font-size:11px;color:var(--text2);font-weight:400;">（展場較晚登入可改成實際銷售那天）</span></label><input class="form-input" id="saleDate" type="date" style="cursor:pointer;max-width:100%;box-sizing:border-box;-webkit-appearance:none;"></div>
       <div class="form-row"><label class="form-label">訂購人姓名 <span class="req">*</span></label><input class="form-input" id="buyerName" placeholder="請輸入訂購人姓名" type="text"></div>
       <div class="form-row"><label class="form-label">訂購人電話 <span class="req">*</span></label><input class="form-input" id="buyerPhone" placeholder="請輸入10碼手機號碼" type="tel" inputmode="numeric" maxlength="10" oninput="validatePhone(this)"><div class="field-hint" id="buyerPhoneHint"></div></div>
     </div>
@@ -1234,7 +1235,10 @@ function removeItem(i) { formItems.splice(i, 1); renderItems(); }
 
 function initForm() {
   formItems = []; sameBuyer = false;
-  ['buyerName','buyerPhone','receiverName','receiverPhone','addrDetail','posNo','orderNote','productSearch','deliveryDate'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  ['buyerName','buyerPhone','receiverName','receiverPhone','addrDetail','posNo','orderNote','productSearch','deliveryDate','saleDate'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  // 實際銷售日期：預設今天、上限今天（可選過去、不能選未來）
+  const _sd = document.getElementById('saleDate');
+  if (_sd) { const _t = new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Taipei'})); const _ds = `${_t.getFullYear()}-${String(_t.getMonth()+1).padStart(2,'0')}-${String(_t.getDate()).padStart(2,'0')}`; _sd.value = _ds; _sd.max = _ds; }
   // 重置預訂單勾選與提示框
   const _pc = document.getElementById('preorderCheck'); if (_pc) _pc.checked = false;
   const _pb = document.getElementById('preorderBox'); if (_pb) _pb.style.display = 'none';
@@ -1390,6 +1394,11 @@ async function submitOrder() {
   const detail = document.getElementById('addrDetail').value.trim();
   const address = getFullAddress();
   if (!buyerName) { showToast('請輸入訂購人姓名', 'error'); return; }
+  const _saleDate = document.getElementById('saleDate')?.value || '';
+  const _tw = new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Taipei'}));
+  const _todayStr = `${_tw.getFullYear()}-${String(_tw.getMonth()+1).padStart(2,'0')}-${String(_tw.getDate()).padStart(2,'0')}`;
+  if (!_saleDate) { showToast('請選擇實際銷售日期', 'error'); return; }
+  if (_saleDate > _todayStr) { showToast('實際銷售日期不能選未來日期', 'error'); return; }
   if (!buyerPhone || buyerPhone.length !== 10 || buyerPhone[0] !== '0') { showToast('訂購人電話格式不正確', 'error'); return; }
   if (!receiverName) { showToast('請輸入收件人姓名', 'error'); return; }
   if (!receiverPhone || receiverPhone.length !== 10 || receiverPhone[0] !== '0') { showToast('收件人電話格式不正確', 'error'); return; }
@@ -1463,7 +1472,8 @@ async function submitOrder() {
   const storeName = _sel?.querySelector(`option[value="${storeId}"]`)?.getAttribute('data-name') || currentStore?.name || '';
   if (!storeId) { showToast('請選擇門市', 'error'); return; }
   const deliveryDate = document.getElementById('deliveryDate')?.value || null;
-  pendingOrderData = { buyerName, buyerPhone, receiverName, receiverPhone, address, posNo, terminal, note, storeId, storeName, deliveryDate };
+  const saleDate = document.getElementById('saleDate')?.value || null;
+  pendingOrderData = { buyerName, buyerPhone, receiverName, receiverPhone, address, posNo, terminal, note, storeId, storeName, deliveryDate, saleDate };
   showLoading(true);
   try {
     const today = new Date();
@@ -1502,7 +1512,8 @@ async function doSubmitOrder() {
     const customNo = (currentUser?.role === 'admin') ? document.getElementById('customOrderNo')?.value.trim() : '';
     const orderNo = customNo || await generateOrderNo();
     const deliveryDate = document.getElementById('deliveryDate')?.value || null;
-    const orderData = { order_no: orderNo, delivery_date: deliveryDate, store_id: d.storeId, staff_id: currentUser.id, buyer_name: d.buyerName, buyer_phone: d.buyerPhone, receiver_name: d.receiverName, receiver_phone: d.receiverPhone, receiver_address: d.address, pos_no: d.posNo, pos_terminal: d.terminal, note: d.note || null, status: 'pending', is_preorder: !!window._hasPreorder };
+    const saleDate = document.getElementById('saleDate')?.value || null;
+    const orderData = { order_no: orderNo, delivery_date: deliveryDate, sale_date: saleDate, store_id: d.storeId, staff_id: currentUser.id, buyer_name: d.buyerName, buyer_phone: d.buyerPhone, receiver_name: d.receiverName, receiver_phone: d.receiverPhone, receiver_address: d.address, pos_no: d.posNo, pos_terminal: d.terminal, note: d.note || null, status: 'pending', is_preorder: !!window._hasPreorder };
     const newOrder = await sb.post('orders', orderData);
     if (!newOrder || newOrder.error) throw new Error(newOrder?.message || '建立訂單失敗');
     const orderId = Array.isArray(newOrder) ? newOrder[0].id : newOrder.id;
@@ -1859,6 +1870,7 @@ function renderDetail(o, containerId, isPublic) {
       <div class="detail-row"><div class="detail-row-label">門市</div><div class="detail-row-value">${escHtml(o.stores?.name||'')}</div></div>
       <div class="detail-row"><div class="detail-row-label">業務員</div><div class="detail-row-value">${escHtml(o.staff?.name||'')}</div></div>
       <div class="detail-row"><div class="detail-row-label">業務電話</div><div class="detail-row-value">${escHtml(o.staff?.phone||'')}</div></div>
+      ${o.sale_date?`<div class="detail-row"><div class="detail-row-label">實際銷售日</div><div class="detail-row-value" style="color:var(--accent2);font-weight:700;">${escHtml(o.sale_date)}</div></div>`:''}
       <div class="detail-row"><div class="detail-row-label">登記時間</div><div class="detail-row-value">${formatDate(o.created_at)}</div></div>
     </div>
     <div class="qr-section">
