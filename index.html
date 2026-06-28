@@ -3280,19 +3280,30 @@ async function exportErpExcel(orders) {
       const st = o.stores || {};
       const allItems = (o.order_items && o.order_items.length) ? o.order_items : [{ sku:'', product_name:'', quantity:'', fulfill_source:'wms' }];
       // 依出貨倉別分組：一張轉撥單只能一個轉出庫，混單拆兩張
-      // 委外倉 → 轉出庫 B0003；南崁自倉 → 轉出庫 A0001
+      // 委外倉 → 轉出庫 B0003，單號後綴 -W；南崁自倉 → 轉出庫 A0001，單號後綴 -A
       const groups = [
-        { source:'wms',    transOut:'B0003', suffix:'委外', items: allItems.filter(it => it.fulfill_source !== 'nankan') },
-        { source:'nankan', transOut:'A0001', suffix:'南崁', items: allItems.filter(it => it.fulfill_source === 'nankan') },
+        { source:'wms',    transOut:'B0003', suffix:'委外', noSuffix:'-W', items: allItems.filter(it => it.fulfill_source !== 'nankan') },
+        { source:'nankan', transOut:'A0001', suffix:'南崁', noSuffix:'-A', items: allItems.filter(it => it.fulfill_source === 'nankan') },
       ];
+      const wmsCount = groups[0].items.length;
+      const nankanCount = groups[1].items.length;
+      const isMixed = wmsCount > 0 && nankanCount > 0;       // 混單：兩倉都有
+      const isPureNankan = wmsCount === 0 && nankanCount > 0; // 純南崁單
       for (const g of groups) {
         if (!g.items.length) continue;  // 該倉別沒品項就不產這張
+        // 單號後綴規則：
+        //   混單 → 委外 -W、南崁 -A
+        //   純南崁 → -A（與委外區隔）
+        //   純委外 → 不加後綴（維持原樣，不影響現有對帳）
+        let orderNoOut = o.order_no || '';
+        if (isMixed) { orderNoOut += g.noSuffix; }
+        else if (isPureNankan && g.source === 'nankan') { orderNoOut += '-A'; }
         const rows = [headers];
         g.items.forEach(it => {
           rows.push([
             dateStr,                          // 異動日期
             '1203',                           // 單別（固定）
-            o.order_no || '',                 // 單號
+            orderNoOut,                       // 單號（依倉別加後綴 -W / -A）
             st.dept_code || '',               // 部門代號
             g.transOut,                       // 轉出庫（依倉別：B0003 委外 / A0001 南崁）
             st.warehouse_code || '',          // 轉入庫
@@ -3309,11 +3320,10 @@ async function exportErpExcel(orders) {
         const ws = XLSX.utils.aoa_to_sheet(rows);
         ws['!cols'] = [{wch:10},{wch:6},{wch:14},{wch:10},{wch:8},{wch:8},{wch:16},{wch:10},{wch:12},{wch:30},{wch:14},{wch:24},{wch:6},{wch:16}];
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, (o.order_no || 'sheet').slice(0,28));
+        XLSX.utils.book_append_sheet(wb, ws, (orderNoOut || 'sheet').slice(0,28));
         const wbout = XLSX.write(wb, { bookType:'xlsx', type:'array' });
-        // 混單時檔名標倉別後綴；純單則不加
-        const hasBoth = groups.every(gg => gg.items.length > 0);
-        const fname = hasBoth ? `${o.order_no || ('order'+fileCount)}_${g.suffix}.xlsx` : `${o.order_no || ('order'+fileCount)}.xlsx`;
+        // 檔名直接用帶後綴的單號，解壓即可分辨
+        const fname = `${orderNoOut || ('order'+fileCount)}.xlsx`;
         zip.file(fname, wbout);
         fileCount++;
       }
