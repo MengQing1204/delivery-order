@@ -1437,11 +1437,20 @@ function validatePhone(input) {
 // ═══════════════════════════════════════════
 async function lookupCustomerByPhone(phone) {
   if (!phone || phone.length !== 10) return;
+  const role = currentUser?.role;
   try {
-    // 權限範圍：一般業務只查自己門市；管理員/店長不限
-    let filter = `?receiver_phone=eq.${phone}&order=created_at.desc&limit=1&select=receiver_name,receiver_phone,receiver_address,store_id`;
-    if (currentUser?.role !== 'admin' && currentUser?.role !== 'manager' && currentUser?.store_id) {
-      filter = `?receiver_phone=eq.${phone}&store_id=eq.${currentUser.store_id}&order=created_at.desc&limit=1&select=receiver_name,receiver_phone,receiver_address,store_id`;
+    // 權限比照訂單管理：一般業務只查自己經手(staff_id)；店長查管轄門市；管理員不限
+    let filter = `?receiver_phone=eq.${phone}&order=created_at.desc&limit=1&select=receiver_name,receiver_phone,receiver_address,store_id,staff_id`;
+    if (role === 'admin') {
+      // 不加條件
+    } else if (role === 'manager') {
+      const storeIds = await getManagerStoreIds(currentUser.id);
+      if (!storeIds.length) return;
+      filter += `&store_id=in.(${storeIds.map(id=>`"${id}"`).join(',')})`;
+    } else {
+      // 一般業務：只查自己經手
+      if (!currentUser?.id) return;
+      filter += `&staff_id=eq.${currentUser.id}`;
     }
     const rows = await sb.get('orders', filter);
     const c = rows?.[0];
@@ -1504,16 +1513,27 @@ async function initCustomerBook() {
   if (listEl) listEl.innerHTML = '<div style="text-align:center;color:#4A6058;padding:24px;">載入中...</div>';
   const role = currentUser?.role;
   try {
-    let filter = '?order=created_at.desc&limit=1000&select=receiver_name,receiver_phone,receiver_address,store_id,created_at,stores(name)';
+    let filter = '?order=created_at.desc&limit=1000&select=receiver_name,receiver_phone,receiver_address,store_id,staff_id,created_at,stores(name)';
     if (role === 'admin') {
+      // 管理員：全公司
       if (hintEl) hintEl.textContent = '📌 顯示全公司客戶';
     } else if (role === 'manager') {
+      // 店長：管轄門市（比照訂單管理）
       const storeIds = await getManagerStoreIds(currentUser.id);
-      if (storeIds.length) { filter += `&store_id=in.(${storeIds.map(id=>`"${id}"`).join(',')})`; }
+      if (!storeIds.length) {
+        if (hintEl) hintEl.textContent = '⚠️ 帳號未設定管轄門市，請洽管理員';
+        custAllRecords = []; renderCustomerList(custAllRecords); return;
+      }
+      filter += `&store_id=in.(${storeIds.map(id=>`"${id}"`).join(',')})`;
       if (hintEl) hintEl.textContent = '📌 顯示管轄門市客戶';
     } else {
-      filter += `&store_id=eq.${currentUser.store_id}`;
-      if (hintEl) hintEl.textContent = '📌 僅顯示本門市客戶';
+      // 一般業務：只看自己經手的客戶（比照訂單管理用 staff_id）
+      if (!currentUser?.id) {
+        if (hintEl) hintEl.textContent = '⚠️ 帳號異常，請重新登入';
+        custAllRecords = []; renderCustomerList(custAllRecords); return;
+      }
+      filter += `&staff_id=eq.${currentUser.id}`;
+      if (hintEl) hintEl.textContent = '📌 僅顯示您經手的客戶';
     }
     const rows = await sb.get('orders', filter);
     // 依收件人電話去重，保留最新一筆，並累計出現次數
