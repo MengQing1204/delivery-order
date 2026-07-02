@@ -1861,15 +1861,19 @@ async function openPushTest() {
   modal.id = 'pushTestModal';
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
   modal.innerHTML = `
-    <div style="background:var(--surface);border-radius:var(--radius);padding:24px;width:100%;max-width:400px;box-shadow:var(--shadow-lg);">
+    <div style="background:var(--surface);border-radius:var(--radius);padding:24px;width:100%;max-width:420px;max-height:85vh;overflow-y:auto;box-shadow:var(--shadow-lg);">
       <div style="font-size:18px;font-weight:800;margin-bottom:6px;">🔔 測試推播通知</div>
       <div style="font-size:13px;color:var(--text2);margin-bottom:18px;">送出一則測試通知，確認手機能正常跳出。</div>
       <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:5px;">通知內容（可自訂）</label>
       <input id="pushTestMsg" value="📢 這是一則測試通知，收到請不用理會～" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;box-sizing:border-box;margin-bottom:16px;">
       <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:8px;">發送對象</label>
-      <div style="display:flex;gap:10px;margin-bottom:20px;">
-        <button id="ptSelf" onclick="setPtTarget('self')" style="flex:1;padding:12px;border:2px solid var(--accent);background:var(--accent-light);color:var(--accent);border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">👤 只發給我</button>
-        <button id="ptAll" onclick="setPtTarget('all')" style="flex:1;padding:12px;border:2px solid var(--border);background:var(--surface);color:var(--text2);border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">👥 全體業務</button>
+      <div style="display:flex;gap:8px;margin-bottom:14px;">
+        <button id="ptSelf" onclick="setPtTarget('self')" style="flex:1;padding:11px 6px;border:2px solid var(--accent);background:var(--accent-light);color:var(--accent);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">👤 只發給我</button>
+        <button id="ptPick" onclick="setPtTarget('pick')" style="flex:1;padding:11px 6px;border:2px solid var(--border);background:var(--surface);color:var(--text2);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">☑️ 指定業務</button>
+        <button id="ptAll" onclick="setPtTarget('all')" style="flex:1;padding:11px 6px;border:2px solid var(--border);background:var(--surface);color:var(--text2);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">👥 全體</button>
+      </div>
+      <div id="ptPickList" style="display:none;margin-bottom:16px;border:1.5px solid var(--border);border-radius:10px;padding:8px;max-height:260px;overflow-y:auto;background:var(--surface2);">
+        <div style="text-align:center;color:var(--text2);font-size:13px;padding:12px;">載入中...</div>
       </div>
       <div style="display:flex;gap:10px;">
         <button onclick="document.getElementById('pushTestModal').remove()" style="flex:1;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-size:15px;cursor:pointer;font-family:inherit;">取消</button>
@@ -1883,29 +1887,79 @@ async function openPushTest() {
 
 function setPtTarget(t) {
   window._ptTarget = t;
-  const self = document.getElementById('ptSelf'), all = document.getElementById('ptAll');
-  if (t === 'self') {
-    self.style.borderColor='var(--accent)'; self.style.background='var(--accent-light)'; self.style.color='var(--accent)';
-    all.style.borderColor='var(--border)'; all.style.background='var(--surface)'; all.style.color='var(--text2)';
-  } else {
-    all.style.borderColor='var(--accent)'; all.style.background='var(--accent-light)'; all.style.color='var(--accent)';
-    self.style.borderColor='var(--border)'; self.style.background='var(--surface)'; self.style.color='var(--text2)';
+  const btns = { self: document.getElementById('ptSelf'), pick: document.getElementById('ptPick'), all: document.getElementById('ptAll') };
+  Object.entries(btns).forEach(([k, b]) => {
+    if (!b) return;
+    const active = (k === t);
+    b.style.borderColor = active ? 'var(--accent)' : 'var(--border)';
+    b.style.background = active ? 'var(--accent-light)' : 'var(--surface)';
+    b.style.color = active ? 'var(--accent)' : 'var(--text2)';
+  });
+  const pickList = document.getElementById('ptPickList');
+  if (pickList) {
+    pickList.style.display = (t === 'pick') ? 'block' : 'none';
+    if (t === 'pick') loadPtSubscribers();
   }
+}
+
+// 載入已訂閱推播的業務清單（可勾選）
+async function loadPtSubscribers() {
+  const box = document.getElementById('ptPickList');
+  if (!box) return;
+  box.innerHTML = '<div style="text-align:center;color:var(--text2);font-size:13px;padding:12px;">載入中...</div>';
+  try {
+    const subs = await sb.get('push_subscriptions', '?select=staff_id,staff(name,phone,stores(name))&order=created_at.desc');
+    // 依 staff_id 去重
+    const map = new Map();
+    (subs||[]).forEach(s => { if (s.staff_id && !map.has(s.staff_id)) map.set(s.staff_id, s); });
+    const list = [...map.values()];
+    if (!list.length) { box.innerHTML = '<div style="text-align:center;color:var(--danger);font-size:13px;padding:12px;">目前沒有已訂閱推播的業務</div>'; return; }
+    box.innerHTML = `
+      <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;cursor:pointer;border-bottom:1px solid var(--border);font-weight:700;">
+        <input type="checkbox" id="ptCheckAll" onchange="ptToggleAll(this.checked)" style="width:18px;height:18px;accent-color:var(--accent);">
+        <span style="font-size:13px;">全選（共 ${list.length} 人）</span>
+      </label>` +
+      list.map(s => `
+      <label style="display:flex;align-items:center;gap:8px;padding:8px;cursor:pointer;border-bottom:1px solid #e5ece5;">
+        <input type="checkbox" class="pt-staff-chk" data-id="${s.staff_id}" style="width:18px;height:18px;accent-color:var(--accent);">
+        <div style="min-width:0;flex:1;">
+          <div style="font-size:14px;font-weight:600;">${escHtml(s.staff?.name||'(未命名)')}</div>
+          <div style="font-size:12px;color:var(--text2);">${escHtml(s.staff?.phone||'')} · ${escHtml(s.staff?.stores?.name||'')}</div>
+        </div>
+      </label>`).join('');
+  } catch(e) { box.innerHTML = '<div style="text-align:center;color:var(--danger);font-size:13px;padding:12px;">載入失敗</div>'; }
+}
+
+function ptToggleAll(checked) {
+  document.querySelectorAll('.pt-staff-chk').forEach(c => c.checked = checked);
 }
 
 async function doPushTest() {
   const msg = document.getElementById('pushTestMsg')?.value?.trim() || '📢 測試通知';
   const target = window._ptTarget || 'self';
+  const url = `${location.origin}${location.pathname}`;
+
+  // 指定業務：先取勾選的 id
+  if (target === 'pick') {
+    const ids = Array.from(document.querySelectorAll('.pt-staff-chk:checked')).map(c => c.getAttribute('data-id'));
+    if (!ids.length) { showToast('請至少勾選一位業務', 'error'); return; }
+    document.getElementById('pushTestModal')?.remove();
+    showLoading(true);
+    let ok = 0;
+    for (const id of ids) { try { await sendPushToStaff(id, '🔔 測試推播', msg, url); ok++; } catch(e){} }
+    showLoading(false);
+    showToast(`✅ 已發送給 ${ok} 位指定業務`, 'success');
+    return;
+  }
+
   if (target === 'all' && !confirm('確定要發給「全體已訂閱推播的業務」嗎？\n（上班時間請斟酌，避免打擾大家）')) return;
   document.getElementById('pushTestModal')?.remove();
   showLoading(true);
   try {
-    const url = `${location.origin}${location.pathname}`;
     if (target === 'self') {
       await sendPushToStaff(currentUser.id, '🔔 測試推播', msg, url);
       showToast('✅ 已發送給你自己，稍等看手機通知', 'success');
     } else {
-      // 全體：取所有有訂閱的 staff_id
       const subs = await sb.get('push_subscriptions', '?select=staff_id');
       const ids = [...new Set((subs||[]).map(s => s.staff_id).filter(Boolean))];
       if (!ids.length) { showLoading(false); showToast('目前沒有任何已訂閱推播的業務', 'error'); return; }
