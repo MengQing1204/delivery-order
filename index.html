@@ -306,6 +306,14 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
       </div>
       <div style="font-size:18px;color:#4A6058;">›</div>
     </div>
+    <div onclick="enablePushManually()" style="background:#fff;border-radius:10px;padding:12px 16px;box-shadow:0 2px 12px rgba(0,0,0,0.08);cursor:pointer;display:flex;align-items:center;gap:12px;">
+      <div style="width:36px;height:36px;background:#FBF2E9;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">🔔</div>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:700;color:#1a1a18;">開啟通知</div>
+        <div style="font-size:11px;color:#4A6058;">收不到通知？點這裡重新開啟</div>
+      </div>
+      <div style="font-size:18px;color:#4A6058;">›</div>
+    </div>
   </div>
 </div>
 
@@ -1784,19 +1792,30 @@ function urlBase64ToUint8Array(base64String) {
 }
 
 async function registerPushNotification() {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) { console.log('此裝置不支援推播'); return; }
   if (!currentUser?.id) return;
   try {
+    // 先主動註冊 Service Worker（原本缺這步，導致 serviceWorker.ready 永遠卡住）
+    let reg;
+    try {
+      reg = await navigator.serviceWorker.register('sw.js');
+      console.log('SW 註冊成功', reg.scope);
+    } catch(swErr) {
+      console.log('SW 註冊失敗', swErr);
+      return;
+    }
+    // 等待 SW 進入 active 狀態
+    await navigator.serviceWorker.ready;
+
     const permission = await Notification.requestPermission();
-    if (permission !== 'granted') return;
-    const reg = await navigator.serviceWorker.ready;
+    if (permission !== 'granted') { console.log('使用者未允許通知，permission=' + permission); return; }
+
     const sub = await reg.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
     });
     const { endpoint, keys } = sub.toJSON();
-    // 儲存到 Supabase
-   // 用 upsert 避免重複訂閱造成 409
+    // 儲存到 Supabase（upsert 避免重複訂閱造成 409）
     await fetch(`${SUPABASE_URL}/rest/v1/push_subscriptions`, {
       method: 'POST',
       headers: {
@@ -1809,6 +1828,17 @@ async function registerPushNotification() {
     });
     console.log('推播訂閱成功');
   } catch(e) { console.log('推播訂閱失敗', e); }
+}
+
+// 提供一個手動觸發（給「允許通知」按鈕用），回傳結果訊息
+async function enablePushManually() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) { showToast('此裝置/瀏覽器不支援推播', 'error'); return; }
+  if (Notification.permission === 'denied') { showToast('通知已被封鎖，請到手機設定開啟此 App 的通知', 'error'); return; }
+  showLoading(true);
+  await registerPushNotification();
+  showLoading(false);
+  if (Notification.permission === 'granted') showToast('✅ 已開啟通知，之後訂單動態會主動提醒', 'success');
+  else showToast('尚未開啟通知，請登入後允許通知', 'error');
 }
 
 async function sendPushToStaff(staffId, title, body, url) {
