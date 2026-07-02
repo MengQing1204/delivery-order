@@ -763,7 +763,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
     <input type="checkbox" id="selectAllChk" onchange="toggleSelectAll(this.checked)" style="width:18px;height:18px;cursor:pointer;accent-color:var(--accent);">
     <label for="selectAllChk" style="font-size:13px;color:var(--text2);cursor:pointer;">全選</label>
   </div>
-  <div style="padding:0 14px 8px;"><div style="position:relative;"><span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;">🔍</span><input type="text" id="adminSearchInput" style="width:100%;box-sizing:border-box;border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px 10px 36px;font-size:15px;font-family:inherit;outline:none;background:var(--surface);" placeholder="搜尋收件人姓名、電話、訂單號..." oninput="onAdminSearch(this.value)"></div></div>
+  <div style="padding:0 14px 8px;"><div style="position:relative;"><span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;">🔍</span><input type="text" id="adminSearchInput" style="width:100%;box-sizing:border-box;border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px 10px 36px;font-size:15px;font-family:inherit;outline:none;background:var(--surface);" placeholder="搜尋收件人、電話、訂單號、銷售日(2026-06-29)、POS序號..." oninput="onAdminSearch(this.value)"></div></div>
   <div class="orders-list" id="adminOrdersList"></div>
 </div>
 
@@ -946,6 +946,16 @@ function isNankan(sku) { return nankanWhitelist.has(sku); }
 const NANKAN_BADGE_SM = '<span style="display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border:1.5px solid #8B2A3A;color:#8B2A3A;border-radius:50%;font-size:10px;font-weight:800;line-height:1;flex-shrink:0;vertical-align:middle;">崁</span>';
 function isNankanItem(it) { return it?.fulfill_source === 'nankan'; }
 function orderHasNankan(o) { return (o?.order_items||[]).some(isNankanItem); }
+
+// 卡片用：實際銷售日 · 機號 · POS序號 小字行（有值才顯示對應段）
+function orderSaleMetaHtml(o) {
+  const parts = [];
+  if (o?.sale_date) parts.push(`🗓 銷售 ${escHtml(o.sale_date)}`);
+  if (o?.pos_terminal) parts.push(`機 ${escHtml(o.pos_terminal)}`);
+  if (o?.pos_no) parts.push(`POS ${escHtml(o.pos_no)}`);
+  if (!parts.length) return '';
+  return `<div class="order-meta" style="color:var(--accent2);font-size:12px;margin-top:2px;">${parts.join(' · ')}</div>`;
+}
 
 const TW_DISTRICTS = {
   '基隆市':{'仁愛區':'200','信義區':'201','中正區':'202','中山區':'203','安樂區':'204','暖暖區':'205','七堵區':'206'},
@@ -1789,6 +1799,7 @@ function renderOrderList(orders, containerId) {
       <div class="order-card-top"><div class="order-no">${cardBadge} ${o.order_no}</div><span class="status-badge ${o.status}">${statusMap[o.status]||o.status}</span></div>
       <div class="order-receiver">${escHtml(o.receiver_name)}</div>
       <div class="order-meta">${escHtml(o.receiver_phone)} · ${escHtml(o.stores?.name||'')} · ${formatDate(o.created_at)}</div>
+      ${orderSaleMetaHtml(o)}
       <div class="order-items-preview">${escHtml(preview)}</div>
     </div>`;
   }).join('');
@@ -1978,7 +1989,9 @@ function onAdminSearch(val) {
     (o.receiver_phone||'').toLowerCase().includes(q) ||
     (o.order_no||'').toLowerCase().includes(q) ||
     (o.staff?.name||'').toLowerCase().includes(q) ||
-    (o.stores?.name||'').toLowerCase().includes(q)
+    (o.stores?.name||'').toLowerCase().includes(q) ||
+    (o.sale_date||'').toLowerCase().includes(q) ||
+    (o.pos_no||'').toLowerCase().includes(q)
   );
   // 用過濾結果暫時渲染
   const prev = adminAllOrders;
@@ -2021,6 +2034,7 @@ function renderAdminOrders() {
         <div class="order-card-top"><div class="order-no">${cardBadge} ${o.order_no}</div><span class="status-badge ${o.status}">${statusMap[o.status]||o.status}</span></div>
         <div class="order-receiver">${escHtml(o.receiver_name)}</div>
         <div class="order-meta">${escHtml(o.receiver_phone)} · ${escHtml(o.stores?.name||'')} · ${formatDate(o.created_at)}</div>
+        ${orderSaleMetaHtml(o)}
         <div class="order-items-preview">${escHtml(preview)}</div>
       </div>
     </div>`;
