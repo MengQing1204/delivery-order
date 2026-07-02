@@ -274,6 +274,14 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
       </div>
       <div style="font-size:18px;color:#4A6058;">›</div>
     </div>
+    <div onclick="showScreen('customerScreen');initCustomerBook();" style="background:#fff;border-radius:10px;padding:12px 16px;box-shadow:0 2px 12px rgba(0,0,0,0.08);cursor:pointer;display:flex;align-items:center;gap:12px;">
+      <div style="width:36px;height:36px;background:#e0e8f8;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">📇</div>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:700;color:#1a1a18;">客戶簿</div>
+        <div style="font-size:11px;color:#4A6058;">查詢舊客戶・回購快速帶入</div>
+      </div>
+      <div style="font-size:18px;color:#4A6058;">›</div>
+    </div>
     <div onclick="showScreen('helpScreen');" style="background:#fff;border-radius:10px;padding:12px 16px;box-shadow:0 2px 12px rgba(0,0,0,0.08);cursor:pointer;display:flex;align-items:center;gap:12px;">
       <div style="width:36px;height:36px;background:#E8EEE8;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">📖</div>
       <div style="flex:1;">
@@ -298,6 +306,22 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
       </div>
       <div style="font-size:18px;color:#4A6058;">›</div>
     </div>
+  </div>
+</div>
+
+<!-- CUSTOMER BOOK / 客戶簿 SCREEN -->
+<div class="screen" id="customerScreen">
+  <div class="topbar">
+    <button class="topbar-back" onclick="showScreen('homeScreen')">← 返回</button>
+    <div class="topbar-title">📇 客戶簿</div>
+  </div>
+  <div style="padding:16px;">
+    <div style="position:relative;margin-bottom:8px;">
+      <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:16px;pointer-events:none;">🔍</span>
+      <input type="text" id="custSearchInput" style="width:100%;border:2px solid #3A5A48;border-radius:8px;padding:13px 14px 13px 40px;font-size:16px;font-family:inherit;outline:none;box-sizing:border-box;" placeholder="搜尋客戶姓名或電話..." oninput="onCustomerSearch(this.value)">
+    </div>
+    <div style="font-size:12px;color:#4A6058;margin-bottom:12px;" id="custScopeHint"></div>
+    <div id="customerList"></div>
   </div>
 </div>
 
@@ -1324,6 +1348,7 @@ function initForm() {
   // 載入所有門市到下拉選單
   loadFormStores();
   ['buyerPhoneHint','receiverPhoneHint','posNoHint'].forEach(id => { const el = document.getElementById(id); if (el) { el.textContent = ''; el.className = 'field-hint'; } });
+  document.getElementById('custFillPrompt')?.remove();
   const detailHint = document.getElementById('detailHint');
   if (detailHint) { detailHint.textContent = '都市：竹光路100號3樓｜農村：1鄰100號'; detailHint.className = 'field-hint'; }
   const isAdmin = currentUser?.role === 'admin';
@@ -1392,7 +1417,147 @@ function validatePhone(input) {
   if (!val.length) { hint.textContent = ''; hint.className = 'field-hint'; return; }
   if (val[0] !== '0') { hint.textContent = '⚠ 電話號碼第一碼必須是0'; hint.className = 'field-hint error'; return; }
   if (val.length < 10) { hint.textContent = `還需輸入 ${10 - val.length} 碼`; hint.className = 'field-hint error'; }
-  else { hint.textContent = '✓ 格式正確'; hint.className = 'field-hint ok'; }
+  else {
+    hint.textContent = '✓ 格式正確'; hint.className = 'field-hint ok';
+    // 新增宅配單的收件人電話填滿 → 自動查舊客戶帶入
+    if (input.id === 'receiverPhone') { lookupCustomerByPhone(val); }
+  }
+}
+
+// ═══════════════════════════════════════════
+// 客戶簿：依收件人電話帶出舊客戶（限自己門市，管理員/店長跨店）
+// ═══════════════════════════════════════════
+async function lookupCustomerByPhone(phone) {
+  if (!phone || phone.length !== 10) return;
+  try {
+    // 權限範圍：一般業務只查自己門市；管理員/店長不限
+    let filter = `?receiver_phone=eq.${phone}&order=created_at.desc&limit=1&select=receiver_name,receiver_phone,receiver_address,store_id`;
+    if (currentUser?.role !== 'admin' && currentUser?.role !== 'manager' && currentUser?.store_id) {
+      filter = `?receiver_phone=eq.${phone}&store_id=eq.${currentUser.store_id}&order=created_at.desc&limit=1&select=receiver_name,receiver_phone,receiver_address,store_id`;
+    }
+    const rows = await sb.get('orders', filter);
+    const c = rows?.[0];
+    if (!c || !c.receiver_name) return;
+    // 若目前收件人姓名已填就不打擾；空的才提示帶入
+    const nameEl = document.getElementById('receiverName');
+    if (nameEl && nameEl.value.trim()) return;
+    showCustomerFillPrompt(c);
+  } catch(e) { console.log('lookupCustomer error', e); }
+}
+
+function showCustomerFillPrompt(c) {
+  // 移除舊提示
+  document.getElementById('custFillPrompt')?.remove();
+  const anchor = document.getElementById('receiverPhoneHint');
+  if (!anchor) return;
+  const box = document.createElement('div');
+  box.id = 'custFillPrompt';
+  box.style.cssText = 'margin-top:8px;padding:12px 14px;background:#e0e8f8;border:1.5px solid #2C6FBF;border-radius:10px;';
+  box.innerHTML = `
+    <div style="font-size:13px;color:#1a3a5a;margin-bottom:8px;">📇 找到這支電話的舊客戶資料，要帶入嗎？</div>
+    <div style="font-size:14px;font-weight:700;color:#1a1a18;">${escHtml(c.receiver_name)}</div>
+    <div style="font-size:13px;color:#4A6058;margin:2px 0 10px;">${escHtml(c.receiver_address||'')}</div>
+    <div style="display:flex;gap:8px;">
+      <button type="button" onclick='fillCustomer(${JSON.stringify(c).replace(/'/g,"&#39;")})' style="flex:1;padding:9px;background:#2C6FBF;color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">✓ 帶入此資料</button>
+      <button type="button" onclick="document.getElementById('custFillPrompt').remove()" style="padding:9px 14px;background:#fff;border:1px solid #b8c4d8;border-radius:7px;font-size:13px;color:#4A6058;cursor:pointer;font-family:inherit;">略過</button>
+    </div>`;
+  anchor.parentNode.insertBefore(box, anchor.nextSibling);
+}
+
+function fillCustomer(c) {
+  const nameEl = document.getElementById('receiverName');
+  if (nameEl) nameEl.value = c.receiver_name || '';
+  // 解析地址回填縣市/區/詳細
+  const addr = c.receiver_address || '';
+  const m = addr.match(/^(\d{3,5})\s?(.{2,3}[市縣])(.{1,4}[區鄉鎮市])(.+)$/);
+  if (m) {
+    const cityEl = document.getElementById('addrCity');
+    if (cityEl) { cityEl.value = m[2]; onCityChange(m[2]); }
+    setTimeout(() => {
+      const distEl = document.getElementById('addrDistrict');
+      if (distEl) { distEl.value = m[3]; onDistrictChange(m[3]); }
+      setTimeout(() => { const d = document.getElementById('addrDetail'); if (d) { d.value = m[4]; validateDetail(d); } }, 60);
+    }, 60);
+  } else if (addr) {
+    const d = document.getElementById('addrDetail'); if (d) d.value = addr;
+  }
+  document.getElementById('custFillPrompt')?.remove();
+  showToast('✅ 已帶入舊客戶資料', 'success');
+}
+
+// ── 客戶簿頁面 ──────────────────────────────
+let custAllRecords = [];   // 去重後的客戶清單
+
+async function initCustomerBook() {
+  const listEl = document.getElementById('customerList');
+  const hintEl = document.getElementById('custScopeHint');
+  const searchEl = document.getElementById('custSearchInput');
+  if (searchEl) searchEl.value = '';
+  if (listEl) listEl.innerHTML = '<div style="text-align:center;color:#4A6058;padding:24px;">載入中...</div>';
+  const role = currentUser?.role;
+  try {
+    let filter = '?order=created_at.desc&limit=1000&select=receiver_name,receiver_phone,receiver_address,store_id,created_at,stores(name)';
+    if (role === 'admin') {
+      if (hintEl) hintEl.textContent = '📌 顯示全公司客戶';
+    } else if (role === 'manager') {
+      const storeIds = await getManagerStoreIds(currentUser.id);
+      if (storeIds.length) { filter += `&store_id=in.(${storeIds.map(id=>`"${id}"`).join(',')})`; }
+      if (hintEl) hintEl.textContent = '📌 顯示管轄門市客戶';
+    } else {
+      filter += `&store_id=eq.${currentUser.store_id}`;
+      if (hintEl) hintEl.textContent = '📌 僅顯示本門市客戶';
+    }
+    const rows = await sb.get('orders', filter);
+    // 依收件人電話去重，保留最新一筆，並累計出現次數
+    const map = new Map();
+    (rows||[]).forEach(o => {
+      const key = o.receiver_phone;
+      if (!key) return;
+      if (!map.has(key)) { map.set(key, { ...o, _count: 1 }); }
+      else { map.get(key)._count++; }
+    });
+    custAllRecords = [...map.values()];
+    renderCustomerList(custAllRecords);
+  } catch(e) { if (listEl) listEl.innerHTML = '<div style="text-align:center;color:#c82a2a;padding:24px;">載入失敗</div>'; }
+}
+
+function onCustomerSearch(val) {
+  const q = (val||'').trim().toLowerCase();
+  if (!q) { renderCustomerList(custAllRecords); return; }
+  const filtered = custAllRecords.filter(c =>
+    (c.receiver_name||'').toLowerCase().includes(q) || (c.receiver_phone||'').includes(q)
+  );
+  renderCustomerList(filtered);
+}
+
+function renderCustomerList(list) {
+  const el = document.getElementById('customerList');
+  if (!el) return;
+  if (!list.length) { el.innerHTML = '<div class="empty-state"><div class="icon">📇</div><p>尚無客戶資料</p></div>'; return; }
+  el.innerHTML = list.map(c => `
+    <div style="background:#fff;border-radius:10px;padding:14px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+        <div style="min-width:0;flex:1;">
+          <div style="font-size:16px;font-weight:700;color:#1a1a18;">${escHtml(c.receiver_name||'')}</div>
+          <div style="font-size:13px;color:#4A6058;font-family:'DM Mono',monospace;margin-top:2px;">${escHtml(c.receiver_phone||'')}</div>
+          <div style="font-size:13px;color:#4A6058;margin-top:4px;">${escHtml(c.receiver_address||'')}</div>
+        </div>
+        <span style="flex-shrink:0;background:#e0e8f8;color:#2C6FBF;font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px;">${c._count} 筆</span>
+      </div>
+      <button type="button" onclick='useCustomerNewOrder(${JSON.stringify({receiver_name:c.receiver_name,receiver_phone:c.receiver_phone,receiver_address:c.receiver_address}).replace(/'/g,"&#39;")})' style="width:100%;margin-top:10px;padding:9px;background:var(--accent-light);color:var(--accent);border:1.5px solid var(--accent);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">🛒 用此客戶開新宅配單</button>
+    </div>`).join('');
+}
+
+function useCustomerNewOrder(c) {
+  showScreen('formScreen');
+  initForm();
+  setTimeout(() => {
+    const nameEl = document.getElementById('receiverName');
+    const phoneEl = document.getElementById('receiverPhone');
+    if (nameEl) nameEl.value = c.receiver_name || '';
+    if (phoneEl) phoneEl.value = c.receiver_phone || '';
+    fillCustomer(c);
+  }, 300);
 }
 
 function validateDetail(input) {
