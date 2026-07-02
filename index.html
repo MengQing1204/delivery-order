@@ -290,6 +290,14 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
       </div>
       <div style="font-size:18px;color:#4A6058;">›</div>
     </div>
+    <div id="pushTestEntry" onclick="openPushTest()" style="display:none;background:#fff;border-radius:10px;padding:12px 16px;box-shadow:0 2px 12px rgba(0,0,0,0.08);cursor:pointer;align-items:center;gap:12px;">
+      <div style="width:36px;height:36px;background:#e0e8f8;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">🔔</div>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:700;color:#1a1a18;">測試推播通知</div>
+        <div style="font-size:11px;color:#4A6058;">發送測試通知（自己 / 全體）</div>
+      </div>
+      <div style="font-size:18px;color:#4A6058;">›</div>
+    </div>
   </div>
 </div>
 
@@ -866,7 +874,15 @@ const _gr = {
     '🚀 BUFF 已加滿，準備開賣啦！',
     '🌞 早安！今天也要帥氣成交一波～',
     '📦 倉庫準備好了，你們也準備大賣了嗎？',
-    '⚡ 今日 KPI 啟動中，加油各位戰士們！'
+    '⚡ 今日 KPI 啟動中，加油各位戰士們！',
+    '☕ 早安，先喝口咖啡，我在這陪你開工～',
+    '🌈 新的一天，先深呼吸，一切都會順順的！',
+    '💚 早安！不管今天忙不忙，我都在旁邊陪你～',
+    '🌻 早安～昨天辛苦了，今天我們慢慢來、穩穩接！',
+    '✨ 開店囉！今天不用急，一單一單踏實地收～',
+    '🍀 早安，願今天客人都好說話、單單都順利！',
+    '💪 新的一天，你不是一個人在拼，我一直都在～',
+    '🌅 早安！先照顧好自己，再照顧好每一張單❤️'
   ],
   // 中午：12:00-14:00
   noon: [
@@ -876,7 +892,14 @@ const _gr = {
     '🔥 戰鬥力恢復完成，準備再收一波訂單！',
     '🚚 後端待命中，前線請放心開賣～',
     '📈 今天的業績還有很大成長空間喔！',
-    '🌤 午後開始，大家一起撐起今日業績！'
+    '🌤 午後開始，大家一起撐起今日業績！',
+    '🍱 記得吃飯喔！吃飽才有力氣接單，我等你回來～',
+    '☕ 午休一下沒關係，我幫你守著，回來再繼續！',
+    '💚 忙了一早辛苦了，喝口水、伸個懶腰再出發～',
+    '🌸 下午還很長，別逼自己太緊，穩穩接就好～',
+    '😊 午安！剛剛做得很好了，繼續保持這個節奏～',
+    '🧋 來杯手搖續命嗎？補充能量，我陪你拼下半場！',
+    '🌟 午後也別忘了，你已經很努力了，我看得到～'
   ],
   // 下午：14:00-18:00
   afternoon: [
@@ -886,7 +909,14 @@ const _gr = {
     '🍵 下午茶時間，訂單繼續衝起來！',
     '🚀 下班前再衝一波，今天一起漂亮收尾！',
     '📦 倉庫還撐得住，你們也要撐住啊！',
-    '⚡ 最後加速中，今天一起大爆單！'
+    '⚡ 最後加速中，今天一起大爆單！',
+    '💚 下午有點累了吧？撐住，我一直在這陪你～',
+    '🌤 剩下這段路我陪你走，一起把今天收得漂亮！',
+    '🍫 累的話吃點甜的補一下，你已經做得很棒了～',
+    '😌 快到終點了，別急、別慌，穩穩收尾就好～',
+    '🌈 今天不管賣多少，你的努力我都記在心裡❤️',
+    '☕ 撐到現在真的辛苦，再一下下就能休息了～',
+    '💪 最後衝刺，但也別忘了照顧自己，我都在～'
   ],
   // 晚上：18:00 以後
   evening: [
@@ -896,7 +926,14 @@ const _gr = {
     '🔥 晚場模式啟動，今晚也要帥氣成交！',
     '🚚 後端還醒著，前線請繼續努力（笑）',
     '💪 今天還沒結束，最後幾小時撐住！',
-    '🌃 越晚越精彩，今晚一起爆單吧！'
+    '🌃 越晚越精彩，今晚一起爆單吧！',
+    '💚 今天真的辛苦了，無論結果如何，你都盡力了～',
+    '🌙 夜深了，收個尾就早點回家休息吧，我幫你顧著～',
+    '🫶 這一整天你都很努力，記得給自己一個讚👍',
+    '🌟 晚安前再說一次：有你在，這團隊很安心～',
+    '🍜 忙了一整天，回家記得好好吃頓飯、好好睡～',
+    '😊 今天的單就到這，剩下的明天再說，先照顧自己！',
+    '❤️ 不管今天順不順，明天我還會在這陪你重新開始～'
   ]
 };
 
@@ -1043,6 +1080,9 @@ async function loginWithData(u) {
   } else {
     showScreen('homeScreen');
   }
+  // 管理員才顯示「測試推播」入口
+  const _pte = document.getElementById('pushTestEntry');
+  if (_pte) _pte.style.display = (currentUser?.role === 'admin') ? 'flex' : 'none';
   loadProducts();
   // 登入後詢問是否允許推播通知
   setTimeout(() => registerPushNotification(), 2000);
@@ -1615,6 +1655,71 @@ async function sendPushToStaff(staffId, title, body, url) {
       body: JSON.stringify({ staff_id: staffId, title, body, url })
     });
   } catch(e) { console.log('sendPush error', e); }
+}
+
+// ═══════════════════════════════════════════
+// 測試推播（管理員）：可選發給自己或全體業務
+// ═══════════════════════════════════════════
+async function openPushTest() {
+  if (currentUser?.role !== 'admin') return;
+  const modal = document.createElement('div');
+  modal.id = 'pushTestModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
+  modal.innerHTML = `
+    <div style="background:var(--surface);border-radius:var(--radius);padding:24px;width:100%;max-width:400px;box-shadow:var(--shadow-lg);">
+      <div style="font-size:18px;font-weight:800;margin-bottom:6px;">🔔 測試推播通知</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:18px;">送出一則測試通知，確認手機能正常跳出。</div>
+      <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:5px;">通知內容（可自訂）</label>
+      <input id="pushTestMsg" value="📢 這是一則測試通知，收到請不用理會～" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;box-sizing:border-box;margin-bottom:16px;">
+      <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:8px;">發送對象</label>
+      <div style="display:flex;gap:10px;margin-bottom:20px;">
+        <button id="ptSelf" onclick="setPtTarget('self')" style="flex:1;padding:12px;border:2px solid var(--accent);background:var(--accent-light);color:var(--accent);border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">👤 只發給我</button>
+        <button id="ptAll" onclick="setPtTarget('all')" style="flex:1;padding:12px;border:2px solid var(--border);background:var(--surface);color:var(--text2);border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">👥 全體業務</button>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button onclick="document.getElementById('pushTestModal').remove()" style="flex:1;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-size:15px;cursor:pointer;font-family:inherit;">取消</button>
+        <button onclick="doPushTest()" style="flex:1;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;">送出測試</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  window._ptTarget = 'self';
+}
+
+function setPtTarget(t) {
+  window._ptTarget = t;
+  const self = document.getElementById('ptSelf'), all = document.getElementById('ptAll');
+  if (t === 'self') {
+    self.style.borderColor='var(--accent)'; self.style.background='var(--accent-light)'; self.style.color='var(--accent)';
+    all.style.borderColor='var(--border)'; all.style.background='var(--surface)'; all.style.color='var(--text2)';
+  } else {
+    all.style.borderColor='var(--accent)'; all.style.background='var(--accent-light)'; all.style.color='var(--accent)';
+    self.style.borderColor='var(--border)'; self.style.background='var(--surface)'; self.style.color='var(--text2)';
+  }
+}
+
+async function doPushTest() {
+  const msg = document.getElementById('pushTestMsg')?.value?.trim() || '📢 測試通知';
+  const target = window._ptTarget || 'self';
+  if (target === 'all' && !confirm('確定要發給「全體已訂閱推播的業務」嗎？\n（上班時間請斟酌，避免打擾大家）')) return;
+  document.getElementById('pushTestModal')?.remove();
+  showLoading(true);
+  try {
+    const url = `${location.origin}${location.pathname}`;
+    if (target === 'self') {
+      await sendPushToStaff(currentUser.id, '🔔 測試推播', msg, url);
+      showToast('✅ 已發送給你自己，稍等看手機通知', 'success');
+    } else {
+      // 全體：取所有有訂閱的 staff_id
+      const subs = await sb.get('push_subscriptions', '?select=staff_id');
+      const ids = [...new Set((subs||[]).map(s => s.staff_id).filter(Boolean))];
+      if (!ids.length) { showLoading(false); showToast('目前沒有任何已訂閱推播的業務', 'error'); return; }
+      let ok = 0;
+      for (const id of ids) { try { await sendPushToStaff(id, '🔔 測試推播', msg, url); ok++; } catch(e){} }
+      showToast(`✅ 已發送給 ${ok} 位已訂閱業務`, 'success');
+    }
+  } catch(e) { showToast('發送失敗：' + e.message, 'error'); }
+  showLoading(false);
 }
 
 async function loadFormStores() {
