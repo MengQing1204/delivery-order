@@ -328,6 +328,14 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
       <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:16px;pointer-events:none;">🔍</span>
       <input type="text" id="custSearchInput" style="width:100%;border:2px solid #3A5A48;border-radius:8px;padding:13px 14px 13px 40px;font-size:16px;font-family:inherit;outline:none;box-sizing:border-box;" placeholder="搜尋客戶姓名或電話..." oninput="onCustomerSearch(this.value)">
     </div>
+    <div id="custFilterBar" style="display:none;gap:8px;margin-bottom:10px;">
+      <select id="custFilterStore" onchange="onCustFilterStoreChange()" style="flex:1;border:1.5px solid var(--border);border-radius:8px;padding:9px 10px;font-size:13px;font-family:inherit;background:var(--surface);">
+        <option value="">全部門市</option>
+      </select>
+      <select id="custFilterStaff" onchange="applyCustFilter()" style="flex:1;border:1.5px solid var(--border);border-radius:8px;padding:9px 10px;font-size:13px;font-family:inherit;background:var(--surface);">
+        <option value="">全部業務</option>
+      </select>
+    </div>
     <div style="font-size:12px;color:#4A6058;margin-bottom:12px;" id="custScopeHint"></div>
     <div id="customerList"></div>
   </div>
@@ -1545,11 +1553,71 @@ async function initCustomerBook() {
       else { const c = map.get(key); c._count++; c._history.push(o); }
     });
     custAllRecords = [...map.values()];
+    setupCustFilters(role);
     renderCustomerList(custAllRecords);
   } catch(e) { if (listEl) listEl.innerHTML = '<div style="text-align:center;color:#c82a2a;padding:24px;">載入失敗</div>'; }
 }
 
+// 建立督導/店長的門市+業務篩選器選項（一般業務不顯示）
+function setupCustFilters(role) {
+  const bar = document.getElementById('custFilterBar');
+  if (!bar) return;
+  if (role !== 'admin' && role !== 'manager') { bar.style.display = 'none'; return; }
+  bar.style.display = 'flex';
+  // 從所有歷史紀錄蒐集門市、業務（含 store_id 對應）
+  const storeMap = new Map();  // store_id -> name
+  const staffMap = new Map();  // staff_id -> {name, store_id}
+  custAllRecords.forEach(c => {
+    (c._history||[]).forEach(o => {
+      if (o.store_id && o.stores?.name) storeMap.set(o.store_id, o.stores.name);
+      if (o.staff_id && o.staff?.name) staffMap.set(o.staff_id, { name: o.staff.name, store_id: o.store_id });
+    });
+  });
+  window._custStaffMap = staffMap;
+  const storeSel = document.getElementById('custFilterStore');
+  const staffSel = document.getElementById('custFilterStaff');
+  if (storeSel) {
+    storeSel.innerHTML = '<option value="">全部門市</option>' +
+      [...storeMap.entries()].sort((a,b)=>a[1].localeCompare(b[1])).map(([id,name])=>`<option value="${id}">${escHtml(name)}</option>`).join('');
+  }
+  if (staffSel) {
+    staffSel.innerHTML = '<option value="">全部業務</option>' +
+      [...staffMap.entries()].sort((a,b)=>a[1].name.localeCompare(b[1].name)).map(([id,s])=>`<option value="${id}">${escHtml(s.name)}</option>`).join('');
+  }
+}
+
+// 門市改變 → 業務下拉連動（只列該門市的業務）
+function onCustFilterStoreChange() {
+  const storeId = document.getElementById('custFilterStore')?.value || '';
+  const staffSel = document.getElementById('custFilterStaff');
+  const staffMap = window._custStaffMap || new Map();
+  if (staffSel) {
+    const entries = [...staffMap.entries()].filter(([id,s]) => !storeId || s.store_id === storeId);
+    staffSel.innerHTML = '<option value="">全部業務</option>' +
+      entries.sort((a,b)=>a[1].name.localeCompare(b[1].name)).map(([id,s])=>`<option value="${id}">${escHtml(s.name)}</option>`).join('');
+  }
+  applyCustFilter();
+}
+
+// 套用門市+業務篩選（客戶只要有任一筆歷史符合就顯示）
+function applyCustFilter() {
+  const storeId = document.getElementById('custFilterStore')?.value || '';
+  const staffId = document.getElementById('custFilterStaff')?.value || '';
+  const q = (document.getElementById('custSearchInput')?.value || '').trim().toLowerCase();
+  let filtered = custAllRecords.filter(c => {
+    const hist = c._history || [];
+    const okStore = !storeId || hist.some(o => o.store_id === storeId);
+    const okStaff = !staffId || hist.some(o => o.staff_id === staffId);
+    return okStore && okStaff;
+  });
+  if (q) filtered = filtered.filter(c => (c.receiver_name||'').toLowerCase().includes(q) || (c.receiver_phone||'').includes(q));
+  renderCustomerList(filtered);
+}
+
 function onCustomerSearch(val) {
+  // 若有篩選器（督導/店長），走整合篩選；否則單純搜尋
+  const bar = document.getElementById('custFilterBar');
+  if (bar && bar.style.display !== 'none') { applyCustFilter(); return; }
   const q = (val||'').trim().toLowerCase();
   if (!q) { renderCustomerList(custAllRecords); return; }
   const filtered = custAllRecords.filter(c =>
