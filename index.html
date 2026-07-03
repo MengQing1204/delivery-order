@@ -1087,7 +1087,7 @@ async function doLogin() {
   if (!phone || !password) return;
   showLoading(true);
   try {
-    const rows = await sb.get('staff', `?phone=eq.${encodeURIComponent(phone)}&is_active=eq.true&select=*,stores(name)`);
+    const rows = await sb.get('staff', `?phone=eq.${encodeURIComponent(phone)}&is_active=eq.true&select=*,stores!store_id(name)`);
     if (!rows || rows.length === 0 || rows[0].password !== password) {
       document.getElementById('loginError').style.display = 'block';
       showLoading(false); return;
@@ -2103,7 +2103,7 @@ async function loadPtSubscribers() {
   if (!box) return;
   box.innerHTML = '<div style="text-align:center;color:var(--text2);font-size:13px;padding:12px;">載入中...</div>';
   try {
-    const subs = await sb.get('push_subscriptions', '?select=staff_id,staff(name,phone,stores(name))&order=created_at.desc');
+    const subs = await sb.get('push_subscriptions', '?select=staff_id,staff(name,phone,stores!store_id(name))&order=created_at.desc');
     // 依 staff_id 去重
     const map = new Map();
     (subs||[]).forEach(s => { if (s.staff_id && !map.has(s.staff_id)) map.set(s.staff_id, s); });
