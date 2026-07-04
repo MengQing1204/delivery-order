@@ -2871,7 +2871,7 @@ async function openEditOrder(orderId) {
     if (!o) { showToast('找不到訂單', 'error'); showLoading(false); return; }
     if (o.status !== 'pending') { showToast('只有待處理訂單才能修改', 'error'); showLoading(false); return; }
     editOrderId = orderId;
-    editFormItems = (o.order_items||[]).map(i => ({ sku: i.sku, name: i.product_name, qty: i.quantity, stock: allProducts.find(p=>p.sku===i.sku)?.stock ?? 0 }));
+    editFormItems = (o.order_items||[]).map(i => ({ sku: i.sku, name: i.product_name, qty: i.quantity, stock: allProducts.find(p=>p.sku===i.sku)?.stock ?? 0, fulfill_source: i.fulfill_source || (isNankan(i.sku) ? 'nankan' : 'wms') }));
     // 即時更新 editFormItems 的庫存（避免使用靜態值）
     ibizaGetStock(editFormItems.map(i => i.sku)).then(liveMap => {
       if (!liveMap) return;
@@ -2946,20 +2946,25 @@ async function renderEditDropdown(q) {
 }
 
 function renderEditDropdownItems(filtered, stockMap, inputEl, dd) {
+  const nankan = filtered.filter(p=>isNankan(p.sku)).sort((a,b)=>a.sku.localeCompare(b.sku));
+  const rest = filtered.filter(p=>!isNankan(p.sku));
   const list = stockMap
-    ? [...filtered.filter(p=>(stockMap[p.sku]??0)>0).sort((a,b)=>a.sku.localeCompare(b.sku)),
-       ...filtered.filter(p=>(stockMap[p.sku]??0)<=0).sort((a,b)=>a.sku.localeCompare(b.sku))]
+    ? [...nankan,
+       ...rest.filter(p=>(stockMap[p.sku]??0)>0).sort((a,b)=>a.sku.localeCompare(b.sku)),
+       ...rest.filter(p=>(stockMap[p.sku]??0)<=0).sort((a,b)=>a.sku.localeCompare(b.sku))]
     : filtered;
   dd.innerHTML = list.map(p => {
+    const nankanItem = isNankan(p.sku);
     const stock = stockMap ? (stockMap[p.sku] ?? 0) : (p.stock ?? 0);
     const canPreorder = stock <= 0 && isPreorderable(p.sku);
-    const stockClass = stock > 10 ? 'ok' : stock > 0 ? 'low' : (canPreorder ? 'low' : 'none');
-    const stockText = stock > 0 ? `可用 ${stock}` : (canPreorder ? '可預購' : '無庫存');
-    const disabled = (stock <= 0 && !canPreorder) ? 'style="opacity:0.5;pointer-events:none;"' : '';
-    return `<div class="product-option" onclick="addEditItem('${escHtml(p.sku)}','${escHtml(p.product_name)}',${stock})" ${disabled}>
+    const stockClass = nankanItem ? 'ok' : (stock > 10 ? 'ok' : stock > 0 ? 'low' : (canPreorder ? 'low' : 'none'));
+    const stockText = nankanItem ? '🍷 南崁出貨' : (stock > 0 ? `可用 ${stock}` : (canPreorder ? '可預購' : '無庫存'));
+    const disabled = (!nankanItem && stock <= 0 && !canPreorder) ? 'style="opacity:0.5;pointer-events:none;"' : '';
+    const stockStyle = nankanItem ? 'color:#8B2A3A;' : '';
+    return `<div class="product-option" onclick="addEditItem('${escHtml(p.sku)}','${escHtml(p.product_name)}',${nankanItem?999:stock})" ${disabled}>
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-        <div style="min-width:0;flex:1;"><div class="pname" style="white-space:normal;line-height:1.4;">${escHtml(p.product_name)}</div><div class="pcode">${p.sku}</div></div>
-        <div class="pstock ${stockClass}" style="flex-shrink:0;">${stockText}</div>
+        <div style="min-width:0;flex:1;"><div class="pname" style="white-space:normal;line-height:1.4;">${nankanItem?NANKAN_BADGE_SM+' ':''}${escHtml(p.product_name)}</div><div class="pcode">${p.sku}</div></div>
+        <div class="pstock ${stockClass}" style="flex-shrink:0;${stockStyle}">${stockText}</div>
       </div>
     </div>`;
   }).join('');
@@ -2969,7 +2974,7 @@ function renderEditDropdownItems(filtered, stockMap, inputEl, dd) {
 function addEditItem(sku, name, stock) {
   if (editFormItems.find(i=>i.sku===sku)) { showToast('此商品已加入'); closeEditDropdown(); return; }
   if (editFormItems.length >= 5) { showToast('最多只能選5項商品'); return; }
-  editFormItems.push({ sku, name, stock, qty: 1 });
+  editFormItems.push({ sku, name, stock, qty: 1, fulfill_source: isNankan(sku) ? 'nankan' : 'wms' });
   renderEditItems(); closeEditDropdown();
   document.getElementById('editProductSearch').value = '';
 }
@@ -2978,32 +2983,45 @@ function renderEditItems() {
   const list = document.getElementById('editItemList');
   document.getElementById('editItemCountHint').textContent = `已選 ${editFormItems.length} / 5 項`;
   if (!editFormItems.length) { list.innerHTML = ''; return; }
-  list.innerHTML = editFormItems.map((item, i) => `
+  list.innerHTML = editFormItems.map((item, i) => {
+    const nankanItem = item.fulfill_source === 'nankan' || isNankan(item.sku);
+    const stockHtml = nankanItem
+      ? `<div class="item-stock ok" style="color:#8B2A3A;">🍷 南崁自倉出貨</div>`
+      : `<div class="item-stock ${item.stock > 0 ? 'ok' : 'none'}">庫存 ${item.stock}</div>`;
+    return `
     <div class="item-row">
-      <div class="item-info"><div class="item-name">${escHtml(item.name)}</div><div class="item-code">${item.sku}</div><div class="item-stock ${item.stock > 0 ? 'ok' : 'none'}">庫存 ${item.stock}</div></div>
+      <div class="item-info"><div class="item-name">${nankanItem?NANKAN_BADGE_SM+' ':''}${escHtml(item.name)}</div><div class="item-code">${item.sku}</div>${stockHtml}</div>
       <div class="qty-control"><button class="qty-btn" onclick="changeEditQty(${i},-1)">−</button><span class="qty-num">${item.qty}</span><button class="qty-btn" onclick="changeEditQty(${i},1)">＋</button></div>
       <button class="item-delete" onclick="removeEditItem(${i})">✕</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
-function changeEditQty(i, d) { editFormItems[i].qty = Math.max(1, Math.min(editFormItems[i].stock || 999, editFormItems[i].qty + d)); renderEditItems(); }
+function changeEditQty(i, d) {
+  const it = editFormItems[i];
+  const nankanItem = it.fulfill_source === 'nankan' || isNankan(it.sku);
+  const cap = nankanItem ? 999 : (it.stock || 999);
+  it.qty = Math.max(1, Math.min(cap, it.qty + d));
+  renderEditItems();
+}
 function removeEditItem(i) { editFormItems.splice(i, 1); renderEditItems(); }
 
 async function saveEditOrder() {
-  // 送出前即時驗證庫存
+  // 送出前即時驗證庫存（南崁品不查 ibiza、不擋）
   if (editFormItems.length > 0) {
     showLoading(true);
     try {
-      const liveStock = await ibizaGetStock(editFormItems.map(i => i.sku));
-      // 非白名單品才檢查庫存不足；白名單預購品無庫存可保留
-      const outOfStock = editFormItems.filter(i => !isPreorderable(i.sku) && (liveStock?.[i.sku] ?? null) !== null && (liveStock?.[i.sku] ?? 0) <= 0);
+      const checkSkus = editFormItems.filter(i => !isNankan(i.sku)).map(i => i.sku);
+      const liveStock = checkSkus.length ? await ibizaGetStock(checkSkus) : {};
+      // 非白名單、非南崁品才檢查庫存不足
+      const outOfStock = editFormItems.filter(i => !isNankan(i.sku) && !isPreorderable(i.sku) && (liveStock?.[i.sku] ?? null) !== null && (liveStock?.[i.sku] ?? 0) <= 0);
       if (outOfStock.length > 0) {
         showLoading(false);
         showToast(`庫存不足，無法儲存：${outOfStock.map(i=>`「${i.name}」`).join('、')}`, 'error');
         return;
       }
-      // 庫存查詢失敗防呆：只看非白名單品是否全 null
-      const nonWL = editFormItems.filter(i => !isPreorderable(i.sku));
+      // 庫存查詢失敗防呆：只看非南崁、非白名單品是否全 null
+      const nonWL = editFormItems.filter(i => !isNankan(i.sku) && !isPreorderable(i.sku));
       const nonWLAllNull = nonWL.length > 0 && nonWL.every(i => liveStock?.[i.sku] == null);
       if (nonWLAllNull) { showLoading(false); showToast('⚠️ 庫存查詢失敗，請稍後再試', 'error'); return; }
     } catch(e) { showLoading(false); showToast('庫存驗證失敗：' + e.message, 'error'); return; }
@@ -3029,7 +3047,7 @@ async function saveEditOrder() {
     const editDeliveryDate = document.getElementById('editDeliveryDate')?.value || null;
     await sb.patch('orders', editOrderId, { receiver_name: receiverName, receiver_phone: receiverPhone, receiver_address: address, pos_no: posNo, note: note||null, delivery_date: editDeliveryDate, updated_at: new Date().toISOString() });
     await fetch(`${SUPABASE_URL}/rest/v1/order_items?order_id=eq.${editOrderId}`, { method: 'DELETE', headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } });
-    for (const item of editFormItems) { await sb.post('order_items', { order_id: editOrderId, sku: item.sku, product_name: item.name, quantity: item.qty }); }
+    for (const item of editFormItems) { await sb.post('order_items', { order_id: editOrderId, sku: item.sku, product_name: item.name, quantity: item.qty, fulfill_source: item.fulfill_source || (isNankan(item.sku) ? 'nankan' : 'wms') }); }
     showToast('訂單修改成功！', 'success');
     await openOrderDetail(editOrderId); loadMyOrders();
   } catch(e) { showToast('修改失敗：' + e.message, 'error'); }
