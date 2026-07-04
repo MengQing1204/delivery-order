@@ -704,6 +704,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
           <button type="button" onclick="quickSearch('毯')" style="padding:8px 16px;background:var(--accent-light);border:1.5px solid var(--accent);border-radius:20px;font-size:14px;font-weight:600;color:var(--accent);cursor:pointer;font-family:inherit;">🧶 毯</button>
           <button type="button" onclick="quickSearch('大書')" style="padding:8px 16px;background:var(--accent-light);border:1.5px solid var(--accent);border-radius:20px;font-size:14px;font-weight:600;color:var(--accent);cursor:pointer;font-family:inherit;">📚 大書</button>
           <button type="button" onclick="quickSearch('涼被')" style="padding:8px 16px;background:var(--accent-light);border:1.5px solid var(--accent);border-radius:20px;font-size:14px;font-weight:600;color:var(--accent);cursor:pointer;font-family:inherit;">🛌 涼被</button>
+          <button type="button" onclick="quickSearchNankan()" style="padding:8px 16px;background:#fbf5f6;border:1.5px solid #8B2A3A;border-radius:20px;font-size:14px;font-weight:600;color:#8B2A3A;cursor:pointer;font-family:inherit;">🍷 酒</button>
         </div>
       </div>
       <div class="form-row">
@@ -3259,6 +3260,22 @@ function slQuickSearch(keyword) {
 function quickSearch(keyword) {
   const input = document.getElementById('productSearch');
   if (input) { input.value = keyword; onProductSearch(keyword); }
+}
+
+// 🍷 酒快捷：直接列出所有南崁白名單品項（南崁品免查庫存、永遠可選）
+function quickSearchNankan() {
+  const dd = document.getElementById('productDropdown');
+  const inputEl = document.getElementById('productSearch');
+  if (inputEl) inputEl.value = '🍷 南崁酒類';
+  if (formItems.length >= 5) { showToast('最多只能選5項商品'); return; }
+  // 從商品清單挑出白名單（南崁）品項
+  const nankanList = allProducts.filter(p => isNankan(p.sku)).sort((a,b)=>a.sku.localeCompare(b.sku));
+  if (!nankanList.length) {
+    dd.innerHTML = `<div class="product-option"><div class="pname">目前沒有南崁品項</div></div>`;
+    positionDropdown(inputEl, dd); dd.style.display = 'block'; return;
+  }
+  // 南崁品不查 ibiza，直接渲染（stockMap 傳 null，renderDropdown 對南崁品會顯示「南崁出貨」）
+  renderDropdown(nankanList, {}, inputEl);
 }
 
 function onSlProductSearch(val) {
