@@ -3882,9 +3882,9 @@ async function exportErpExcel(orders) {
       const st = o.stores || {};
       const allItems = (o.order_items && o.order_items.length) ? o.order_items : [{ sku:'', product_name:'', quantity:'', fulfill_source:'wms' }];
       // 依出貨倉別分組：一張轉撥單只能一個轉出庫，混單拆兩張
-      // 委外倉 → 轉出庫 B0003，單號後綴 -W；南崁自倉 → 轉出庫 A0001，單號後綴 -A
+      // 委外倉 → 轉出庫 B0003，單號後綴 -B；南崁自倉 → 轉出庫 A0001，單號後綴 -A
       const groups = [
-        { source:'wms',    transOut:'B0003', suffix:'委外', noSuffix:'-W', items: allItems.filter(it => it.fulfill_source !== 'nankan') },
+        { source:'wms',    transOut:'B0003', suffix:'委外', noSuffix:'-B', items: allItems.filter(it => it.fulfill_source !== 'nankan') },
         { source:'nankan', transOut:'A0001', suffix:'南崁', noSuffix:'-A', items: allItems.filter(it => it.fulfill_source === 'nankan') },
       ];
       const wmsCount = groups[0].items.length;
@@ -3893,8 +3893,8 @@ async function exportErpExcel(orders) {
       const isPureNankan = wmsCount === 0 && nankanCount > 0; // 純南崁單
       for (const g of groups) {
         if (!g.items.length) continue;  // 該倉別沒品項就不產這張
-        // 單號後綴規則：
-        //   混單 → 委外 -W、南崁 -A
+        // 單號後綴規則（對應轉出庫代號，方便分辨）：
+        //   混單 → 委外 -B（B0003）、南崁 -A（A0001）
         //   純南崁 → -A（與委外區隔）
         //   純委外 → 不加後綴（維持原樣，不影響現有對帳）
         let orderNoOut = o.order_no || '';
