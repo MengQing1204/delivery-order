@@ -258,7 +258,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
         </div>
       </div>
     </div>
-    <div onclick="showScreen('fieldScreen');" style="background:#fff;border-radius:10px;padding:12px 16px;box-shadow:0 2px 12px rgba(0,0,0,0.08);cursor:pointer;display:flex;align-items:center;gap:12px;">
+    <div onclick="showScreen('fieldScreen');initFieldOrder();" style="background:#fff;border-radius:10px;padding:12px 16px;box-shadow:0 2px 12px rgba(0,0,0,0.08);cursor:pointer;display:flex;align-items:center;gap:12px;">
       <div style="width:36px;height:36px;background:#f0ece0;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">📋</div>
       <div style="flex:1;">
         <div style="font-size:13px;font-weight:700;color:#1a1a18;">場外單登記</div>
@@ -540,13 +540,96 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
 <div class="screen" id="fieldScreen">
   <div class="topbar">
     <button class="topbar-back" onclick="showScreen('homeScreen')">← 返回</button>
-    <div class="topbar-title">場外單登記</div>
+    <div class="topbar-title">📋 場外單登記</div>
   </div>
-  <div style="display:flex;align-items:center;justify-content:center;flex:1;flex-direction:column;gap:12px;color:#4A6058;">
-    <div style="font-size:48px;">🚧</div>
-    <div style="font-size:16px;font-weight:700;">即將開放</div>
-    <div style="font-size:13px;">功能建置中，敬請期待</div>
+  <div class="form-body">
+    <div class="form-section">
+      <div class="form-section-title">📄 單據資訊</div>
+      <div class="form-row"><label class="form-label">場外單號 <span class="req">*</span> <span style="font-size:11px;color:var(--text2);font-weight:400;">（跟鼎新銷貨單號，2301- 開頭）</span></label><input class="form-input" id="foOrderNo" placeholder="例：2301-26062900001" style="font-family:'DM Mono',monospace;"></div>
+      <div class="form-row"><label class="form-label">訂購日期 <span class="req">*</span></label><input class="form-input" id="foOrderDate" type="date" style="cursor:pointer;max-width:100%;box-sizing:border-box;-webkit-appearance:none;"></div>
+      <div class="form-row"><label class="form-label">開單門市/展場 <span class="req">*</span></label><select class="form-select" id="foStore"><option value="">請選擇門市</option></select></div>
+    </div>
+
+    <div class="form-section">
+      <div class="form-section-title">👤 客戶資料</div>
+      <div class="form-row"><label class="form-label">客戶姓名 <span class="req">*</span></label><input class="form-input" id="foBuyerName" placeholder="請輸入客戶姓名" type="text"></div>
+      <div class="form-row"><label class="form-label">電話 <span class="req">*</span></label><input class="form-input" id="foBuyerPhone" placeholder="請輸入電話" type="tel" inputmode="numeric"></div>
+      <div class="form-row"><label class="form-label">縣市</label><select class="form-select" id="foAddrCity" onchange="foOnCityChange(this.value)"><option value="">請選擇縣市</option></select></div>
+      <div class="form-row"><label class="form-label">鄉鎮市區</label><select class="form-select" id="foAddrDistrict" onchange="foOnDistrictChange(this.value)" disabled><option value="">請先選縣市</option></select></div>
+      <div class="form-row" id="foAddrZipRow" style="display:none;"><label class="form-label">郵遞區號</label><input class="form-input" id="foAddrZip" readonly style="background:var(--surface2);color:var(--accent);font-weight:700;"></div>
+      <div class="form-row"><label class="form-label">詳細地址</label><input class="form-input" id="foAddrDetail" placeholder="路街名＋門牌"></div>
+      <div class="form-row"><label class="form-label">統一編號 <span style="font-size:11px;color:var(--text2);">（選填）</span></label><input class="form-input" id="foTaxId" placeholder="公司戶填8碼統編" inputmode="numeric" maxlength="8"></div>
+      <div class="form-row"><label class="form-label">手機載具 <span style="font-size:11px;color:var(--text2);">（選填，有載具則不印紙本發票）</span></label><input class="form-input" id="foCarrier" placeholder="/ 開頭的載具號碼"></div>
+    </div>
+
+    <div class="form-section">
+      <div class="form-section-title">🛍 商品品項 <span style="font-size:12px;color:var(--text2);font-weight:400;">（每項可各自選出貨方式）</span></div>
+      <div class="form-row">
+        <label class="form-label">快捷分類</label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+          <button type="button" onclick="foQuickSearch('拼圖')" style="padding:8px 16px;background:var(--accent-light);border:1.5px solid var(--accent);border-radius:20px;font-size:14px;font-weight:600;color:var(--accent);cursor:pointer;font-family:inherit;">🧩 拼圖</button>
+          <button type="button" onclick="foQuickSearch('晶瓷畫')" style="padding:8px 16px;background:var(--accent-light);border:1.5px solid var(--accent);border-radius:20px;font-size:14px;font-weight:600;color:var(--accent);cursor:pointer;font-family:inherit;">🖼 晶瓷畫</button>
+          <button type="button" onclick="foQuickSearchNankan()" style="padding:8px 16px;background:#fbf5f6;border:1.5px solid #8B2A3A;border-radius:20px;font-size:14px;font-weight:600;color:#8B2A3A;cursor:pointer;font-family:inherit;">🍷 酒</button>
+        </div>
+      </div>
+      <div class="form-row">
+        <label class="form-label">搜尋商品加入</label>
+        <div class="product-search-wrap" id="foProductSearchWrap">
+          <span class="product-search-icon">🔍</span>
+          <input class="product-search-input" id="foProductSearch" placeholder="輸入品名或品號搜尋，點選即加入..." oninput="onFoProductSearch(this.value)" autocomplete="off">
+          <div class="product-dropdown" id="foProductDropdown"></div>
+        </div>
+      </div>
+      <div id="foItemsList" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="form-section">
+      <div class="form-section-title">💰 付款方式</div>
+      <div class="form-row">
+        <label class="form-label">付款類別 <span class="req">*</span></label>
+        <select class="form-select" id="foPayType" onchange="foOnPayTypeChange()">
+          <option value="">請選擇</option>
+          <option value="atm">ATM 匯款</option>
+          <option value="card">刷卡 / 代刷 / 貨到付款</option>
+        </select>
+      </div>
+      <div class="form-row" id="foPaySubRow" style="display:none;">
+        <label class="form-label">明細 <span class="req">*</span></label>
+        <select class="form-select" id="foPaySub" onchange="foOnPaySubChange()"></select>
+      </div>
+      <div class="form-row" id="foRemitDateRow" style="display:none;"><label class="form-label">匯款日 <span class="req">*</span></label><input class="form-input" id="foRemitDate" type="date" style="cursor:pointer;"></div>
+      <div class="form-row" id="foTransfer5Row" style="display:none;"><label class="form-label">轉帳帳號後5碼 <span class="req">*</span></label><input class="form-input" id="foTransfer5" placeholder="客人轉帳帳號末5碼" inputmode="numeric" maxlength="5"></div>
+    </div>
+
+    <div class="form-section">
+      <div class="form-section-title">📝 備註</div>
+      <div class="form-row"><textarea class="form-textarea" id="foNote" placeholder="特殊要求等（選填）"></textarea></div>
+    </div>
   </div>
+  <div class="form-footer">
+    <button onclick="openFieldOrderList()" style="width:100%;padding:12px;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;font-weight:600;color:var(--text2);cursor:pointer;font-family:inherit;margin-bottom:10px;">📋 查看場外單紀錄</button>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:0 4px 10px;">
+      <span style="font-size:14px;color:var(--text2);font-weight:600;">訂單總金額</span>
+      <span style="font-size:20px;font-weight:800;color:var(--accent2);" id="foTotalAmount">$0</span>
+    </div>
+    <button class="btn-submit" onclick="submitFieldOrder()">確認登記</button>
+  </div>
+</div>
+
+<!-- FIELD ORDER LIST SCREEN -->
+<div class="screen" id="fieldListScreen">
+  <div class="topbar">
+    <button class="topbar-back" onclick="showScreen('fieldScreen')">← 返回</button>
+    <div class="topbar-title">📋 場外單紀錄</div>
+    <button class="topbar-action" onclick="exportFieldOrderCSV()">匯出CSV</button>
+  </div>
+  <div style="padding:10px 14px;">
+    <div style="position:relative;">
+      <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;">🔍</span>
+      <input type="text" id="foSearchInput" style="width:100%;box-sizing:border-box;border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px 10px 36px;font-size:15px;font-family:inherit;outline:none;" placeholder="搜尋客戶、電話、單號..." oninput="onFoSearch(this.value)">
+    </div>
+  </div>
+  <div class="orders-list" id="fieldOrdersList"></div>
 </div>
 
 
@@ -4041,6 +4124,330 @@ function showToast(msg, type='') {
 
 function copyText(text) { navigator.clipboard.writeText(text).then(() => showToast('已複製！', 'success')); }
 
+// ═══════════════════════════════════════════
+// 場外單登記（階段A：登記+管理）
+// ═══════════════════════════════════════════
+let foItems = [];              // 品項：{sku,name,qty,amount,ship_type,proxy_store_id,proxy_store_name}
+let foSearchDebounce = null;
+let foStoresCache = [];        // 門市清單（代寄選門市用）
+
+async function initFieldOrder() {
+  foItems = [];
+  ['foOrderNo','foBuyerName','foBuyerPhone','foAddrDetail','foTaxId','foCarrier','foNote','foProductSearch','foRemitDate','foTransfer5'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  // 日期預設今天
+  const _t = new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Taipei'}));
+  const _ds = `${_t.getFullYear()}-${String(_t.getMonth()+1).padStart(2,'0')}-${String(_t.getDate()).padStart(2,'0')}`;
+  const dateEl = document.getElementById('foOrderDate'); if (dateEl) dateEl.value = _ds;
+  // 縣市
+  const cityEl = document.getElementById('foAddrCity');
+  if (cityEl) cityEl.innerHTML = '<option value="">請選擇縣市</option>' + Object.keys(TW_DISTRICTS).map(c=>`<option value="${c}">${c}</option>`).join('');
+  const distEl = document.getElementById('foAddrDistrict');
+  if (distEl) { distEl.innerHTML = '<option value="">請先選縣市</option>'; distEl.disabled = true; }
+  const zipRow = document.getElementById('foAddrZipRow'); if (zipRow) zipRow.style.display = 'none';
+  // 付款重置
+  const payType = document.getElementById('foPayType'); if (payType) payType.value = '';
+  foOnPayTypeChange();
+  // 門市下拉
+  await foLoadStores();
+  renderFoItems();
+}
+
+async function foLoadStores() {
+  try {
+    const stores = await sb.get('stores', '?is_active=eq.true&order=name.asc');
+    foStoresCache = stores || [];
+    const sel = document.getElementById('foStore');
+    if (sel) {
+      sel.innerHTML = '<option value="">請選擇門市</option>' + foStoresCache.map(s=>`<option value="${s.id}">${escHtml(s.name)}</option>`).join('');
+      // 預設帶入業務的預設門市/固定門市
+      const prefer = currentUser?.default_store_id || currentUser?.store_id;
+      if (prefer && sel.querySelector(`option[value="${prefer}"]`)) sel.value = prefer;
+    }
+  } catch(e) { console.log('foLoadStores', e); }
+}
+
+function foOnCityChange(city) {
+  const distEl = document.getElementById('foAddrDistrict');
+  document.getElementById('foAddrZipRow').style.display = 'none';
+  if (!city || !TW_DISTRICTS[city]) { distEl.innerHTML = '<option value="">請先選縣市</option>'; distEl.disabled = true; return; }
+  distEl.innerHTML = '<option value="">請選擇區域</option>' + Object.keys(TW_DISTRICTS[city]).map(d=>`<option value="${d}">${d}</option>`).join('');
+  distEl.disabled = false;
+}
+function foOnDistrictChange(dist) {
+  const city = document.getElementById('foAddrCity').value; if (!dist || !city) return;
+  const zip = TW_DISTRICTS[city]?.[dist] || '';
+  document.getElementById('foAddrZip').value = zip;
+  document.getElementById('foAddrZipRow').style.display = 'block';
+}
+function foGetAddress() {
+  const city = document.getElementById('foAddrCity').value;
+  const dist = document.getElementById('foAddrDistrict').value;
+  const zip = document.getElementById('foAddrZip').value;
+  const detail = document.getElementById('foAddrDetail').value.trim();
+  if (!city && !dist && !detail) return '';
+  return `${zip} ${city}${dist}${detail}`.trim();
+}
+
+// ── 商品搜尋（沿用 allProducts；南崁品可選）──
+function foQuickSearch(kw) { const i = document.getElementById('foProductSearch'); if (i) { i.value = kw; onFoProductSearch(kw); } }
+function foQuickSearchNankan() {
+  const dd = document.getElementById('foProductDropdown');
+  const inputEl = document.getElementById('foProductSearch');
+  if (inputEl) inputEl.value = '🍷 南崁酒類';
+  const nankanList = allProducts.filter(p => isNankan(p.sku)).sort((a,b)=>a.sku.localeCompare(b.sku));
+  if (!nankanList.length) { dd.innerHTML = `<div class="product-option"><div class="pname">目前沒有南崁品項</div></div>`; positionDropdown(inputEl, dd); dd.style.display='block'; return; }
+  foRenderDropdownList(nankanList, inputEl, dd);
+}
+function onFoProductSearch(val) {
+  clearTimeout(foSearchDebounce);
+  const dd = document.getElementById('foProductDropdown');
+  if (!val.trim()) { dd.style.display = 'none'; return; }
+  foSearchDebounce = setTimeout(() => {
+    const lower = val.trim().toLowerCase();
+    const matched = allProducts.filter(p => p.product_name?.toLowerCase().includes(lower) || p.sku?.toLowerCase().includes(lower));
+    const filtered = matched.sort((a,b)=>a.sku.localeCompare(b.sku)).slice(0,50);
+    const dd2 = document.getElementById('foProductDropdown');
+    const inputEl = document.getElementById('foProductSearch');
+    if (!filtered.length) { dd2.innerHTML = `<div class="product-option"><div class="pname">找不到「${escHtml(val)}」相關商品</div></div>`; positionDropdown(inputEl, dd2); dd2.style.display='block'; return; }
+    foRenderDropdownList(filtered, inputEl, dd2);
+  }, 200);
+}
+function foRenderDropdownList(list, inputEl, dd) {
+  dd.innerHTML = list.map(p => {
+    const nankanItem = isNankan(p.sku);
+    return `<div class="product-option" onclick="foAddItem('${escHtml(p.sku)}','${escHtml(p.product_name)}')">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+        <div style="min-width:0;flex:1;"><div class="pname" style="white-space:normal;line-height:1.4;">${nankanItem?NANKAN_BADGE_SM+' ':''}${escHtml(p.product_name)}</div><div class="pcode">${p.sku}</div></div>
+        ${nankanItem?'<div class="pstock ok" style="color:#8B2A3A;flex-shrink:0;">🍷南崁</div>':''}
+      </div></div>`;
+  }).join('');
+  positionDropdown(inputEl, dd); dd.style.display = 'block';
+}
+function foAddItem(sku, name) {
+  document.getElementById('foProductSearch').value = '';
+  document.getElementById('foProductDropdown').style.display = 'none';
+  if (foItems.find(i=>i.sku===sku)) { showToast('此商品已加入'); return; }
+  // 南崁品預設出貨方式 = 宅配南崁；其他預設現場已取
+  const defShip = isNankan(sku) ? 'nankan' : 'picked';
+  foItems.push({ sku, name, qty: 1, amount: '', ship_type: defShip, proxy_store_id: '', proxy_store_name: '' });
+  renderFoItems();
+}
+function foRemoveItem(idx) { foItems.splice(idx,1); renderFoItems(); }
+function foUpdateItem(idx, field, val) { if (foItems[idx]) { foItems[idx][field] = val; if (field==='amount'||field==='qty') foUpdateTotal(); } }
+
+function foOnShipChange(idx, val) {
+  if (!foItems[idx]) return;
+  foItems[idx].ship_type = val;
+  if (val !== 'proxy') { foItems[idx].proxy_store_id = ''; foItems[idx].proxy_store_name = ''; }
+  renderFoItems();
+}
+function foOnProxyStore(idx, storeId) {
+  if (!foItems[idx]) return;
+  foItems[idx].proxy_store_id = storeId;
+  const s = foStoresCache.find(x=>x.id===storeId);
+  foItems[idx].proxy_store_name = s?.name || '';
+}
+
+function renderFoItems() {
+  const el = document.getElementById('foItemsList');
+  if (!el) return;
+  if (!foItems.length) { el.innerHTML = `<div style="padding:16px;text-align:center;color:var(--text2);font-size:13px;background:var(--surface2);border-radius:10px;">尚未加入品項，請從上方搜尋商品</div>`; foUpdateTotal(); return; }
+  const shipOpts = [['picked','現場已取'],['proxy','門市代寄'],['wms','宅配-委外倉'],['nankan','宅配-南崁倉']];
+  el.innerHTML = foItems.map((it, idx) => {
+    const nankanItem = isNankan(it.sku);
+    const proxyRow = it.ship_type === 'proxy' ? `
+      <div style="margin-top:8px;">
+        <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">代寄門市（扣帳）</label>
+        <select onchange="foOnProxyStore(${idx},this.value)" style="width:100%;border:1.5px solid #E0A042;border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;background:#FBF2E9;">
+          <option value="">請選擇代寄門市</option>
+          ${foStoresCache.map(s=>`<option value="${s.id}" ${s.id===it.proxy_store_id?'selected':''}>${escHtml(s.name)}</option>`).join('')}
+        </select>
+      </div>` : '';
+    return `
+    <div style="padding:12px 14px;background:var(--accent-light);border-radius:10px;border:1.5px solid var(--accent);margin-bottom:10px;">
+      <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;">
+        <div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:600;line-height:1.4;">${nankanItem?NANKAN_BADGE_SM+' ':''}${escHtml(it.name)}</div><div style="font-size:12px;color:var(--text2);font-family:'DM Mono',monospace;">${escHtml(it.sku)}</div></div>
+        <button onclick="foRemoveItem(${idx})" style="background:none;border:none;color:var(--danger);font-size:20px;cursor:pointer;flex-shrink:0;">✕</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <div style="flex:1;"><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">數量</label><input type="text" inputmode="numeric" value="${it.qty}" oninput="foUpdateItem(${idx},'qty',this.value)" style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-size:14px;font-family:inherit;box-sizing:border-box;"></div>
+        <div style="flex:1.5;"><label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">金額（特惠價）</label><input type="text" inputmode="numeric" value="${it.amount}" placeholder="實收金額" oninput="foUpdateItem(${idx},'amount',this.value)" style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-size:14px;font-family:inherit;box-sizing:border-box;"></div>
+      </div>
+      <div>
+        <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:2px;">出貨方式</label>
+        <select onchange="foOnShipChange(${idx},this.value)" style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;background:var(--surface);">
+          ${shipOpts.map(([v,l])=>`<option value="${v}" ${v===it.ship_type?'selected':''}>${l}</option>`).join('')}
+        </select>
+        ${proxyRow}
+      </div>
+    </div>`;
+  }).join('');
+  foUpdateTotal();
+}
+function foUpdateTotal() {
+  const total = foItems.reduce((s,it)=>s+(parseInt(it.amount)||0),0);
+  const el = document.getElementById('foTotalAmount');
+  if (el) el.textContent = '$' + total.toLocaleString();
+}
+
+// ── 付款方式條件欄位 ──
+function foOnPayTypeChange() {
+  const type = document.getElementById('foPayType')?.value || '';
+  const subRow = document.getElementById('foPaySubRow');
+  const subSel = document.getElementById('foPaySub');
+  const remitRow = document.getElementById('foRemitDateRow');
+  const t5Row = document.getElementById('foTransfer5Row');
+  if (remitRow) remitRow.style.display = 'none';
+  if (t5Row) t5Row.style.display = 'none';
+  if (!type) { if (subRow) subRow.style.display='none'; return; }
+  let opts = [];
+  if (type === 'atm') opts = [['無卡存款','無卡存款'],['轉帳','轉帳']];
+  else opts = [['門市刷卡','展場門市刷卡'],['總公司代刷','總公司代刷'],['貨到付款','貨到付款']];
+  if (subSel) subSel.innerHTML = '<option value="">請選擇</option>' + opts.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
+  if (subRow) subRow.style.display = 'block';
+}
+function foOnPaySubChange() {
+  const type = document.getElementById('foPayType')?.value || '';
+  const sub = document.getElementById('foPaySub')?.value || '';
+  const remitRow = document.getElementById('foRemitDateRow');
+  const t5Row = document.getElementById('foTransfer5Row');
+  if (remitRow) remitRow.style.display = 'none';
+  if (t5Row) t5Row.style.display = 'none';
+  if (type === 'atm' && sub === '無卡存款') { if (remitRow) remitRow.style.display='block'; }
+  if (type === 'atm' && sub === '轉帳') { if (t5Row) t5Row.style.display='block'; }
+}
+
+async function submitFieldOrder() {
+  const orderNo = document.getElementById('foOrderNo').value.trim();
+  const orderDate = document.getElementById('foOrderDate').value;
+  const storeId = document.getElementById('foStore').value;
+  const buyerName = document.getElementById('foBuyerName').value.trim();
+  const buyerPhone = document.getElementById('foBuyerPhone').value.trim();
+  const taxId = document.getElementById('foTaxId').value.trim();
+  const carrier = document.getElementById('foCarrier').value.trim();
+  const payType = document.getElementById('foPayType').value;
+  const paySub = document.getElementById('foPaySub')?.value || '';
+  const remitDate = document.getElementById('foRemitDate')?.value || null;
+  const transfer5 = document.getElementById('foTransfer5')?.value.trim() || '';
+  const note = document.getElementById('foNote').value.trim();
+  const address = foGetAddress();
+
+  if (!orderNo) { showToast('請輸入場外單號', 'error'); return; }
+  if (!orderDate) { showToast('請選擇訂購日期', 'error'); return; }
+  if (!storeId) { showToast('請選擇開單門市', 'error'); return; }
+  if (!buyerName) { showToast('請輸入客戶姓名', 'error'); return; }
+  if (!buyerPhone) { showToast('請輸入電話', 'error'); return; }
+  if (!foItems.length) { showToast('請至少加入一項商品', 'error'); return; }
+  for (let i=0;i<foItems.length;i++){
+    const it = foItems[i];
+    if (!it.qty || parseInt(it.qty)<1) { showToast(`第 ${i+1} 項數量錯誤`, 'error'); return; }
+    if (it.amount==='' || isNaN(it.amount)) { showToast(`第 ${i+1} 項金額錯誤`, 'error'); return; }
+    if (it.ship_type==='proxy' && !it.proxy_store_id) { showToast(`第 ${i+1} 項選了門市代寄，請選代寄門市`, 'error'); return; }
+  }
+  if (!payType) { showToast('請選擇付款類別', 'error'); return; }
+  if (!paySub) { showToast('請選擇付款明細', 'error'); return; }
+  if (payType==='atm' && paySub==='無卡存款' && !remitDate) { showToast('請填匯款日', 'error'); return; }
+  if (payType==='atm' && paySub==='轉帳' && (!transfer5 || transfer5.length!==5)) { showToast('請填轉帳帳號後5碼', 'error'); return; }
+
+  // 單號重複檢查
+  showLoading(true);
+  try {
+    const dup = await sb.get('field_orders', `?order_no=eq.${encodeURIComponent(orderNo)}&select=id&limit=1`);
+    if (dup?.length) { showLoading(false); showToast(`單號「${orderNo}」已存在，請確認`, 'error'); return; }
+  } catch(e){}
+
+  const total = foItems.reduce((s,it)=>s+(parseInt(it.amount)||0),0);
+  try {
+    const row = {
+      order_no: orderNo, order_date: orderDate, store_id: storeId, staff_id: currentUser.id,
+      buyer_name: buyerName, buyer_phone: buyerPhone, receiver_address: address,
+      tax_id: taxId||null, invoice_carrier: carrier||null, total_amount: total,
+      payment_type: payType, payment_sub: paySub,
+      remit_date: (payType==='atm'&&paySub==='無卡存款')?remitDate:null,
+      transfer_last5: (payType==='atm'&&paySub==='轉帳')?transfer5:null,
+      note: note||null, status: 'pending'
+    };
+    const created = await sb.post('field_orders', row);
+    if (!created || created.error) throw new Error(created?.message || '建立失敗');
+    const foId = Array.isArray(created) ? created[0].id : created.id;
+    for (const it of foItems) {
+      await sb.post('field_order_items', {
+        field_order_id: foId, sku: it.sku, product_name: it.name,
+        quantity: parseInt(it.qty), amount: parseInt(it.amount),
+        ship_type: it.ship_type, proxy_store_id: it.proxy_store_id || null
+      });
+    }
+    showLoading(false);
+    showToast('✅ 場外單登記成功！', 'success');
+    initFieldOrder();
+    setTimeout(()=>openFieldOrderList(), 500);
+  } catch(e) { showLoading(false); showToast('登記失敗：' + e.message, 'error'); }
+}
+
+// ── 場外單列表 ──
+let foAllOrders = [];
+async function openFieldOrderList() {
+  showScreen('fieldListScreen');
+  showLoading(true);
+  try {
+    const role = currentUser?.role;
+    let filter = '?order=created_at.desc&limit=500&select=*,field_order_items(*),stores!store_id(name),staff(name)';
+    if (role === 'admin') {}
+    else if (role === 'manager') {
+      const ids = await getManagerStoreIds(currentUser.id);
+      if (ids.length) filter += `&store_id=in.(${ids.map(i=>`"${i}"`).join(',')})`;
+    } else { filter += `&staff_id=eq.${currentUser.id}`; }
+    foAllOrders = await sb.get('field_orders', filter) || [];
+    renderFieldOrders(foAllOrders);
+  } catch(e) { showToast('載入失敗', 'error'); }
+  showLoading(false);
+}
+function onFoSearch(val) {
+  const q = (val||'').trim().toLowerCase();
+  if (!q) { renderFieldOrders(foAllOrders); return; }
+  renderFieldOrders(foAllOrders.filter(o =>
+    (o.buyer_name||'').toLowerCase().includes(q) || (o.buyer_phone||'').includes(q) || (o.order_no||'').toLowerCase().includes(q)
+  ));
+}
+function renderFieldOrders(list) {
+  const el = document.getElementById('fieldOrdersList');
+  if (!list.length) { el.innerHTML = '<div class="empty-state"><div class="icon">📋</div><p>尚無場外單</p></div>'; return; }
+  const shipMap = { picked:'現場已取', proxy:'門市代寄', wms:'宅配委外', nankan:'宅配南崁' };
+  el.innerHTML = list.map(o => {
+    const items = o.field_order_items || [];
+    const preview = items.map(i=>`${escHtml(i.product_name)} x${i.quantity}`).join('、');
+    const done = o.status === 'done';
+    return `<div class="order-card ${done?'shipped':'pending'}" onclick="toggleFieldOrderDone('${o.id}','${done?'pending':'done'}')" style="cursor:pointer;">
+      <div class="order-card-top"><div class="order-no">${escHtml(o.order_no||'')}</div><span class="status-badge ${done?'shipped':'pending'}">${done?'✅ 完成':'待處理'}</span></div>
+      <div class="order-receiver">${escHtml(o.buyer_name)} <span style="font-size:13px;font-weight:400;color:var(--text2);">${escHtml(o.buyer_phone||'')}</span></div>
+      <div class="order-meta">${escHtml(o.stores?.name||'')} · ${o.order_date||''} · 業務：${escHtml(o.staff?.name||'')}</div>
+      <div class="order-items-preview">${escHtml(preview)}</div>
+      <div style="margin-top:6px;font-size:13px;font-weight:700;color:var(--accent2);">總額 $${(o.total_amount||0).toLocaleString()} · ${escHtml(o.payment_sub||o.payment_type||'')}${o.tax_id?' · 統編'+escHtml(o.tax_id):''}</div>
+    </div>`;
+  }).join('');
+}
+async function toggleFieldOrderDone(id, newStatus) {
+  if (!confirm(newStatus==='done'?'標記此場外單為「完成」？':'改回「待處理」？')) return;
+  showLoading(true);
+  try { await sb.patch('field_orders', id, { status: newStatus, updated_at: new Date().toISOString() }); showToast('狀態已更新','success'); openFieldOrderList(); }
+  catch(e){ showToast('更新失敗','error'); }
+  showLoading(false);
+}
+function exportFieldOrderCSV() {
+  if (!foAllOrders.length) { showToast('沒有資料可匯出'); return; }
+  const shipMap = { picked:'現場已取', proxy:'門市代寄', wms:'宅配委外', nankan:'宅配南崁' };
+  const rows = [['場外單號','訂購日期','門市','業務','客戶','電話','地址','統編','載具','品名','品號','數量','金額','出貨方式','代寄門市','付款','匯款日','轉帳後5碼','總額','狀態','備註']];
+  foAllOrders.forEach(o => {
+    const items = o.field_order_items || [{}];
+    items.forEach(it => {
+      const proxyName = it.proxy_store_id ? (foStoresCache.find(s=>s.id===it.proxy_store_id)?.name||'') : '';
+      rows.push([o.order_no,o.order_date,o.stores?.name||'',o.staff?.name||'',o.buyer_name,o.buyer_phone,o.receiver_address||'',o.tax_id||'',o.invoice_carrier||'',it.product_name||'',it.sku||'',it.quantity||'',it.amount||'',shipMap[it.ship_type]||'',proxyName,o.payment_sub||o.payment_type||'',o.remit_date||'',o.transfer_last5||'',o.total_amount||'',o.status==='done'?'完成':'待處理',o.note||'']);
+    });
+  });
+  const csv = '\uFEFF' + rows.map(r=>r.map(c=>`"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a = document.createElement('a'); a.href = 'data:text/csv;charset=utf-8,'+encodeURIComponent(csv); a.download = `場外單_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+}
+
 function escHtml(str) { return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 function formatDate(iso) {
@@ -4051,6 +4458,7 @@ function formatDate(iso) {
 
 document.addEventListener('click', e => {
   if (!e.target.closest('#productSearchWrap') && !e.target.closest('#productDropdown')) closeDropdown();
+  if (!e.target.closest('#foProductSearchWrap') && !e.target.closest('#foProductDropdown')) { const _d = document.getElementById('foProductDropdown'); if (_d) _d.style.display = 'none'; }
   if (!e.target.closest('#editProductSearchWrap') && !e.target.closest('#editProductDropdown')) closeEditDropdown();
 });
 
