@@ -258,6 +258,8 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
         </div>
       </div>
     </div>
+    <!-- 訂單作業 -->
+    <div style="font-size:12px;font-weight:700;color:#4A6058;margin:6px 4px 0;letter-spacing:0.5px;">📝 訂單作業</div>
     <div onclick="showScreen('fieldScreen');initFieldOrder();" style="background:#fff;border-radius:10px;padding:12px 16px;box-shadow:0 2px 12px rgba(0,0,0,0.08);cursor:pointer;display:flex;align-items:center;gap:12px;">
       <div style="width:36px;height:36px;background:#f0ece0;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">📋</div>
       <div style="flex:1;">
@@ -274,14 +276,9 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
       </div>
       <div style="font-size:18px;color:#4A6058;">›</div>
     </div>
-    <div onclick="openDefaultStoreSetting();" style="background:#fff;border-radius:10px;padding:12px 16px;box-shadow:0 2px 12px rgba(0,0,0,0.08);cursor:pointer;display:flex;align-items:center;gap:12px;">
-      <div style="width:36px;height:36px;background:#FBF2E9;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">⚙️</div>
-      <div style="flex:1;">
-        <div style="font-size:13px;font-weight:700;color:#1a1a18;">我的預設門市</div>
-        <div style="font-size:11px;color:#4A6058;" id="defaultStoreHint">設定後開單自動帶入，不用每次選</div>
-      </div>
-      <div style="font-size:18px;color:#4A6058;">›</div>
-    </div>
+
+    <!-- 常用工具 -->
+    <div style="font-size:12px;font-weight:700;color:#4A6058;margin:14px 4px 0;letter-spacing:0.5px;">🧰 常用工具</div>
     <div onclick="showScreen('customerScreen');initCustomerBook();" style="background:#fff;border-radius:10px;padding:12px 16px;box-shadow:0 2px 12px rgba(0,0,0,0.08);cursor:pointer;display:flex;align-items:center;gap:12px;">
       <div style="width:36px;height:36px;background:#e0e8f8;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">📇</div>
       <div style="flex:1;">
@@ -290,6 +287,17 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
       </div>
       <div style="font-size:18px;color:#4A6058;">›</div>
     </div>
+    <div onclick="openDefaultStoreSetting();" style="background:#fff;border-radius:10px;padding:12px 16px;box-shadow:0 2px 12px rgba(0,0,0,0.08);cursor:pointer;display:flex;align-items:center;gap:12px;">
+      <div style="width:36px;height:36px;background:#FBF2E9;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">⚙️</div>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:700;color:#1a1a18;">我的預設門市</div>
+        <div style="font-size:11px;color:#4A6058;" id="defaultStoreHint">設定後開單自動帶入，不用每次選</div>
+      </div>
+      <div style="font-size:18px;color:#4A6058;">›</div>
+    </div>
+
+    <!-- 說明與設定 -->
+    <div style="font-size:12px;font-weight:700;color:#4A6058;margin:14px 4px 0;letter-spacing:0.5px;">📖 說明與設定</div>
     <div onclick="showScreen('helpScreen');" style="background:#fff;border-radius:10px;padding:12px 16px;box-shadow:0 2px 12px rgba(0,0,0,0.08);cursor:pointer;display:flex;align-items:center;gap:12px;">
       <div style="width:36px;height:36px;background:#E8EEE8;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">📖</div>
       <div style="flex:1;">
@@ -306,19 +314,19 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
       </div>
       <div style="font-size:18px;color:#4A6058;">›</div>
     </div>
-    <div id="pushTestEntry" onclick="openPushTest()" style="display:none;background:#fff;border-radius:10px;padding:12px 16px;box-shadow:0 2px 12px rgba(0,0,0,0.08);cursor:pointer;align-items:center;gap:12px;">
-      <div style="width:36px;height:36px;background:#e0e8f8;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">🔔</div>
-      <div style="flex:1;">
-        <div style="font-size:13px;font-weight:700;color:#1a1a18;">測試推播通知</div>
-        <div style="font-size:11px;color:#4A6058;">發送測試通知（自己 / 全體）</div>
-      </div>
-      <div style="font-size:18px;color:#4A6058;">›</div>
-    </div>
     <div onclick="enablePushManually()" style="background:#fff;border-radius:10px;padding:12px 16px;box-shadow:0 2px 12px rgba(0,0,0,0.08);cursor:pointer;display:flex;align-items:center;gap:12px;">
       <div style="width:36px;height:36px;background:#FBF2E9;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">🔔</div>
       <div style="flex:1;">
         <div style="font-size:13px;font-weight:700;color:#1a1a18;">開啟通知</div>
         <div style="font-size:11px;color:#4A6058;">收不到通知？點這裡重新開啟</div>
+      </div>
+      <div style="font-size:18px;color:#4A6058;">›</div>
+    </div>
+    <div id="pushTestEntry" onclick="openPushTest()" style="display:none;background:#fff;border-radius:10px;padding:12px 16px;box-shadow:0 2px 12px rgba(0,0,0,0.08);cursor:pointer;align-items:center;gap:12px;">
+      <div style="width:36px;height:36px;background:#e0e8f8;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">🔔</div>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:700;color:#1a1a18;">測試推播通知</div>
+        <div style="font-size:11px;color:#4A6058;">發送測試通知（自己 / 全體）</div>
       </div>
       <div style="font-size:18px;color:#4A6058;">›</div>
     </div>
@@ -4227,6 +4235,7 @@ function foAddItem(sku, name) {
   document.getElementById('foProductSearch').value = '';
   document.getElementById('foProductDropdown').style.display = 'none';
   if (foItems.find(i=>i.sku===sku)) { showToast('此商品已加入'); return; }
+  if (foItems.length >= 10) { showToast('最多只能加入 10 項商品'); return; }
   // 南崁品預設出貨方式 = 宅配南崁；其他預設現場已取
   const defShip = isNankan(sku) ? 'nankan' : 'picked';
   foItems.push({ sku, name, qty: 1, amount: '', ship_type: defShip, proxy_store_id: '', proxy_store_name: '' });
@@ -4412,24 +4421,53 @@ function onFoSearch(val) {
 function renderFieldOrders(list) {
   const el = document.getElementById('fieldOrdersList');
   if (!list.length) { el.innerHTML = '<div class="empty-state"><div class="icon">📋</div><p>尚無場外單</p></div>'; return; }
-  const shipMap = { picked:'現場已取', proxy:'門市代寄', wms:'宅配委外', nankan:'宅配南崁' };
+  const isManager = currentUser?.role === 'admin' || currentUser?.role === 'manager';
+  const statusInfo = {
+    pending: { label: '待處理', cls: 'pending' },
+    processing: { label: '作業中', cls: 'submitted' },
+    done: { label: '✅ 完成', cls: 'shipped' }
+  };
   el.innerHTML = list.map(o => {
     const items = o.field_order_items || [];
     const preview = items.map(i=>`${escHtml(i.product_name)} x${i.quantity}`).join('、');
-    const done = o.status === 'done';
-    return `<div class="order-card ${done?'shipped':'pending'}" onclick="toggleFieldOrderDone('${o.id}','${done?'pending':'done'}')" style="cursor:pointer;">
-      <div class="order-card-top"><div class="order-no">${escHtml(o.order_no||'')}</div><span class="status-badge ${done?'shipped':'pending'}">${done?'✅ 完成':'待處理'}</span></div>
+    const st = statusInfo[o.status] || statusInfo.pending;
+    // 只有管理員/店長能點卡片改狀態；業務唯讀
+    const clickAttr = isManager ? `onclick="openFieldStatusMenu('${o.id}','${o.status}')" style="cursor:pointer;"` : 'style="cursor:default;"';
+    return `<div class="order-card ${st.cls}" ${clickAttr}>
+      <div class="order-card-top"><div class="order-no">${escHtml(o.order_no||'')}</div><span class="status-badge ${st.cls}">${st.label}</span></div>
       <div class="order-receiver">${escHtml(o.buyer_name)} <span style="font-size:13px;font-weight:400;color:var(--text2);">${escHtml(o.buyer_phone||'')}</span></div>
       <div class="order-meta">${escHtml(o.stores?.name||'')} · ${o.order_date||''} · 業務：${escHtml(o.staff?.name||'')}</div>
       <div class="order-items-preview">${escHtml(preview)}</div>
       <div style="margin-top:6px;font-size:13px;font-weight:700;color:var(--accent2);">總額 $${(o.total_amount||0).toLocaleString()} · ${escHtml(o.payment_sub||o.payment_type||'')}${o.tax_id?' · 統編'+escHtml(o.tax_id):''}</div>
+      ${!isManager && o.status!=='pending' ? `<div style="margin-top:6px;font-size:11px;color:var(--text2);">🔒 ${st.label}，內容已鎖定，如需修改請洽管理員</div>` : ''}
     </div>`;
   }).join('');
 }
-async function toggleFieldOrderDone(id, newStatus) {
-  if (!confirm(newStatus==='done'?'標記此場外單為「完成」？':'改回「待處理」？')) return;
+
+// 管理員/店長：切換場外單狀態
+function openFieldStatusMenu(id, current) {
+  if (currentUser?.role !== 'admin' && currentUser?.role !== 'manager') return;
+  const opts = [
+    { v:'pending', label:'待處理' },
+    { v:'processing', label:'作業中（鎖定業務修改）' },
+    { v:'done', label:'✅ 完成' }
+  ];
+  const modal = document.createElement('div');
+  modal.id = 'foStatusModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
+  modal.innerHTML = `
+    <div style="background:var(--surface);border-radius:var(--radius);padding:22px;width:100%;max-width:360px;box-shadow:var(--shadow-lg);">
+      <div style="font-size:17px;font-weight:800;margin-bottom:16px;">更新場外單狀態</div>
+      ${opts.map(o=>`<button onclick="setFieldStatus('${id}','${o.v}')" style="width:100%;padding:13px;margin-bottom:8px;border:2px solid ${o.v===current?'var(--accent)':'var(--border)'};background:${o.v===current?'var(--accent-light)':'var(--surface)'};color:${o.v===current?'var(--accent)':'var(--text)'};border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;text-align:left;">${o.label}${o.v===current?'（目前）':''}</button>`).join('')}
+      <button onclick="document.getElementById('foStatusModal').remove()" style="width:100%;padding:11px;margin-top:6px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-size:14px;cursor:pointer;font-family:inherit;">取消</button>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e=>{ if(e.target===modal) modal.remove(); });
+}
+async function setFieldStatus(id, status) {
+  document.getElementById('foStatusModal')?.remove();
   showLoading(true);
-  try { await sb.patch('field_orders', id, { status: newStatus, updated_at: new Date().toISOString() }); showToast('狀態已更新','success'); openFieldOrderList(); }
+  try { await sb.patch('field_orders', id, { status, updated_at: new Date().toISOString() }); showToast('狀態已更新','success'); openFieldOrderList(); }
   catch(e){ showToast('更新失敗','error'); }
   showLoading(false);
 }
