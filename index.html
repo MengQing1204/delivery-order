@@ -607,6 +607,9 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
       </div>
       <div class="form-row" id="foRemitDateRow" style="display:none;"><label class="form-label">匯款日 <span class="req">*</span></label><input class="form-input" id="foRemitDate" type="date" style="cursor:pointer;"></div>
       <div class="form-row" id="foTransfer5Row" style="display:none;"><label class="form-label">轉帳帳號後5碼 <span class="req">*</span></label><input class="form-input" id="foTransfer5" placeholder="客人轉帳帳號末5碼" inputmode="numeric" maxlength="5"></div>
+      <div id="foProxyCardHint" style="display:none;margin-top:4px;padding:12px 14px;background:#FBF2E9;border:1.5px solid #E0A042;border-radius:10px;font-size:13px;color:#8a5a1a;line-height:1.6;">
+        💳 <b>總公司代刷</b>：信用卡資訊（卡號／到期日／後3碼）請勿填在此系統，<br>請業務直接<b>私訊「孟青」</b>提供，由總公司手動代刷，確保資料安全。
+      </div>
     </div>
 
     <div class="form-section">
@@ -4138,10 +4141,55 @@ function copyText(text) { navigator.clipboard.writeText(text).then(() => showToa
 let foItems = [];              // 品項：{sku,name,qty,amount,ship_type,proxy_store_id,proxy_store_name}
 let foSearchDebounce = null;
 let foStoresCache = [];        // 門市清單（代寄選門市用）
+let foEditId = null;           // 編輯中的場外單 id（null=新增）
+
+// 業務編輯場外單（待處理才可，載入舊資料到登記表單）
+async function editFieldOrder(id) {
+  const o = foAllOrders.find(x=>x.id===id);
+  if (!o) return;
+  if (o.status !== 'pending') { showToast('此單已進入作業中，無法修改，請洽管理員','error'); return; }
+  showScreen('fieldScreen');
+  await initFieldOrder();   // 先重置（會載門市、清空）
+  foEditId = id;
+  // 回填欄位
+  const setV = (elid, v) => { const e=document.getElementById(elid); if(e) e.value = v||''; };
+  setV('foOrderNo', o.order_no);
+  setV('foOrderDate', o.order_date);
+  setV('foStore', o.store_id);
+  setV('foBuyerName', o.buyer_name);
+  setV('foBuyerPhone', o.buyer_phone);
+  setV('foTaxId', o.tax_id);
+  setV('foCarrier', o.invoice_carrier);
+  setV('foNote', o.note);
+  // 地址解析回填
+  const addr = o.receiver_address || '';
+  const m = addr.match(/^(\d{3,5})?\s?(.{2,3}[市縣])(.{1,4}[區鄉鎮市])(.+)$/);
+  if (m) {
+    setV('foAddrCity', m[2]); foOnCityChange(m[2]);
+    setTimeout(()=>{ setV('foAddrDistrict', m[3]); foOnDistrictChange(m[3]); setV('foAddrDetail', m[4]); }, 80);
+  } else { setV('foAddrDetail', addr); }
+  // 付款回填
+  setV('foPayType', o.payment_type); foOnPayTypeChange();
+  setTimeout(()=>{ setV('foPaySub', o.payment_sub); foOnPaySubChange(); setV('foRemitDate', o.remit_date); setV('foTransfer5', o.transfer_last5); }, 60);
+  // 品項回填
+  foItems = (o.field_order_items||[]).map(it => ({
+    sku: it.sku, name: it.product_name, qty: it.quantity, amount: it.amount,
+    ship_type: it.ship_type, proxy_store_id: it.proxy_store_id||'',
+    proxy_store_name: foStoresCache.find(s=>s.id===it.proxy_store_id)?.name||''
+  }));
+  renderFoItems();
+  showToast('編輯模式：修改後按確認即更新','success');
+}
 
 async function initFieldOrder() {
   foItems = [];
-  ['foOrderNo','foBuyerName','foBuyerPhone','foAddrDetail','foTaxId','foCarrier','foNote','foProductSearch','foRemitDate','foTransfer5'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  foEditId = null;
+  ['foBuyerName','foBuyerPhone','foAddrDetail','foTaxId','foCarrier','foNote','foProductSearch','foRemitDate','foTransfer5'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  // 場外單號：先給暫用隨機碼（TMP-日期-4碼），管理員之後改成正確鼎新銷貨單號
+  const _t0 = new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Taipei'}));
+  const _ymd = `${String(_t0.getFullYear()).slice(2)}${String(_t0.getMonth()+1).padStart(2,'0')}${String(_t0.getDate()).padStart(2,'0')}`;
+  const _rand = Math.floor(1000 + Math.random()*9000);
+  const noEl = document.getElementById('foOrderNo'); if (noEl) noEl.value = `TMP-${_ymd}-${_rand}`;
   // 日期預設今天
   const _t = new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Taipei'}));
   const _ds = `${_t.getFullYear()}-${String(_t.getMonth()+1).padStart(2,'0')}-${String(_t.getDate()).padStart(2,'0')}`;
@@ -4166,7 +4214,7 @@ async function foLoadStores() {
     foStoresCache = stores || [];
     const sel = document.getElementById('foStore');
     if (sel) {
-      sel.innerHTML = '<option value="">請選擇門市</option>' + foStoresCache.map(s=>`<option value="${s.id}">${escHtml(s.name)}</option>`).join('');
+      sel.innerHTML = '<option value="">請選擇門市</option>' + foStoresCache.map(s=>`<option value="${s.id}">${escHtml(s.name)} 場外單</option>`).join('');
       // 預設帶入業務的預設門市/固定門市
       const prefer = currentUser?.default_store_id || currentUser?.store_id;
       if (prefer && sel.querySelector(`option[value="${prefer}"]`)) sel.value = prefer;
@@ -4204,29 +4252,44 @@ function foQuickSearchNankan() {
   if (inputEl) inputEl.value = '🍷 南崁酒類';
   const nankanList = allProducts.filter(p => isNankan(p.sku)).sort((a,b)=>a.sku.localeCompare(b.sku));
   if (!nankanList.length) { dd.innerHTML = `<div class="product-option"><div class="pname">目前沒有南崁品項</div></div>`; positionDropdown(inputEl, dd); dd.style.display='block'; return; }
-  foRenderDropdownList(nankanList, inputEl, dd);
+  foRenderDropdownList(nankanList, inputEl, dd, {});
 }
 function onFoProductSearch(val) {
   clearTimeout(foSearchDebounce);
   const dd = document.getElementById('foProductDropdown');
   if (!val.trim()) { dd.style.display = 'none'; return; }
-  foSearchDebounce = setTimeout(() => {
+  foSearchDebounce = setTimeout(async () => {
     const lower = val.trim().toLowerCase();
     const matched = allProducts.filter(p => p.product_name?.toLowerCase().includes(lower) || p.sku?.toLowerCase().includes(lower));
     const filtered = matched.sort((a,b)=>a.sku.localeCompare(b.sku)).slice(0,50);
     const dd2 = document.getElementById('foProductDropdown');
     const inputEl = document.getElementById('foProductSearch');
     if (!filtered.length) { dd2.innerHTML = `<div class="product-option"><div class="pname">找不到「${escHtml(val)}」相關商品</div></div>`; positionDropdown(inputEl, dd2); dd2.style.display='block'; return; }
-    foRenderDropdownList(filtered, inputEl, dd2);
+    // 先顯示「查詢中」，再查 ibiza 委外倉庫存（南崁品不查）
+    foRenderDropdownList(filtered, inputEl, dd2, null);
+    const querySkus = filtered.filter(p => !isNankan(p.sku)).map(p => p.sku);
+    let stockMap = {};
+    try { stockMap = querySkus.length ? (await ibizaGetStock(querySkus)) || {} : {}; } catch(e) {}
+    foRenderDropdownList(filtered, inputEl, dd2, stockMap);
   }, 200);
 }
-function foRenderDropdownList(list, inputEl, dd) {
+function foRenderDropdownList(list, inputEl, dd, stockMap) {
   dd.innerHTML = list.map(p => {
     const nankanItem = isNankan(p.sku);
+    let stockHtml;
+    if (nankanItem) {
+      stockHtml = '<div class="pstock ok" style="color:#8B2A3A;flex-shrink:0;">🍷南崁</div>';
+    } else if (stockMap === null) {
+      stockHtml = '<div class="pstock" style="color:var(--text2);flex-shrink:0;font-size:11px;">查庫存中…</div>';
+    } else {
+      const stk = stockMap[p.sku] ?? null;
+      if (stk === null) stockHtml = '<div class="pstock none" style="flex-shrink:0;">－</div>';
+      else stockHtml = `<div class="pstock ${stk>10?'ok':stk>0?'low':'none'}" style="flex-shrink:0;">委外倉 ${stk}</div>`;
+    }
     return `<div class="product-option" onclick="foAddItem('${escHtml(p.sku)}','${escHtml(p.product_name)}')">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
         <div style="min-width:0;flex:1;"><div class="pname" style="white-space:normal;line-height:1.4;">${nankanItem?NANKAN_BADGE_SM+' ':''}${escHtml(p.product_name)}</div><div class="pcode">${p.sku}</div></div>
-        ${nankanItem?'<div class="pstock ok" style="color:#8B2A3A;flex-shrink:0;">🍷南崁</div>':''}
+        ${stockHtml}
       </div></div>`;
   }).join('');
   positionDropdown(inputEl, dd); dd.style.display = 'block';
@@ -4236,8 +4299,8 @@ function foAddItem(sku, name) {
   document.getElementById('foProductDropdown').style.display = 'none';
   if (foItems.find(i=>i.sku===sku)) { showToast('此商品已加入'); return; }
   if (foItems.length >= 10) { showToast('最多只能加入 10 項商品'); return; }
-  // 南崁品預設出貨方式 = 宅配南崁；其他預設現場已取
-  const defShip = isNankan(sku) ? 'nankan' : 'picked';
+  // 業務端出貨方式不分倉：南崁品也先歸「宅配」，由管理員後端分倉
+  const defShip = isNankan(sku) ? 'delivery' : 'picked';
   foItems.push({ sku, name, qty: 1, amount: '', ship_type: defShip, proxy_store_id: '', proxy_store_name: '' });
   renderFoItems();
 }
@@ -4261,7 +4324,7 @@ function renderFoItems() {
   const el = document.getElementById('foItemsList');
   if (!el) return;
   if (!foItems.length) { el.innerHTML = `<div style="padding:16px;text-align:center;color:var(--text2);font-size:13px;background:var(--surface2);border-radius:10px;">尚未加入品項，請從上方搜尋商品</div>`; foUpdateTotal(); return; }
-  const shipOpts = [['picked','現場已取'],['proxy','門市代寄'],['wms','宅配-委外倉'],['nankan','宅配-南崁倉']];
+  const shipOpts = [['picked','現場已取'],['proxy','門市代寄'],['delivery','宅配']];
   el.innerHTML = foItems.map((it, idx) => {
     const nankanItem = isNankan(it.sku);
     const proxyRow = it.ship_type === 'proxy' ? `
@@ -4320,10 +4383,13 @@ function foOnPaySubChange() {
   const sub = document.getElementById('foPaySub')?.value || '';
   const remitRow = document.getElementById('foRemitDateRow');
   const t5Row = document.getElementById('foTransfer5Row');
+  const cardHint = document.getElementById('foProxyCardHint');
   if (remitRow) remitRow.style.display = 'none';
   if (t5Row) t5Row.style.display = 'none';
+  if (cardHint) cardHint.style.display = 'none';
   if (type === 'atm' && sub === '無卡存款') { if (remitRow) remitRow.style.display='block'; }
   if (type === 'atm' && sub === '轉帳') { if (t5Row) t5Row.style.display='block'; }
+  if (type === 'card' && sub === '總公司代刷') { if (cardHint) cardHint.style.display='block'; }
 }
 
 async function submitFieldOrder() {
@@ -4358,11 +4424,12 @@ async function submitFieldOrder() {
   if (payType==='atm' && paySub==='無卡存款' && !remitDate) { showToast('請填匯款日', 'error'); return; }
   if (payType==='atm' && paySub==='轉帳' && (!transfer5 || transfer5.length!==5)) { showToast('請填轉帳帳號後5碼', 'error'); return; }
 
-  // 單號重複檢查
+  // 單號重複檢查（編輯時排除自己）
   showLoading(true);
   try {
-    const dup = await sb.get('field_orders', `?order_no=eq.${encodeURIComponent(orderNo)}&select=id&limit=1`);
-    if (dup?.length) { showLoading(false); showToast(`單號「${orderNo}」已存在，請確認`, 'error'); return; }
+    const dup = await sb.get('field_orders', `?order_no=eq.${encodeURIComponent(orderNo)}&select=id&limit=5`);
+    const conflict = (dup||[]).some(d => d.id !== foEditId);
+    if (conflict) { showLoading(false); showToast(`單號「${orderNo}」已存在，請確認`, 'error'); return; }
   } catch(e){}
 
   const total = foItems.reduce((s,it)=>s+(parseInt(it.amount)||0),0);
@@ -4374,11 +4441,26 @@ async function submitFieldOrder() {
       payment_type: payType, payment_sub: paySub,
       remit_date: (payType==='atm'&&paySub==='無卡存款')?remitDate:null,
       transfer_last5: (payType==='atm'&&paySub==='轉帳')?transfer5:null,
-      note: note||null, status: 'pending'
+      note: note||null
     };
-    const created = await sb.post('field_orders', row);
-    if (!created || created.error) throw new Error(created?.message || '建立失敗');
-    const foId = Array.isArray(created) ? created[0].id : created.id;
+    let foId;
+    if (foEditId) {
+      // 更新模式：僅限待處理（防呆再查一次）
+      const cur = await sb.get('field_orders', `?id=eq.${foEditId}&select=status&limit=1`);
+      if (cur?.[0]?.status && cur[0].status !== 'pending') { showLoading(false); showToast('此單已進入作業中，無法修改','error'); return; }
+      row.updated_at = new Date().toISOString();
+      await sb.patch('field_orders', foEditId, row);
+      foId = foEditId;
+      // 刪舊品項重建
+      await fetch(`${SUPABASE_URL}/rest/v1/field_order_items?field_order_id=eq.${foId}`, {
+        method: 'DELETE', headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+      });
+    } else {
+      row.status = 'pending';
+      const created = await sb.post('field_orders', row);
+      if (!created || created.error) throw new Error(created?.message || '建立失敗');
+      foId = Array.isArray(created) ? created[0].id : created.id;
+    }
     for (const it of foItems) {
       await sb.post('field_order_items', {
         field_order_id: foId, sku: it.sku, product_name: it.name,
@@ -4387,10 +4469,11 @@ async function submitFieldOrder() {
       });
     }
     showLoading(false);
-    showToast('✅ 場外單登記成功！', 'success');
+    showToast(foEditId ? '✅ 場外單已更新！' : '✅ 場外單登記成功！', 'success');
+    foEditId = null;
     initFieldOrder();
     setTimeout(()=>openFieldOrderList(), 500);
-  } catch(e) { showLoading(false); showToast('登記失敗：' + e.message, 'error'); }
+  } catch(e) { showLoading(false); showToast('儲存失敗：' + e.message, 'error'); }
 }
 
 // ── 場外單列表 ──
@@ -4431,8 +4514,15 @@ function renderFieldOrders(list) {
     const items = o.field_order_items || [];
     const preview = items.map(i=>`${escHtml(i.product_name)} x${i.quantity}`).join('、');
     const st = statusInfo[o.status] || statusInfo.pending;
-    // 只有管理員/店長能點卡片改狀態；業務唯讀
-    const clickAttr = isManager ? `onclick="openFieldStatusMenu('${o.id}','${o.status}')" style="cursor:pointer;"` : 'style="cursor:default;"';
+    // 管理員/店長 → 開處理視窗；業務 → 待處理可編輯，其他鎖定
+    let clickAttr;
+    if (isManager) {
+      clickAttr = `onclick="openFieldOrderManage('${o.id}')" style="cursor:pointer;"`;
+    } else if (o.status === 'pending') {
+      clickAttr = `onclick="editFieldOrder('${o.id}')" style="cursor:pointer;"`;
+    } else {
+      clickAttr = 'style="cursor:default;"';
+    }
     return `<div class="order-card ${st.cls}" ${clickAttr}>
       <div class="order-card-top"><div class="order-no">${escHtml(o.order_no||'')}</div><span class="status-badge ${st.cls}">${st.label}</span></div>
       <div class="order-receiver">${escHtml(o.buyer_name)} <span style="font-size:13px;font-weight:400;color:var(--text2);">${escHtml(o.buyer_phone||'')}</span></div>
@@ -4442,6 +4532,98 @@ function renderFieldOrders(list) {
       ${!isManager && o.status!=='pending' ? `<div style="margin-top:6px;font-size:11px;color:var(--text2);">🔒 ${st.label}，內容已鎖定，如需修改請洽管理員</div>` : ''}
     </div>`;
   }).join('');
+}
+
+// 管理員/店長：場外單處理（改單號、狀態、宅配品項分倉+追蹤碼）
+function openFieldOrderManage(id) {
+  if (currentUser?.role !== 'admin' && currentUser?.role !== 'manager') return;
+  const o = foAllOrders.find(x=>x.id===id);
+  if (!o) return;
+  const items = o.field_order_items || [];
+  const shipMap = { picked:'現場已取', proxy:'門市代寄', delivery:'宅配', wms:'宅配委外', nankan:'宅配南崁' };
+  const statusOpts = [['pending','待處理'],['processing','作業中'],['done','完成']];
+  // 只有「宅配」品項需要管理員分倉+填追蹤碼
+  const deliveryItems = items.filter(it => it.ship_type==='delivery' || it.ship_type==='wms' || it.ship_type==='nankan');
+  const itemsHtml = items.map((it,idx) => {
+    const isDelivery = it.ship_type==='delivery' || it.ship_type==='wms' || it.ship_type==='nankan';
+    if (!isDelivery) {
+      return `<div style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;font-size:13px;">
+        ${escHtml(it.product_name)} x${it.quantity} <span style="color:var(--text2);">· ${shipMap[it.ship_type]||''}</span></div>`;
+    }
+    return `<div style="padding:10px;border:1.5px solid #8B2A3A;border-radius:8px;margin-bottom:8px;background:#fbf5f6;">
+      <div style="font-size:13px;font-weight:600;margin-bottom:6px;">${escHtml(it.product_name)} x${it.quantity} <span style="color:#8B2A3A;">· 宅配</span></div>
+      <div style="display:flex;gap:6px;margin-bottom:6px;">
+        <select id="foWh_${it.id}" onchange="foMgWhChange('${it.id}')" style="flex:1;border:1.5px solid var(--border);border-radius:6px;padding:6px 8px;font-size:12px;font-family:inherit;">
+          <option value="">選倉別</option>
+          <option value="wms" ${it.actual_warehouse==='wms'?'selected':''}>WMS委外倉（新竹）</option>
+          <option value="nankan" ${it.actual_warehouse==='nankan'?'selected':''}>南崁自倉（黑貓）</option>
+        </select>
+        <input id="foTn_${it.id}" value="${escHtml(it.tracking_no||'')}" placeholder="${it.actual_warehouse==='nankan'?'黑貓追蹤碼':it.actual_warehouse==='wms'?'新竹追蹤碼':'追蹤碼'}" style="flex:1.5;border:1.5px solid var(--border);border-radius:6px;padding:6px 8px;font-size:12px;font-family:inherit;">
+      </div>
+      <div id="foTnHint_${it.id}" style="font-size:11px;color:#8B2A3A;">${it.actual_warehouse==='wms'?'🚚 新竹貨運追蹤碼':it.actual_warehouse==='nankan'?'🐱 黑貓宅急便追蹤碼':''}</div>
+    </div>`;
+  }).join('');
+  const modal = document.createElement('div');
+  modal.id = 'foManageModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+  modal.innerHTML = `
+    <div style="background:var(--surface);border-radius:var(--radius);padding:20px;width:100%;max-width:440px;max-height:88vh;overflow-y:auto;box-shadow:var(--shadow-lg);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <div style="font-size:17px;font-weight:800;">📋 場外單處理</div>
+        <button onclick="document.getElementById('foManageModal').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text2);">✕</button>
+      </div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:4px;">${escHtml(o.buyer_name)} · ${escHtml(o.buyer_phone||'')}</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:14px;">${escHtml(o.stores?.name||'')} · 業務：${escHtml(o.staff?.name||'')}</div>
+
+      <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">場外單號（改成正確鼎新銷貨單號）</label>
+      <input id="foMgOrderNo" value="${escHtml(o.order_no||'')}" style="width:100%;box-sizing:border-box;border:1.5px solid var(--border);border-radius:8px;padding:10px;font-size:14px;font-family:'DM Mono',monospace;margin-bottom:14px;">
+
+      <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">訂單狀態</label>
+      <select id="foMgStatus" style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:10px;font-size:14px;font-family:inherit;margin-bottom:16px;">
+        ${statusOpts.map(([v,l])=>`<option value="${v}" ${v===o.status?'selected':''}>${l}</option>`).join('')}
+      </select>
+
+      ${deliveryItems.length ? `<div style="font-size:13px;font-weight:700;margin-bottom:8px;">🚚 宅配品項分倉 + 追蹤碼</div>${itemsHtml}` : `<div style="font-size:12px;color:var(--text2);margin-bottom:12px;">此單無宅配品項（現場已取/門市代寄不需追蹤碼）</div>${itemsHtml}`}
+
+      <button onclick="saveFieldOrderManage('${id}')" style="width:100%;padding:13px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:10px;">儲存</button>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e=>{ if(e.target===modal) modal.remove(); });
+}
+
+function foMgWhChange(itemId) {
+  const wh = document.getElementById(`foWh_${itemId}`)?.value || '';
+  const tn = document.getElementById(`foTn_${itemId}`);
+  const hint = document.getElementById(`foTnHint_${itemId}`);
+  if (tn) tn.placeholder = wh==='nankan' ? '黑貓追蹤碼' : wh==='wms' ? '新竹追蹤碼' : '追蹤碼';
+  if (hint) hint.textContent = wh==='wms' ? '🚚 新竹貨運追蹤碼' : wh==='nankan' ? '🐱 黑貓宅急便追蹤碼' : '';
+}
+
+async function saveFieldOrderManage(id) {
+  const o = foAllOrders.find(x=>x.id===id); if (!o) return;
+  const newNo = document.getElementById('foMgOrderNo').value.trim();
+  const newStatus = document.getElementById('foMgStatus').value;
+  if (!newNo) { showToast('單號不能空白','error'); return; }
+  showLoading(true);
+  try {
+    await sb.patch('field_orders', id, { order_no: newNo, status: newStatus, updated_at: new Date().toISOString() });
+    // 更新宅配品項的倉別與追蹤碼
+    const items = o.field_order_items || [];
+    for (const it of items) {
+      const whEl = document.getElementById(`foWh_${it.id}`);
+      const tnEl = document.getElementById(`foTn_${it.id}`);
+      if (whEl || tnEl) {
+        await sb.patch('field_order_items', it.id, {
+          actual_warehouse: whEl?.value || null,
+          tracking_no: tnEl?.value.trim() || null
+        });
+      }
+    }
+    showLoading(false);
+    document.getElementById('foManageModal')?.remove();
+    showToast('✅ 已儲存','success');
+    openFieldOrderList();
+  } catch(e) { showLoading(false); showToast('儲存失敗：'+e.message,'error'); }
 }
 
 // 管理員/店長：切換場外單狀態
@@ -4473,13 +4655,15 @@ async function setFieldStatus(id, status) {
 }
 function exportFieldOrderCSV() {
   if (!foAllOrders.length) { showToast('沒有資料可匯出'); return; }
-  const shipMap = { picked:'現場已取', proxy:'門市代寄', wms:'宅配委外', nankan:'宅配南崁' };
-  const rows = [['場外單號','訂購日期','門市','業務','客戶','電話','地址','統編','載具','品名','品號','數量','金額','出貨方式','代寄門市','付款','匯款日','轉帳後5碼','總額','狀態','備註']];
+  const shipMap = { picked:'現場已取', proxy:'門市代寄', delivery:'宅配', wms:'宅配委外', nankan:'宅配南崁' };
+  const whMap = { wms:'WMS委外倉', nankan:'南崁自倉' };
+  const stMap = { pending:'待處理', processing:'作業中', done:'完成' };
+  const rows = [['場外單號','訂購日期','門市','業務','客戶','電話','地址','統編','載具','品名','品號','數量','金額','出貨方式','代寄門市','實際倉別','追蹤碼','付款','匯款日','轉帳後5碼','總額','狀態','備註']];
   foAllOrders.forEach(o => {
     const items = o.field_order_items || [{}];
     items.forEach(it => {
       const proxyName = it.proxy_store_id ? (foStoresCache.find(s=>s.id===it.proxy_store_id)?.name||'') : '';
-      rows.push([o.order_no,o.order_date,o.stores?.name||'',o.staff?.name||'',o.buyer_name,o.buyer_phone,o.receiver_address||'',o.tax_id||'',o.invoice_carrier||'',it.product_name||'',it.sku||'',it.quantity||'',it.amount||'',shipMap[it.ship_type]||'',proxyName,o.payment_sub||o.payment_type||'',o.remit_date||'',o.transfer_last5||'',o.total_amount||'',o.status==='done'?'完成':'待處理',o.note||'']);
+      rows.push([o.order_no,o.order_date,o.stores?.name||'',o.staff?.name||'',o.buyer_name,o.buyer_phone,o.receiver_address||'',o.tax_id||'',o.invoice_carrier||'',it.product_name||'',it.sku||'',it.quantity||'',it.amount||'',shipMap[it.ship_type]||'',proxyName,whMap[it.actual_warehouse]||'',it.tracking_no||'',o.payment_sub||o.payment_type||'',o.remit_date||'',o.transfer_last5||'',o.total_amount||'',stMap[o.status]||'待處理',o.note||'']);
     });
   });
   const csv = '\uFEFF' + rows.map(r=>r.map(c=>`"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\n');
