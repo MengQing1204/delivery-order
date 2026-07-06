@@ -243,7 +243,8 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
   </div>
   <div style="padding:20px 16px;display:flex;flex-direction:column;gap:12px;">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-      <div onclick="showScreen('mainScreen');loadMyOrders();" style="background:#fff;border-radius:12px;padding:20px 14px;box-shadow:0 2px 12px rgba(0,0,0,0.08);cursor:pointer;display:flex;flex-direction:column;gap:10px;">
+      <div onclick="showScreen('mainScreen');loadMyOrders();" style="position:relative;background:#fff;border-radius:12px;padding:20px 14px;box-shadow:0 2px 12px rgba(0,0,0,0.08);cursor:pointer;display:flex;flex-direction:column;gap:10px;">
+        <span id="badgeDelivery" style="display:none;position:absolute;top:12px;right:12px;background:#D9534F;color:#fff;font-size:12px;font-weight:800;min-width:22px;height:22px;border-radius:11px;padding:0 6px;align-items:center;justify-content:center;"></span>
         <div style="width:44px;height:44px;background:#E8EEE8;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:24px;">📦</div>
         <div>
           <div style="font-size:15px;font-weight:700;color:#1a1a18;">宅配訂單</div>
@@ -266,6 +267,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
         <div style="font-size:13px;font-weight:700;color:#1a1a18;">場外單登記</div>
         <div style="font-size:11px;color:#4A6058;">場外活動訂單登記</div>
       </div>
+      <span id="badgeField" style="display:none;background:#D9534F;color:#fff;font-size:12px;font-weight:800;min-width:22px;height:22px;border-radius:11px;padding:0 6px;align-items:center;justify-content:center;margin-right:4px;"></span>
       <div style="font-size:18px;color:#4A6058;">›</div>
     </div>
     <div onclick="showScreen('salesLogScreen');initSalesLog();" style="background:#fff;border-radius:10px;padding:12px 16px;box-shadow:0 2px 12px rgba(0,0,0,0.08);cursor:pointer;display:flex;align-items:center;gap:12px;">
@@ -1239,6 +1241,7 @@ async function loginWithData(u) {
   const _pte = document.getElementById('pushTestEntry');
   if (_pte) _pte.style.display = (currentUser?.role === 'admin') ? 'flex' : 'none';
   updateDefaultStoreHint();
+  loadHomeBadges();
   loadProducts();
   // 登入後詢問是否允許推播通知
   setTimeout(() => registerPushNotification(), 2000);
@@ -1868,6 +1871,34 @@ function updateDefaultStoreHint() {
     const nm = rows?.[0]?.name;
     hintEl.textContent = nm ? `目前預設：${nm}` : '已設定預設門市';
   }).catch(()=>{ hintEl.textContent = '已設定預設門市'; });
+}
+
+// 首頁徽章：宅配 / 場外單 待處理張數
+async function loadHomeBadges() {
+  const role = currentUser?.role;
+  // 權限範圍條件
+  let scope = '';
+  if (role === 'admin') { scope = ''; }
+  else if (role === 'manager') {
+    const ids = await getManagerStoreIds(currentUser.id);
+    scope = ids.length ? `&store_id=in.(${ids.map(i=>`"${i}"`).join(',')})` : '&store_id=eq.__none__';
+  } else { scope = `&staff_id=eq.${currentUser.id}`; }
+  // 宅配待處理
+  try {
+    const rows = await sb.get('orders', `?status=eq.pending${scope}&select=id`);
+    setBadge('badgeDelivery', (rows||[]).length);
+  } catch(e) { setBadge('badgeDelivery', 0); }
+  // 場外單待處理
+  try {
+    const rows = await sb.get('field_orders', `?status=eq.pending${scope}&select=id`);
+    setBadge('badgeField', (rows||[]).length);
+  } catch(e) { setBadge('badgeField', 0); }
+}
+function setBadge(id, n) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (n > 0) { el.textContent = n > 99 ? '99+' : n; el.style.display = 'flex'; }
+  else { el.style.display = 'none'; }
 }
 
 function validateDetail(input) {
@@ -3450,17 +3481,26 @@ function quickSearch(keyword) {
 }
 
 // 🍷 酒快捷：直接列出所有南崁白名單品項（南崁品免查庫存、永遠可選）
-function quickSearchNankan() {
+async function quickSearchNankan() {
   const dd = document.getElementById('productDropdown');
   const inputEl = document.getElementById('productSearch');
   if (formItems.length >= 5) { showToast('最多只能選5項商品'); return; }
+  // 確保南崁白名單已載入
+  if (!nankanWhitelist || nankanWhitelist.size === 0) { await loadNankanWhitelist(); }
   // 從商品清單挑出白名單（南崁）品項
-  const nankanList = allProducts.filter(p => isNankan(p.sku)).sort((a,b)=>a.sku.localeCompare(b.sku));
+  let nankanList = allProducts.filter(p => isNankan(p.sku)).sort((a,b)=>a.sku.localeCompare(b.sku));
+  // 若 allProducts 裡找不到（快取問題），直接用白名單品號從 products 撈
+  if (!nankanList.length && nankanWhitelist.size > 0) {
+    try {
+      const skus = [...nankanWhitelist];
+      const rows = await sb.get('products', `?sku=in.(${skus.map(s=>`"${s}"`).join(',')})&select=sku,product_name`);
+      nankanList = (rows||[]).sort((a,b)=>a.sku.localeCompare(b.sku));
+    } catch(e) {}
+  }
   if (!nankanList.length) {
-    dd.innerHTML = `<div class="product-option"><div class="pname">目前沒有南崁品項</div></div>`;
+    dd.innerHTML = `<div class="product-option"><div class="pname">目前沒有南崁品項（請確認白名單）</div></div>`;
     positionDropdown(inputEl, dd); dd.style.display = 'block'; return;
   }
-  // 南崁品不查 ibiza，直接渲染（stockMap 傳 null，renderDropdown 對南崁品會顯示「南崁出貨」）
   renderDropdown(nankanList, {}, inputEl);
 }
 
@@ -4319,11 +4359,19 @@ function foGetAddress() {
 
 // ── 商品搜尋（沿用 allProducts；南崁品可選）──
 function foQuickSearch(kw) { const i = document.getElementById('foProductSearch'); if (i) { i.value = kw; onFoProductSearch(kw); } }
-function foQuickSearchNankan() {
+async function foQuickSearchNankan() {
   const dd = document.getElementById('foProductDropdown');
   const inputEl = document.getElementById('foProductSearch');
-  const nankanList = allProducts.filter(p => isNankan(p.sku)).sort((a,b)=>a.sku.localeCompare(b.sku));
-  if (!nankanList.length) { dd.innerHTML = `<div class="product-option"><div class="pname">目前沒有南崁品項</div></div>`; positionDropdown(inputEl, dd); dd.style.display='block'; return; }
+  if (!nankanWhitelist || nankanWhitelist.size === 0) { await loadNankanWhitelist(); }
+  let nankanList = allProducts.filter(p => isNankan(p.sku)).sort((a,b)=>a.sku.localeCompare(b.sku));
+  if (!nankanList.length && nankanWhitelist.size > 0) {
+    try {
+      const skus = [...nankanWhitelist];
+      const rows = await sb.get('products', `?sku=in.(${skus.map(s=>`"${s}"`).join(',')})&select=sku,product_name`);
+      nankanList = (rows||[]).sort((a,b)=>a.sku.localeCompare(b.sku));
+    } catch(e) {}
+  }
+  if (!nankanList.length) { dd.innerHTML = `<div class="product-option"><div class="pname">目前沒有南崁品項（請確認白名單）</div></div>`; positionDropdown(inputEl, dd); dd.style.display='block'; return; }
   foRenderDropdownList(nankanList, inputEl, dd, {});
 }
 function onFoProductSearch(val) {
@@ -4637,18 +4685,54 @@ function openFieldOrderManage(id) {
       <div id="foTnHint_${it.id}" style="font-size:11px;color:#8B2A3A;">${it.actual_warehouse==='wms'?'🚚 新竹貨運追蹤碼':it.actual_warehouse==='nankan'?'📦 黑貓宅急便追蹤碼':''}</div>
     </div>`;
   }).join('');
+  // 付款方式顯示文字
+  const payLabel = o.payment_sub || o.payment_type || '';
+  const payExtra = o.remit_date ? `　匯款日：${o.remit_date}` : (o.transfer_last5 ? `　轉帳後5碼：${o.transfer_last5}` : '');
+  // 完整明細（給管理員照著打鼎新）
+  const detailRows = items.map((it,idx) => {
+    const proxyName = it.proxy_store_id ? (foStoresCache.find(s=>s.id===it.proxy_store_id)?.name||'') : '';
+    const shipTxt = shipMap[it.ship_type] || '' ;
+    const whTxt = it.actual_warehouse==='wms' ? '（WMS/新竹）' : it.actual_warehouse==='nankan' ? '（南崁/黑貓）' : '';
+    return `<tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:6px 4px;font-size:12px;">${idx+1}</td>
+      <td style="padding:6px 4px;font-size:12px;">${escHtml(it.product_name||'')}<br><span style="font-family:'DM Mono',monospace;color:var(--text2);">${escHtml(it.sku||'')}</span></td>
+      <td style="padding:6px 4px;font-size:12px;text-align:center;">${it.quantity||''}</td>
+      <td style="padding:6px 4px;font-size:12px;text-align:right;">$${(it.amount||0).toLocaleString()}</td>
+      <td style="padding:6px 4px;font-size:11px;color:var(--text2);">${shipTxt}${proxyName?'：'+escHtml(proxyName):''}${whTxt}${it.tracking_no?'<br>追蹤:'+escHtml(it.tracking_no):''}</td>
+    </tr>`;
+  }).join('');
+  const fullDetailHtml = `
+    <div style="background:var(--surface2);border-radius:10px;padding:12px;margin-bottom:16px;">
+      <div style="font-size:14px;font-weight:800;color:var(--accent2);margin-bottom:10px;">📄 完整明細（照此打鼎新）</div>
+      <div style="font-size:12px;line-height:1.9;">
+        <div><b>單號：</b>${escHtml(o.order_no||'')}</div>
+        <div><b>日期：</b>${o.order_date||''}　<b>門市：</b>${escHtml(o.stores?.name||'')}</div>
+        <div><b>業務：</b>${escHtml(o.staff?.name||'')}</div>
+        <div style="border-top:1px dashed var(--border);margin:6px 0;padding-top:6px;"><b>客戶：</b>${escHtml(o.buyer_name||'')}　<b>電話：</b>${escHtml(o.buyer_phone||'')}</div>
+        <div><b>地址：</b>${escHtml(o.receiver_address||'（無）')}</div>
+        <div><b>統編：</b>${escHtml(o.tax_id||'（無）')}　<b>載具：</b>${escHtml(o.invoice_carrier||'（無）')}</div>
+        <div style="border-top:1px dashed var(--border);margin:6px 0;padding-top:6px;"><b>付款：</b>${escHtml(payLabel)}${payExtra}</div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;margin-top:8px;">
+        <thead><tr style="border-bottom:2px solid var(--border);"><th style="padding:4px;font-size:11px;text-align:left;">#</th><th style="padding:4px;font-size:11px;text-align:left;">品名/品號</th><th style="padding:4px;font-size:11px;">數量</th><th style="padding:4px;font-size:11px;text-align:right;">金額</th><th style="padding:4px;font-size:11px;text-align:left;">出貨</th></tr></thead>
+        <tbody>${detailRows}</tbody>
+      </table>
+      <div style="text-align:right;font-size:15px;font-weight:800;color:var(--accent2);margin-top:8px;">總額 $${(o.total_amount||0).toLocaleString()}</div>
+      ${o.note?`<div style="font-size:12px;color:var(--text2);margin-top:6px;border-top:1px dashed var(--border);padding-top:6px;"><b>備註：</b>${escHtml(o.note)}</div>`:''}
+    </div>`;
   const modal = document.createElement('div');
   modal.id = 'foManageModal';
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
   modal.innerHTML = `
-    <div style="background:var(--surface);border-radius:var(--radius);padding:20px;width:100%;max-width:440px;max-height:88vh;overflow-y:auto;box-shadow:var(--shadow-lg);">
+    <div style="background:var(--surface);border-radius:var(--radius);padding:20px;width:100%;max-width:460px;max-height:88vh;overflow-y:auto;box-shadow:var(--shadow-lg);">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-        <div style="font-size:17px;font-weight:800;">📋 場外單處理</div>
+        <div style="font-size:17px;font-weight:800;">📋 場外單明細 / 處理</div>
         <button onclick="document.getElementById('foManageModal').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text2);">✕</button>
       </div>
-      <div style="font-size:13px;color:var(--text2);margin-bottom:4px;">${escHtml(o.buyer_name)} · ${escHtml(o.buyer_phone||'')}</div>
-      <div style="font-size:12px;color:var(--text2);margin-bottom:14px;">${escHtml(o.stores?.name||'')} · 業務：${escHtml(o.staff?.name||'')}</div>
 
+      ${fullDetailHtml}
+
+      <div style="font-size:14px;font-weight:800;margin-bottom:10px;border-top:2px solid var(--border);padding-top:14px;">✏️ 處理</div>
       <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">場外單號（改成正確鼎新銷貨單號）</label>
       <input id="foMgOrderNo" value="${escHtml(o.order_no||'')}" style="width:100%;box-sizing:border-box;border:1.5px solid var(--border);border-radius:8px;padding:10px;font-size:14px;font-family:'DM Mono',monospace;margin-bottom:14px;">
 
@@ -4657,7 +4741,7 @@ function openFieldOrderManage(id) {
         ${statusOpts.map(([v,l])=>`<option value="${v}" ${v===o.status?'selected':''}>${l}</option>`).join('')}
       </select>
 
-      ${deliveryItems.length ? `<div style="font-size:13px;font-weight:700;margin-bottom:8px;">🚚 宅配品項分倉 + 追蹤碼</div>${itemsHtml}` : `<div style="font-size:12px;color:var(--text2);margin-bottom:12px;">此單無宅配品項（現場已取/門市代寄不需追蹤碼）</div>${itemsHtml}`}
+      ${deliveryItems.length ? `<div style="font-size:13px;font-weight:700;margin-bottom:8px;">🚚 宅配品項分倉 + 追蹤碼</div>${itemsHtml}` : ''}
 
       <button onclick="saveFieldOrderManage('${id}')" style="width:100%;padding:13px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:10px;">儲存</button>
     </div>`;
