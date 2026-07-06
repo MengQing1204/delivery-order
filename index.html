@@ -594,16 +594,15 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
     <div class="form-section">
       <div class="form-section-title">💰 付款方式</div>
       <div class="form-row">
-        <label class="form-label">付款類別 <span class="req">*</span></label>
-        <select class="form-select" id="foPayType" onchange="foOnPayTypeChange()">
-          <option value="">請選擇</option>
-          <option value="atm">ATM 匯款</option>
-          <option value="card">刷卡 / 代刷 / 貨到付款</option>
+        <label class="form-label">付款方式 <span class="req">*</span></label>
+        <select class="form-select" id="foPayMethod" onchange="foOnPayMethodChange()">
+          <option value="">請選擇付款方式</option>
+          <option value="atm_cash">ATM匯款－無卡存款</option>
+          <option value="atm_transfer">ATM匯款－轉帳</option>
+          <option value="store_card">展場門市刷卡</option>
+          <option value="hq_card">總公司代刷</option>
+          <option value="cod">貨到付款</option>
         </select>
-      </div>
-      <div class="form-row" id="foPaySubRow" style="display:none;">
-        <label class="form-label">明細 <span class="req">*</span></label>
-        <select class="form-select" id="foPaySub" onchange="foOnPaySubChange()"></select>
       </div>
       <div class="form-row" id="foRemitDateRow" style="display:none;"><label class="form-label">匯款日 <span class="req">*</span></label><input class="form-input" id="foRemitDate" type="date" style="cursor:pointer;"></div>
       <div class="form-row" id="foTransfer5Row" style="display:none;"><label class="form-label">轉帳帳號後5碼 <span class="req">*</span></label><input class="form-input" id="foTransfer5" placeholder="客人轉帳帳號末5碼" inputmode="numeric" maxlength="5"></div>
@@ -2053,20 +2052,83 @@ async function doSubmitOrder() {
   const d = pendingOrderData;
   showLoading(true);
   try {
-    const customNo = (currentUser?.role === 'admin') ? document.getElementById('customOrderNo')?.value.trim() : '';
-    const orderNo = customNo || await generateOrderNo();
     const deliveryDate = document.getElementById('deliveryDate')?.value || null;
     const saleDate = document.getElementById('saleDate')?.value || null;
-    const orderData = { order_no: orderNo, delivery_date: deliveryDate, sale_date: saleDate, store_id: d.storeId, staff_id: currentUser.id, buyer_name: d.buyerName, buyer_phone: d.buyerPhone, receiver_name: d.receiverName, receiver_phone: d.receiverPhone, receiver_address: d.address, pos_no: d.posNo, pos_terminal: d.terminal, note: d.note || null, status: 'pending', is_preorder: !!window._hasPreorder };
-    const newOrder = await sb.post('orders', orderData);
-    if (!newOrder || newOrder.error) throw new Error(newOrder?.message || '建立訂單失敗');
-    const orderId = Array.isArray(newOrder) ? newOrder[0].id : newOrder.id;
-    for (const item of formItems) { await sb.post('order_items', { order_id: orderId, sku: item.sku, product_name: item.name, quantity: item.qty, item_type: item.item_type || 'stock', fulfill_source: item.fulfill_source || 'wms' }); }
-    showLoading(false);
-    showToast('訂單登記成功！', 'success');
+    // 共用的訂單基本資料（客戶/地址/業績欄位，兩張都一樣）
+    const baseData = {
+      delivery_date: deliveryDate, sale_date: saleDate, store_id: d.storeId, staff_id: currentUser.id,
+      buyer_name: d.buyerName, buyer_phone: d.buyerPhone, receiver_name: d.receiverName,
+      receiver_phone: d.receiverPhone, receiver_address: d.address, pos_no: d.posNo, pos_terminal: d.terminal,
+      note: d.note || null, status: 'pending'
+    };
+    // 分出委外品 / 南崁品
+    const wmsItems = formItems.filter(i => i.fulfill_source !== 'nankan');
+    const nankanItems = formItems.filter(i => i.fulfill_source === 'nankan');
+    const isMixed = wmsItems.length > 0 && nankanItems.length > 0;
+
+    let firstOrderId = null;
+
+    if (isMixed) {
+      // ── 混單：拆兩張獨立訂單，連號（委外在前、南崁在後）──
+      const customNo = (currentUser?.role === 'admin') ? document.getElementById('customOrderNo')?.value.trim() : '';
+      // 委外那張
+      const wmsNo = customNo || await generateOrderNoSafe();
+      const wmsId = await createOrderWithItems({ ...baseData, order_no: wmsNo, is_preorder: wmsItems.some(isPreorderItem) }, wmsItems);
+      // 南崁那張（連號：委外號 +1，並防撞號）
+      const nankanNo = await nextOrderNoAfter(wmsNo);
+      const nankanId = await createOrderWithItems({ ...baseData, order_no: nankanNo, is_preorder: false }, nankanItems);
+      firstOrderId = wmsId;
+      showLoading(false);
+      showToast(`混單已自動拆兩張：委外 ${wmsNo.slice(-5)} / 南崁 ${nankanNo.slice(-5)}`, 'success');
+    } else {
+      // ── 純單（全委外 或 全南崁）：維持一張 ──
+      const customNo = (currentUser?.role === 'admin') ? document.getElementById('customOrderNo')?.value.trim() : '';
+      const orderNo = customNo || await generateOrderNoSafe();
+      firstOrderId = await createOrderWithItems({ ...baseData, order_no: orderNo, is_preorder: !!window._hasPreorder }, formItems);
+      showLoading(false);
+      showToast('訂單登記成功！', 'success');
+    }
     showScreen('mainScreen');
-    setTimeout(() => openOrderDetail(orderId), 500);
+    setTimeout(() => openOrderDetail(firstOrderId), 500);
   } catch(e) { showLoading(false); showToast('送出失敗：' + e.message, 'error'); }
+}
+
+// 建立一張訂單 + 其品項，回傳 orderId
+async function createOrderWithItems(orderData, items) {
+  const newOrder = await sb.post('orders', orderData);
+  if (!newOrder || newOrder.error) throw new Error(newOrder?.message || '建立訂單失敗');
+  const orderId = Array.isArray(newOrder) ? newOrder[0].id : newOrder.id;
+  for (const item of items) {
+    await sb.post('order_items', { order_id: orderId, sku: item.sku, product_name: item.name, quantity: item.qty, item_type: item.item_type || 'stock', fulfill_source: item.fulfill_source || 'wms' });
+  }
+  return orderId;
+}
+
+// 安全取號：取號後確認未被占用，撞號則重試（最多5次）
+async function generateOrderNoSafe() {
+  for (let i = 0; i < 5; i++) {
+    const no = await generateOrderNo();
+    const exist = await sb.get('orders', `?order_no=eq.${encodeURIComponent(no)}&select=id&limit=1`);
+    if (!exist?.length) return no;
+  }
+  // 5次都撞（極罕見），加隨機尾碼保底
+  return await generateOrderNo() + String(Math.floor(Math.random()*9)+1);
+}
+
+// 給定一個單號，回傳「下一個連號」且未被占用的單號（用於混單南崁那張）
+async function nextOrderNoAfter(baseNo) {
+  const m = baseNo.match(/^(.*?)(\d+)$/);  // 拆前綴 + 尾碼數字
+  if (!m) return await generateOrderNoSafe();
+  const prefix = m[1];
+  let seq = parseInt(m[2]) + 1;
+  const width = m[2].length;
+  for (let i = 0; i < 20; i++) {
+    const candidate = prefix + String(seq).padStart(width, '0');
+    const exist = await sb.get('orders', `?order_no=eq.${encodeURIComponent(candidate)}&select=id&limit=1`);
+    if (!exist?.length) return candidate;
+    seq++;  // 被占用就再往下一號
+  }
+  return await generateOrderNoSafe();
 }
 
 // ═══════════════════════════════════════════
@@ -3975,54 +4037,40 @@ async function exportErpExcel(orders) {
     for (const o of orders) {
       const st = o.stores || {};
       const allItems = (o.order_items && o.order_items.length) ? o.order_items : [{ sku:'', product_name:'', quantity:'', fulfill_source:'wms' }];
-      // 依出貨倉別分組：一張轉撥單只能一個轉出庫，混單拆兩張
-      // 委外倉 → 轉出庫 B0003，單號後綴 -B；南崁自倉 → 轉出庫 A0001，單號後綴 -A
-      const groups = [
-        { source:'wms',    transOut:'B0003', suffix:'委外', noSuffix:'-B', items: allItems.filter(it => it.fulfill_source !== 'nankan') },
-        { source:'nankan', transOut:'A0001', suffix:'南崁', noSuffix:'-A', items: allItems.filter(it => it.fulfill_source === 'nankan') },
-      ];
-      const wmsCount = groups[0].items.length;
-      const nankanCount = groups[1].items.length;
-      const isMixed = wmsCount > 0 && nankanCount > 0;       // 混單：兩倉都有
-      const isPureNankan = wmsCount === 0 && nankanCount > 0; // 純南崁單
-      for (const g of groups) {
-        if (!g.items.length) continue;  // 該倉別沒品項就不產這張
-        // 單號後綴規則（對應轉出庫代號，方便分辨）：
-        //   混單 → 委外 -B（B0003）、南崁 -A（A0001）
-        //   純南崁 → -A（與委外區隔）
-        //   純委外 → 不加後綴（維持原樣，不影響現有對帳）
-        let orderNoOut = o.order_no || '';
-        if (isMixed) { orderNoOut += g.noSuffix; }
-        else if (isPureNankan && g.source === 'nankan') { orderNoOut += '-A'; }
-        const rows = [headers];
-        g.items.forEach(it => {
-          rows.push([
-            dateStr,                          // 異動日期
-            '1203',                           // 單別（固定）
-            orderNoOut,                       // 單號（依倉別加後綴 -W / -A）
-            st.dept_code || '',               // 部門代號
-            g.transOut,                       // 轉出庫（依倉別：B0003 委外 / A0001 南崁）
-            st.warehouse_code || '',          // 轉入庫
-            st.name || '',                    // 門市
-            o.receiver_name || '',            // 聯絡人
-            o.receiver_phone || '',           // 電話
-            o.receiver_address || '',         // 地址
-            it.sku || '',                     // 品號
-            it.product_name || '',            // 品名
-            it.quantity || '',                // 數量
-            o.note || ''                      // 備註
-          ]);
-        });
-        const ws = XLSX.utils.aoa_to_sheet(rows);
-        ws['!cols'] = [{wch:10},{wch:6},{wch:14},{wch:10},{wch:8},{wch:8},{wch:16},{wch:10},{wch:12},{wch:30},{wch:14},{wch:24},{wch:6},{wch:16}];
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, (orderNoOut || 'sheet').slice(0,28));
-        const wbout = XLSX.write(wb, { bookType:'xlsx', type:'array' });
-        // 檔名直接用帶後綴的單號，解壓即可分辨
-        const fname = `${orderNoOut || ('order'+fileCount)}.xlsx`;
-        zip.file(fname, wbout);
-        fileCount++;
-      }
+      // 訂單已在送出時依倉別拆好，這裡每張訂單就是單一倉別。
+      // 若整張有任一南崁品即視為南崁單（A0001），否則委外單（B0003）。
+      const isNankanOrder = allItems.some(it => it.fulfill_source === 'nankan');
+      const transOut = isNankanOrder ? 'A0001' : 'B0003';
+      // 單號取純數字（去掉「1203-」前綴），鼎新單號欄只接受純數字
+      const orderNoOut = (o.order_no || '').replace(/^.*?-/, '').replace(/\D/g, '');
+      const rows = [headers];
+      allItems.forEach(it => {
+        rows.push([
+          dateStr,                          // 異動日期
+          '1203',                           // 單別（固定）
+          orderNoOut,                       // 單號（純數字）
+          st.dept_code || '',               // 部門代號
+          transOut,                         // 轉出庫（南崁 A0001 / 委外 B0003）
+          st.warehouse_code || '',          // 轉入庫
+          st.name || '',                    // 門市
+          o.receiver_name || '',            // 聯絡人
+          o.receiver_phone || '',           // 電話
+          o.receiver_address || '',         // 地址
+          it.sku || '',                     // 品號
+          it.product_name || '',            // 品名
+          it.quantity || '',                // 數量
+          o.note || ''                      // 備註
+        ]);
+      });
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      ws['!cols'] = [{wch:10},{wch:6},{wch:14},{wch:10},{wch:8},{wch:8},{wch:16},{wch:10},{wch:12},{wch:30},{wch:14},{wch:24},{wch:6},{wch:16}];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, (orderNoOut || 'sheet').slice(0,28));
+      const wbout = XLSX.write(wb, { bookType:'xlsx', type:'array' });
+      const whTag = isNankanOrder ? '_南崁A0001' : '_委外B0003';
+      const fname = `${orderNoOut || ('order'+fileCount)}${whTag}.xlsx`;
+      zip.file(fname, wbout);
+      fileCount++;
     }
 
     // 產生 zip 並下載
@@ -4168,9 +4216,11 @@ async function editFieldOrder(id) {
     setV('foAddrCity', m[2]); foOnCityChange(m[2]);
     setTimeout(()=>{ setV('foAddrDistrict', m[3]); foOnDistrictChange(m[3]); setV('foAddrDetail', m[4]); }, 80);
   } else { setV('foAddrDetail', addr); }
-  // 付款回填
-  setV('foPayType', o.payment_type); foOnPayTypeChange();
-  setTimeout(()=>{ setV('foPaySub', o.payment_sub); foOnPaySubChange(); setV('foRemitDate', o.remit_date); setV('foTransfer5', o.transfer_last5); }, 60);
+  // 付款回填（反推單層值）
+  const backMap = { '無卡存款':'atm_cash','轉帳':'atm_transfer','展場門市刷卡':'store_card','總公司代刷':'hq_card','貨到付款':'cod' };
+  setV('foPayMethod', backMap[o.payment_sub] || '');
+  foOnPayMethodChange();
+  setTimeout(()=>{ setV('foRemitDate', o.remit_date); setV('foTransfer5', o.transfer_last5); }, 60);
   // 品項回填
   foItems = (o.field_order_items||[]).map(it => ({
     sku: it.sku, name: it.product_name, qty: it.quantity, amount: it.amount,
@@ -4201,8 +4251,8 @@ async function initFieldOrder() {
   if (distEl) { distEl.innerHTML = '<option value="">請先選縣市</option>'; distEl.disabled = true; }
   const zipRow = document.getElementById('foAddrZipRow'); if (zipRow) zipRow.style.display = 'none';
   // 付款重置
-  const payType = document.getElementById('foPayType'); if (payType) payType.value = '';
-  foOnPayTypeChange();
+  const payM = document.getElementById('foPayMethod'); if (payM) payM.value = '';
+  foOnPayMethodChange();
   // 門市下拉
   await foLoadStores();
   renderFoItems();
@@ -4249,7 +4299,6 @@ function foQuickSearch(kw) { const i = document.getElementById('foProductSearch'
 function foQuickSearchNankan() {
   const dd = document.getElementById('foProductDropdown');
   const inputEl = document.getElementById('foProductSearch');
-  if (inputEl) inputEl.value = '🍷 南崁酒類';
   const nankanList = allProducts.filter(p => isNankan(p.sku)).sort((a,b)=>a.sku.localeCompare(b.sku));
   if (!nankanList.length) { dd.innerHTML = `<div class="product-option"><div class="pname">目前沒有南崁品項</div></div>`; positionDropdown(inputEl, dd); dd.style.display='block'; return; }
   foRenderDropdownList(nankanList, inputEl, dd, {});
@@ -4288,7 +4337,7 @@ function foRenderDropdownList(list, inputEl, dd, stockMap) {
     }
     return `<div class="product-option" onclick="foAddItem('${escHtml(p.sku)}','${escHtml(p.product_name)}')">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-        <div style="min-width:0;flex:1;"><div class="pname" style="white-space:normal;line-height:1.4;">${nankanItem?NANKAN_BADGE_SM+' ':''}${escHtml(p.product_name)}</div><div class="pcode">${p.sku}</div></div>
+        <div style="min-width:0;flex:1;"><div class="pname" style="white-space:normal;line-height:1.4;font-size:15px;font-weight:600;">${nankanItem?NANKAN_BADGE_SM+' ':''}${escHtml(p.product_name)}</div><div class="pcode" style="font-size:12px;">${p.sku}</div></div>
         ${stockHtml}
       </div></div>`;
   }).join('');
@@ -4338,7 +4387,8 @@ function renderFoItems() {
     return `
     <div style="padding:12px 14px;background:var(--accent-light);border-radius:10px;border:1.5px solid var(--accent);margin-bottom:10px;">
       <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;">
-        <div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:600;line-height:1.4;">${nankanItem?NANKAN_BADGE_SM+' ':''}${escHtml(it.name)}</div><div style="font-size:12px;color:var(--text2);font-family:'DM Mono',monospace;">${escHtml(it.sku)}</div></div>
+        <span style="flex-shrink:0;background:var(--accent);color:#fff;font-size:12px;font-weight:800;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;">${idx+1}</span>
+        <div style="flex:1;min-width:0;"><div style="font-size:16px;font-weight:700;line-height:1.4;">${nankanItem?NANKAN_BADGE_SM+' ':''}${escHtml(it.name)}</div><div style="font-size:12px;color:var(--text2);font-family:'DM Mono',monospace;">${escHtml(it.sku)}</div></div>
         <button onclick="foRemoveItem(${idx})" style="background:none;border:none;color:var(--danger);font-size:20px;cursor:pointer;flex-shrink:0;">✕</button>
       </div>
       <div style="display:flex;gap:8px;margin-bottom:8px;">
@@ -4362,34 +4412,19 @@ function foUpdateTotal() {
   if (el) el.textContent = '$' + total.toLocaleString();
 }
 
-// ── 付款方式條件欄位 ──
-function foOnPayTypeChange() {
-  const type = document.getElementById('foPayType')?.value || '';
-  const subRow = document.getElementById('foPaySubRow');
-  const subSel = document.getElementById('foPaySub');
-  const remitRow = document.getElementById('foRemitDateRow');
-  const t5Row = document.getElementById('foTransfer5Row');
-  if (remitRow) remitRow.style.display = 'none';
-  if (t5Row) t5Row.style.display = 'none';
-  if (!type) { if (subRow) subRow.style.display='none'; return; }
-  let opts = [];
-  if (type === 'atm') opts = [['無卡存款','無卡存款'],['轉帳','轉帳']];
-  else opts = [['門市刷卡','展場門市刷卡'],['總公司代刷','總公司代刷'],['貨到付款','貨到付款']];
-  if (subSel) subSel.innerHTML = '<option value="">請選擇</option>' + opts.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
-  if (subRow) subRow.style.display = 'block';
-}
-function foOnPaySubChange() {
-  const type = document.getElementById('foPayType')?.value || '';
-  const sub = document.getElementById('foPaySub')?.value || '';
+// ── 付款方式條件欄位（單層）──
+// 對應值：atm_cash無卡存款 / atm_transfer轉帳 / store_card門市刷卡 / hq_card總公司代刷 / cod貨到付款
+function foOnPayMethodChange() {
+  const m = document.getElementById('foPayMethod')?.value || '';
   const remitRow = document.getElementById('foRemitDateRow');
   const t5Row = document.getElementById('foTransfer5Row');
   const cardHint = document.getElementById('foProxyCardHint');
   if (remitRow) remitRow.style.display = 'none';
   if (t5Row) t5Row.style.display = 'none';
   if (cardHint) cardHint.style.display = 'none';
-  if (type === 'atm' && sub === '無卡存款') { if (remitRow) remitRow.style.display='block'; }
-  if (type === 'atm' && sub === '轉帳') { if (t5Row) t5Row.style.display='block'; }
-  if (type === 'card' && sub === '總公司代刷') { if (cardHint) cardHint.style.display='block'; }
+  if (m === 'atm_cash') { if (remitRow) remitRow.style.display='block'; }
+  if (m === 'atm_transfer') { if (t5Row) t5Row.style.display='block'; }
+  if (m === 'hq_card') { if (cardHint) cardHint.style.display='block'; }
 }
 
 async function submitFieldOrder() {
@@ -4400,8 +4435,7 @@ async function submitFieldOrder() {
   const buyerPhone = document.getElementById('foBuyerPhone').value.trim();
   const taxId = document.getElementById('foTaxId').value.trim();
   const carrier = document.getElementById('foCarrier').value.trim();
-  const payType = document.getElementById('foPayType').value;
-  const paySub = document.getElementById('foPaySub')?.value || '';
+  const payMethod = document.getElementById('foPayMethod').value;
   const remitDate = document.getElementById('foRemitDate')?.value || null;
   const transfer5 = document.getElementById('foTransfer5')?.value.trim() || '';
   const note = document.getElementById('foNote').value.trim();
@@ -4419,10 +4453,9 @@ async function submitFieldOrder() {
     if (it.amount==='' || isNaN(it.amount)) { showToast(`第 ${i+1} 項金額錯誤`, 'error'); return; }
     if (it.ship_type==='proxy' && !it.proxy_store_id) { showToast(`第 ${i+1} 項選了門市代寄，請選代寄門市`, 'error'); return; }
   }
-  if (!payType) { showToast('請選擇付款類別', 'error'); return; }
-  if (!paySub) { showToast('請選擇付款明細', 'error'); return; }
-  if (payType==='atm' && paySub==='無卡存款' && !remitDate) { showToast('請填匯款日', 'error'); return; }
-  if (payType==='atm' && paySub==='轉帳' && (!transfer5 || transfer5.length!==5)) { showToast('請填轉帳帳號後5碼', 'error'); return; }
+  if (!payMethod) { showToast('請選擇付款方式', 'error'); return; }
+  if (payMethod==='atm_cash' && !remitDate) { showToast('請填匯款日', 'error'); return; }
+  if (payMethod==='atm_transfer' && (!transfer5 || transfer5.length!==5)) { showToast('請填轉帳帳號後5碼', 'error'); return; }
 
   // 單號重複檢查（編輯時排除自己）
   showLoading(true);
@@ -4434,13 +4467,22 @@ async function submitFieldOrder() {
 
   const total = foItems.reduce((s,it)=>s+(parseInt(it.amount)||0),0);
   try {
+    // 付款方式換算（沿用現有欄位 payment_type大類 / payment_sub顯示文字）
+    const payMap = {
+      atm_cash:   { type:'atm',  sub:'無卡存款' },
+      atm_transfer:{ type:'atm', sub:'轉帳' },
+      store_card: { type:'card', sub:'展場門市刷卡' },
+      hq_card:    { type:'card', sub:'總公司代刷' },
+      cod:        { type:'card', sub:'貨到付款' }
+    };
+    const pm = payMap[payMethod] || { type:payMethod, sub:'' };
     const row = {
       order_no: orderNo, order_date: orderDate, store_id: storeId, staff_id: currentUser.id,
       buyer_name: buyerName, buyer_phone: buyerPhone, receiver_address: address,
       tax_id: taxId||null, invoice_carrier: carrier||null, total_amount: total,
-      payment_type: payType, payment_sub: paySub,
-      remit_date: (payType==='atm'&&paySub==='無卡存款')?remitDate:null,
-      transfer_last5: (payType==='atm'&&paySub==='轉帳')?transfer5:null,
+      payment_type: pm.type, payment_sub: pm.sub,
+      remit_date: (payMethod==='atm_cash')?remitDate:null,
+      transfer_last5: (payMethod==='atm_transfer')?transfer5:null,
       note: note||null
     };
     let foId;
@@ -4560,7 +4602,7 @@ function openFieldOrderManage(id) {
         </select>
         <input id="foTn_${it.id}" value="${escHtml(it.tracking_no||'')}" placeholder="${it.actual_warehouse==='nankan'?'黑貓追蹤碼':it.actual_warehouse==='wms'?'新竹追蹤碼':'追蹤碼'}" style="flex:1.5;border:1.5px solid var(--border);border-radius:6px;padding:6px 8px;font-size:12px;font-family:inherit;">
       </div>
-      <div id="foTnHint_${it.id}" style="font-size:11px;color:#8B2A3A;">${it.actual_warehouse==='wms'?'🚚 新竹貨運追蹤碼':it.actual_warehouse==='nankan'?'🐱 黑貓宅急便追蹤碼':''}</div>
+      <div id="foTnHint_${it.id}" style="font-size:11px;color:#8B2A3A;">${it.actual_warehouse==='wms'?'🚚 新竹貨運追蹤碼':it.actual_warehouse==='nankan'?'📦 黑貓宅急便追蹤碼':''}</div>
     </div>`;
   }).join('');
   const modal = document.createElement('div');
@@ -4596,7 +4638,7 @@ function foMgWhChange(itemId) {
   const tn = document.getElementById(`foTn_${itemId}`);
   const hint = document.getElementById(`foTnHint_${itemId}`);
   if (tn) tn.placeholder = wh==='nankan' ? '黑貓追蹤碼' : wh==='wms' ? '新竹追蹤碼' : '追蹤碼';
-  if (hint) hint.textContent = wh==='wms' ? '🚚 新竹貨運追蹤碼' : wh==='nankan' ? '🐱 黑貓宅急便追蹤碼' : '';
+  if (hint) hint.textContent = wh==='wms' ? '🚚 新竹貨運追蹤碼' : wh==='nankan' ? '📦 黑貓宅急便追蹤碼' : '';
 }
 
 async function saveFieldOrderManage(id) {
