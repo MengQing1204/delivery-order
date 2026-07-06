@@ -260,7 +260,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
     </div>
     <!-- 訂單作業 -->
     <div style="font-size:17px;font-weight:800;color:#2C3E36;margin:8px 4px 2px;letter-spacing:0.5px;padding-bottom:6px;border-bottom:2px solid #E0E8E0;">📝 訂單作業</div>
-    <div onclick="showScreen('fieldScreen');initFieldOrder();" style="background:#fff;border-radius:10px;padding:12px 16px;box-shadow:0 2px 12px rgba(0,0,0,0.08);cursor:pointer;display:flex;align-items:center;gap:12px;">
+    <div onclick="openFieldOrderList();" style="background:#fff;border-radius:10px;padding:12px 16px;box-shadow:0 2px 12px rgba(0,0,0,0.08);cursor:pointer;display:flex;align-items:center;gap:12px;">
       <div style="width:36px;height:36px;background:#f0ece0;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">📋</div>
       <div style="flex:1;">
         <div style="font-size:13px;font-weight:700;color:#1a1a18;">場外單登記</div>
@@ -547,7 +547,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
 <!-- FIELD SCREEN -->
 <div class="screen" id="fieldScreen">
   <div class="topbar">
-    <button class="topbar-back" onclick="showScreen('homeScreen')">← 返回</button>
+    <button class="topbar-back" onclick="openFieldOrderList()">← 返回</button>
     <div class="topbar-title">📋 場外單登記</div>
   </div>
   <div class="form-body">
@@ -617,7 +617,6 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
     </div>
   </div>
   <div class="form-footer">
-    <button onclick="openFieldOrderList()" style="width:100%;padding:12px;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;font-weight:600;color:var(--text2);cursor:pointer;font-family:inherit;margin-bottom:10px;">📋 查看場外單紀錄</button>
     <div style="display:flex;justify-content:space-between;align-items:center;padding:0 4px 10px;">
       <span style="font-size:14px;color:var(--text2);font-weight:600;">訂單總金額</span>
       <span style="font-size:20px;font-weight:800;color:var(--accent2);" id="foTotalAmount">$0</span>
@@ -629,9 +628,18 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
 <!-- FIELD ORDER LIST SCREEN -->
 <div class="screen" id="fieldListScreen">
   <div class="topbar">
-    <button class="topbar-back" onclick="showScreen('fieldScreen')">← 返回</button>
-    <div class="topbar-title">📋 場外單紀錄</div>
+    <button class="topbar-back" onclick="showScreen('homeScreen')">← 返回</button>
+    <div class="topbar-title">📋 場外單管理</div>
     <button class="topbar-action" onclick="exportFieldOrderCSV()">匯出CSV</button>
+  </div>
+  <div style="padding:12px 14px 0;">
+    <button onclick="showScreen('fieldScreen');initFieldOrder();" style="width:100%;padding:14px;background:linear-gradient(135deg,#E0A042,#D4912E);color:#fff;border:none;border-radius:var(--radius);font-size:16px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 2px 8px rgba(212,145,46,0.3);">＋ 新增場外單</button>
+  </div>
+  <div class="status-tabs" id="foStatusTabs" style="display:flex;gap:4px;padding:12px 14px 0;overflow-x:auto;">
+    <button class="fo-tab active" data-st="all" onclick="foFilterStatus('all')">全部</button>
+    <button class="fo-tab" data-st="pending" onclick="foFilterStatus('pending')">待處理</button>
+    <button class="fo-tab" data-st="processing" onclick="foFilterStatus('processing')">作業中</button>
+    <button class="fo-tab" data-st="done" onclick="foFilterStatus('done')">完成</button>
   </div>
   <div style="padding:10px 14px;">
     <div style="position:relative;">
@@ -641,6 +649,11 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
   </div>
   <div class="orders-list" id="fieldOrdersList"></div>
 </div>
+
+<style>
+.fo-tab { flex-shrink:0; padding:7px 16px; border:none; background:transparent; color:var(--text2); font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; border-bottom:2.5px solid transparent; }
+.fo-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+</style>
 
 
 <!-- SALES LOG SCREEN -->
@@ -3440,7 +3453,6 @@ function quickSearch(keyword) {
 function quickSearchNankan() {
   const dd = document.getElementById('productDropdown');
   const inputEl = document.getElementById('productSearch');
-  if (inputEl) inputEl.value = '🍷 南崁酒類';
   if (formItems.length >= 5) { showToast('最多只能選5項商品'); return; }
   // 從商品清單挑出白名單（南崁）品項
   const nankanList = allProducts.filter(p => isNankan(p.sku)).sort((a,b)=>a.sku.localeCompare(b.sku));
@@ -3883,9 +3895,17 @@ async function batchAction(action) {
   }
 
   if (action === 'push') {
-    const pending = adminAllOrders.filter(o => ids.includes(o.id) && o.status === 'pending');
-    if (!pending.length) { showToast('選取的訂單中沒有「待處理」狀態可拋單', 'error'); return; }
-    if (!confirm(`確定要批次拋單 ${pending.length} 筆訂單？`)) return;
+    const allPending = adminAllOrders.filter(o => ids.includes(o.id) && o.status === 'pending');
+    if (!allPending.length) { showToast('選取的訂單中沒有「待處理」狀態可拋單', 'error'); return; }
+    // 南崁單不拋 WMS（南崁貨在自倉，走黑貓）→ 自動排除
+    const isNankanOrder = (o) => (o.order_items||[]).length > 0 && (o.order_items||[]).every(it => it.fulfill_source === 'nankan');
+    const pending = allPending.filter(o => !isNankanOrder(o));
+    const skipped = allPending.length - pending.length;
+    if (!pending.length) { showToast('選取的都是南崁單，不需拋 WMS（南崁走自倉黑貓）', 'error'); return; }
+    const confirmMsg = skipped > 0
+      ? `確定批次拋單？\n將拋 ${pending.length} 筆委外單至 WMS。\n（已自動略過 ${skipped} 筆南崁單，南崁走自倉不拋 WMS）`
+      : `確定要批次拋單 ${pending.length} 筆訂單？`;
+    if (!confirm(confirmMsg)) return;
     showLoading(true);
     let success = 0, fail = 0;
     for (const o of pending) {
@@ -3902,7 +3922,10 @@ async function batchAction(action) {
         } else { fail++; }
       } catch(e) { fail++; }
     }
-    showToast(`✅ 拋單完成：成功 ${success} 筆，失敗 ${fail} 筆`, fail > 0 ? 'error' : 'success');
+    const msg = skipped > 0
+      ? `✅ 拋單完成：成功 ${success}、失敗 ${fail}（略過 ${skipped} 筆南崁單）`
+      : `✅ 拋單完成：成功 ${success} 筆，失敗 ${fail} 筆`;
+    showToast(msg, fail > 0 ? 'error' : 'success');
     clearSelection(); loadAdminOrders(); showLoading(false);
     return;
   }
@@ -4532,16 +4555,25 @@ async function openFieldOrderList() {
       if (ids.length) filter += `&store_id=in.(${ids.map(i=>`"${i}"`).join(',')})`;
     } else { filter += `&staff_id=eq.${currentUser.id}`; }
     foAllOrders = await sb.get('field_orders', filter) || [];
-    renderFieldOrders(foAllOrders);
+    foApplyFilter();
   } catch(e) { showToast('載入失敗', 'error'); }
   showLoading(false);
 }
 function onFoSearch(val) {
-  const q = (val||'').trim().toLowerCase();
-  if (!q) { renderFieldOrders(foAllOrders); return; }
-  renderFieldOrders(foAllOrders.filter(o =>
-    (o.buyer_name||'').toLowerCase().includes(q) || (o.buyer_phone||'').includes(q) || (o.order_no||'').toLowerCase().includes(q)
-  ));
+  foApplyFilter();
+}
+let foCurrentStatus = 'all';
+function foFilterStatus(st) {
+  foCurrentStatus = st;
+  document.querySelectorAll('.fo-tab').forEach(t => t.classList.toggle('active', t.getAttribute('data-st')===st));
+  foApplyFilter();
+}
+function foApplyFilter() {
+  const q = (document.getElementById('foSearchInput')?.value||'').trim().toLowerCase();
+  let list = foAllOrders;
+  if (foCurrentStatus !== 'all') list = list.filter(o => (o.status||'pending') === foCurrentStatus);
+  if (q) list = list.filter(o => (o.buyer_name||'').toLowerCase().includes(q) || (o.buyer_phone||'').includes(q) || (o.order_no||'').toLowerCase().includes(q));
+  renderFieldOrders(list);
 }
 function renderFieldOrders(list) {
   const el = document.getElementById('fieldOrdersList');
