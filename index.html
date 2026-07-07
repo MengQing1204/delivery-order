@@ -3484,16 +3484,11 @@ function quickSearch(keyword) {
   if (input) { input.value = keyword; onProductSearch(keyword); }
 }
 
-// 🍷 酒快捷：直接列出所有南崁白名單品項（南崁品免查庫存、永遠可選）
+// 🍷 酒快捷：用置中彈窗列出南崁品（不依賴下拉定位，絕對顯示在螢幕中央）
 async function quickSearchNankan() {
-  const dd = document.getElementById('productDropdown');
-  const inputEl = document.getElementById('productSearch');
   if (formItems.length >= 5) { showToast('最多只能選5項商品'); return; }
-  // 確保南崁白名單已載入
   if (!nankanWhitelist || nankanWhitelist.size === 0) { await loadNankanWhitelist(); }
-  // 從商品清單挑出白名單（南崁）品項
   let nankanList = allProducts.filter(p => isNankan(p.sku)).sort((a,b)=>a.sku.localeCompare(b.sku));
-  // 若 allProducts 裡找不到（快取問題），直接用白名單品號從 products 撈
   if (!nankanList.length && nankanWhitelist.size > 0) {
     try {
       const skus = [...nankanWhitelist];
@@ -3501,12 +3496,39 @@ async function quickSearchNankan() {
       nankanList = (rows||[]).sort((a,b)=>a.sku.localeCompare(b.sku));
     } catch(e) {}
   }
-  if (!nankanList.length) {
-    dd.innerHTML = `<div class="product-option"><div class="pname">目前沒有南崁品項（請確認白名單）</div></div>`;
-    positionDropdown(inputEl, dd); dd.style.display = 'block'; return;
-  }
-  // 南崁品不看 ibiza 庫存 → 傳 null 讓 renderDropdown 走「南崁出貨」分支（傳 {} 會被當成查庫存、南崁品變無庫存鎖住）
-  renderDropdown(nankanList, null, inputEl);
+  showNankanPickerModal(nankanList);
+}
+
+// 南崁品選擇彈窗（置中，絕對可見）；mode: 'delivery' 宅配 / 'field' 場外單
+function showNankanPickerModal(list, mode) {
+  mode = mode || 'delivery';
+  document.getElementById('nankanPickerModal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'nankanPickerModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:100000;display:flex;align-items:center;justify-content:center;padding:20px;';
+  const itemsHtml = (!list.length)
+    ? `<div style="padding:24px;text-align:center;color:#888;">目前沒有南崁品項<br><span style="font-size:12px;">（請確認白名單設定）</span></div>`
+    : list.map(p => `
+      <div onclick="pickNankanItem('${escHtml(p.sku)}','${escHtml(p.product_name)}','${mode}')" style="padding:14px;border:1.5px solid #8B2A3A;border-radius:10px;margin-bottom:8px;cursor:pointer;background:#fbf5f6;">
+        <div style="font-size:15px;font-weight:700;color:#1a1a18;line-height:1.4;">🍷 ${escHtml(p.product_name)}</div>
+        <div style="font-size:12px;color:#8B2A3A;font-family:'DM Mono',monospace;margin-top:2px;">${escHtml(p.sku)} · 南崁自倉出貨</div>
+      </div>`).join('');
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:16px;padding:20px;width:100%;max-width:400px;max-height:80vh;overflow-y:auto;box-shadow:0 12px 48px rgba(0,0,0,0.3);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div style="font-size:18px;font-weight:800;color:#8B2A3A;">🍷 南崁酒類商品</div>
+        <button onclick="document.getElementById('nankanPickerModal').remove()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#888;">✕</button>
+      </div>
+      ${itemsHtml}
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+}
+
+function pickNankanItem(sku, name, mode) {
+  document.getElementById('nankanPickerModal')?.remove();
+  if (mode === 'field') { foAddItem(sku, name); }
+  else { addItem(sku, name, 999); }
 }
 
 function onSlProductSearch(val) {
@@ -4365,8 +4387,6 @@ function foGetAddress() {
 // ── 商品搜尋（沿用 allProducts；南崁品可選）──
 function foQuickSearch(kw) { const i = document.getElementById('foProductSearch'); if (i) { i.value = kw; onFoProductSearch(kw); } }
 async function foQuickSearchNankan() {
-  const dd = document.getElementById('foProductDropdown');
-  const inputEl = document.getElementById('foProductSearch');
   if (!nankanWhitelist || nankanWhitelist.size === 0) { await loadNankanWhitelist(); }
   let nankanList = allProducts.filter(p => isNankan(p.sku)).sort((a,b)=>a.sku.localeCompare(b.sku));
   if (!nankanList.length && nankanWhitelist.size > 0) {
@@ -4376,8 +4396,7 @@ async function foQuickSearchNankan() {
       nankanList = (rows||[]).sort((a,b)=>a.sku.localeCompare(b.sku));
     } catch(e) {}
   }
-  if (!nankanList.length) { dd.innerHTML = `<div class="product-option"><div class="pname">目前沒有南崁品項（請確認白名單）</div></div>`; positionDropdown(inputEl, dd); dd.style.display='block'; return; }
-  foRenderDropdownList(nankanList, inputEl, dd, {});
+  showNankanPickerModal(nankanList, 'field');
 }
 function onFoProductSearch(val) {
   clearTimeout(foSearchDebounce);
