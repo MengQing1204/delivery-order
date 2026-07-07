@@ -115,7 +115,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
 .product-search-input { width: 100%; border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 11px 13px 11px 38px; font-size: 16px; font-family: inherit; color: var(--text); background: var(--surface); outline: none; }
 .product-search-input:focus { border-color: var(--accent); }
 .product-search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 16px; pointer-events: none; }
-.product-dropdown { position: fixed; background: var(--surface); border: 1.5px solid var(--accent2); border-radius: var(--radius-sm); max-height: 40vh; overflow-y: auto; z-index: 99999; box-shadow: 0 8px 32px rgba(0,0,0,0.18); display: none; }
+.product-dropdown { position: absolute; top: calc(100% + 2px); left: 0; right: 0; width: 100%; background: var(--surface); border: 1.5px solid var(--accent2); border-radius: var(--radius-sm); max-height: 40vh; overflow-y: auto; z-index: 99999; box-shadow: 0 8px 32px rgba(0,0,0,0.18); display: none; }
 .product-option { padding: 12px 14px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.15s; }
 .product-option:last-child { border-bottom: none; }
 .product-option:hover, .product-option.highlighted { background: var(--accent-light); }
@@ -1431,6 +1431,9 @@ function addItem(sku, name, stock) {
 }
 
 function positionDropdown(inputEl, dropdownEl) {
+  // 若下拉是 absolute 定位（貼在搜尋框容器下方），不需 JS 算座標，直接交給 CSS
+  const pos = getComputedStyle(dropdownEl).position;
+  if (pos === 'absolute') { return; }
   const rect = inputEl.getBoundingClientRect();
   const viewportHeight = window.innerHeight;
   const spaceBelow = viewportHeight - rect.bottom - 8;
