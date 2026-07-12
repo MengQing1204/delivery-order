@@ -4285,7 +4285,10 @@ let foEditId = null;           // 編輯中的場外單 id（null=新增）
 async function editFieldOrder(id) {
   const o = foAllOrders.find(x=>x.id===id);
   if (!o) return;
-  if (o.status !== 'pending') { showToast('此單已進入作業中，無法修改，請洽管理員','error'); return; }
+  const isManager = currentUser?.role === 'admin' || currentUser?.role === 'manager';
+  // 業務：限「待處理」才可改；管理員/店長：任何狀態都可改
+  if (!isManager && o.status !== 'pending') { showToast('此單已進入作業中，無法修改，請洽管理員','error'); return; }
+  document.getElementById('foManageModal')?.remove();  // 若從管理視窗進來，先關閉
   showScreen('fieldScreen');
   await initFieldOrder();   // 先重置（會載門市、清空）
   foEditId = id;
@@ -4583,8 +4586,9 @@ async function submitFieldOrder() {
     let foId;
     if (foEditId) {
       // 更新模式：僅限待處理（防呆再查一次）
+      const _isMgr = currentUser?.role === 'admin' || currentUser?.role === 'manager';
       const cur = await sb.get('field_orders', `?id=eq.${foEditId}&select=status&limit=1`);
-      if (cur?.[0]?.status && cur[0].status !== 'pending') { showLoading(false); showToast('此單已進入作業中，無法修改','error'); return; }
+      if (!_isMgr && cur?.[0]?.status && cur[0].status !== 'pending') { showLoading(false); showToast('此單已進入作業中，無法修改','error'); return; }
       row.updated_at = new Date().toISOString();
       await sb.patch('field_orders', foEditId, row);
       foId = foEditId;
@@ -4803,9 +4807,39 @@ function openFieldOrderManage(id) {
       ${deliveryItems.length ? `<div style="font-size:13px;font-weight:700;margin-bottom:8px;">🚚 宅配品項分倉 + 追蹤碼</div>${itemsHtml}` : ''}
 
       <button onclick="saveFieldOrderManage('${id}')" style="width:100%;padding:13px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:10px;">儲存</button>
+
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <button onclick="editFieldOrder('${id}')" style="flex:1;padding:11px;background:var(--surface2);border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-weight:700;color:var(--text);cursor:pointer;font-family:inherit;">✏️ 修改完整內容</button>
+        <button onclick="deleteFieldOrder('${id}')" style="flex:1;padding:11px;background:#FBEAEA;border:1.5px solid var(--danger);border-radius:8px;font-size:14px;font-weight:700;color:var(--danger);cursor:pointer;font-family:inherit;">🗑 刪除此單</button>
+      </div>
     </div>`;
   document.body.appendChild(modal);
   modal.addEventListener('click', e=>{ if(e.target===modal) modal.remove(); });
+}
+
+// 管理員/店長：刪除場外單（連同品項）
+async function deleteFieldOrder(id) {
+  if (currentUser?.role !== 'admin' && currentUser?.role !== 'manager') { showToast('沒有刪除權限','error'); return; }
+  const o = foAllOrders.find(x=>x.id===id);
+  const label = o ? `${o.order_no}（${o.buyer_name}）` : '此場外單';
+  if (!confirm(`確定要刪除 ${label}？\n\n⚠️ 刪除後無法復原，品項也會一併刪除。`)) return;
+  if (!confirm('再次確認：真的要永久刪除這張場外單嗎？')) return;
+  showLoading(true);
+  try {
+    // 先刪品項（若 DB 已設 ON DELETE CASCADE 會自動刪，這裡雙保險）
+    await fetch(`${SUPABASE_URL}/rest/v1/field_order_items?field_order_id=eq.${id}`, {
+      method: 'DELETE', headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+    });
+    // 再刪主單
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/field_orders?id=eq.${id}`, {
+      method: 'DELETE', headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+    });
+    if (!res.ok) throw new Error('刪除失敗');
+    showLoading(false);
+    document.getElementById('foManageModal')?.remove();
+    showToast('✅ 已刪除', 'success');
+    openFieldOrderList();
+  } catch(e) { showLoading(false); showToast('刪除失敗：'+e.message, 'error'); }
 }
 
 function foMgWhChange(itemId) {
