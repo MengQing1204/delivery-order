@@ -753,9 +753,9 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
     <div class="store-tag" id="mainHeaderStore">門市</div>
   </div>
   <div class="stats-row">
-    <div class="stat-card accent"><div class="num" id="statPending">0</div><div class="label">待處理</div></div>
-    <div class="stat-card blue"><div class="num" id="statProcessing">0</div><div class="label">作業中</div></div>
-    <div class="stat-card green"><div class="num" id="statShipped">0</div><div class="label">已完成</div></div>
+    <div class="stat-card accent" onclick="filterMyOrdersByStat('pending')" style="cursor:pointer;"><div class="num" id="statPending">0</div><div class="label">待處理</div></div>
+    <div class="stat-card blue" onclick="filterMyOrdersByStat('processing')" style="cursor:pointer;"><div class="num" id="statProcessing">0</div><div class="label">作業中</div></div>
+    <div class="stat-card green" onclick="filterMyOrdersByStat('done')" style="cursor:pointer;"><div class="num" id="statShipped">0</div><div class="label">已完成</div></div>
   </div>
   <button class="btn-new-order" onclick="showScreen('formScreen'); initForm()">＋ 新增宅配登記</button>
   <div class="section">
@@ -2464,11 +2464,30 @@ async function loadMyOrders() {
   try {
     const orders = await sb.get('orders', `?staff_id=eq.${currentUser.id}&order=created_at.desc&limit=500&select=*,order_items(*),stores(name)`);
     allMyOrders = orders || [];
-    document.getElementById('statPending').textContent = allMyOrders.filter(o => o.status==='pending'||o.status==='submitted').length;
+    // 統計（排除已取消）：待處理=pending+submitted+partial / 作業中=processing / 已完成=shipped+done
+    document.getElementById('statPending').textContent = allMyOrders.filter(o => o.status==='pending'||o.status==='submitted'||o.status==='partial').length;
     document.getElementById('statProcessing').textContent = allMyOrders.filter(o => o.status==='processing').length;
-    document.getElementById('statShipped').textContent = allMyOrders.filter(o => o.status==='shipped').length;
+    document.getElementById('statShipped').textContent = allMyOrders.filter(o => o.status==='shipped'||o.status==='done').length;
     myOrdersOffset = 0; renderMyOrdersPage();
   } catch(e) { console.log(e); }
+}
+
+// 點統計卡 → 篩選對應狀態的訂單（再點一次取消篩選）
+let myStatFilter = null;
+function filterMyOrdersByStat(kind) {
+  if (myStatFilter === kind) { myStatFilter = null; myOrdersOffset = 0; renderMyOrdersPage(); showToast('顯示全部訂單'); return; }
+  myStatFilter = kind;
+  const map = {
+    pending: ['pending','submitted','partial'],
+    processing: ['processing'],
+    done: ['shipped','done']
+  };
+  const want = map[kind] || [];
+  const filtered = allMyOrders.filter(o => want.includes(o.status));
+  myOrdersOffset = 0;
+  renderMyOrdersPage(filtered);
+  const label = kind==='pending'?'待處理':kind==='processing'?'作業中':'已完成';
+  showToast(`顯示「${label}」${filtered.length} 筆（再點一次看全部）`);
 }
 
 function renderMyOrdersPage(filtered) {
