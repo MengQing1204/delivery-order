@@ -4652,30 +4652,65 @@ function renderFieldOrders(list) {
   if (!list.length) { el.innerHTML = '<div class="empty-state"><div class="icon">📋</div><p>尚無場外單</p></div>'; return; }
   const isManager = currentUser?.role === 'admin' || currentUser?.role === 'manager';
   const statusInfo = {
-    pending: { label: '待處理', cls: 'pending' },
-    processing: { label: '作業中', cls: 'submitted' },
-    done: { label: '✅ 完成', cls: 'shipped' }
+    pending: { label: '待處理', cls: 'pending', color: '#E0A042', bg: '#FBF2E9' },
+    processing: { label: '作業中', cls: 'submitted', color: '#3A6EA5', bg: '#E8EFF7' },
+    done: { label: '完成', cls: 'shipped', color: '#3E7C5A', bg: '#E8F2EC' }
   };
+
+  // ── 管理員：表格式（字大、一列一單、好瀏覽）──
+  if (isManager) {
+    const rows = list.map(o => {
+      const items = o.field_order_items || [];
+      const preview = items.map(i=>`${escHtml(i.product_name)} x${i.quantity}`).join('、');
+      const st = statusInfo[o.status] || statusInfo.pending;
+      return `<tr onclick="openFieldOrderManage('${o.id}')" style="cursor:pointer;border-bottom:1px solid var(--border);" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+        <td style="padding:12px 10px;font-size:14px;font-family:'DM Mono',monospace;font-weight:700;white-space:nowrap;">${escHtml(o.order_no||'')}</td>
+        <td style="padding:12px 10px;font-size:14px;white-space:nowrap;">${o.order_date||''}</td>
+        <td style="padding:12px 10px;font-size:15px;font-weight:700;">${escHtml(o.buyer_name||'')}<div style="font-size:13px;font-weight:400;color:var(--text2);">${escHtml(o.buyer_phone||'')}</div></td>
+        <td style="padding:12px 10px;font-size:13px;color:var(--text2);">${escHtml(o.stores?.name||'')}<div>業務：${escHtml(o.staff?.name||'')}</div></td>
+        <td style="padding:12px 10px;font-size:13px;max-width:220px;">${escHtml(preview)}</td>
+        <td style="padding:12px 10px;font-size:15px;font-weight:800;color:var(--accent2);text-align:right;white-space:nowrap;">$${(o.total_amount||0).toLocaleString()}</td>
+        <td style="padding:12px 10px;font-size:13px;white-space:nowrap;">${escHtml(o.payment_sub||o.payment_type||'')}${o.tax_id?`<div style="font-size:12px;color:var(--text2);">統編 ${escHtml(o.tax_id)}</div>`:''}</td>
+        <td style="padding:12px 10px;text-align:center;white-space:nowrap;"><span style="display:inline-block;padding:4px 12px;border-radius:12px;font-size:13px;font-weight:700;color:${st.color};background:${st.bg};">${st.label}</span></td>
+      </tr>`;
+    }).join('');
+    el.innerHTML = `
+      <div style="overflow-x:auto;padding:0 8px 20px;">
+        <table style="width:100%;border-collapse:collapse;background:var(--surface);border-radius:10px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,0.06);">
+          <thead>
+            <tr style="background:var(--surface2);border-bottom:2px solid var(--border);">
+              <th style="padding:12px 10px;font-size:13px;text-align:left;white-space:nowrap;">單號</th>
+              <th style="padding:12px 10px;font-size:13px;text-align:left;white-space:nowrap;">日期</th>
+              <th style="padding:12px 10px;font-size:13px;text-align:left;">客戶</th>
+              <th style="padding:12px 10px;font-size:13px;text-align:left;">門市/業務</th>
+              <th style="padding:12px 10px;font-size:13px;text-align:left;">品項</th>
+              <th style="padding:12px 10px;font-size:13px;text-align:right;white-space:nowrap;">總額</th>
+              <th style="padding:12px 10px;font-size:13px;text-align:left;white-space:nowrap;">付款</th>
+              <th style="padding:12px 10px;font-size:13px;text-align:center;white-space:nowrap;">狀態</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <div style="margin-top:10px;font-size:12px;color:var(--text2);text-align:center;">點任一列可開啟明細 / 處理　共 ${list.length} 筆</div>
+      </div>`;
+    return;
+  }
+
+  // ── 業務：卡片式（手機友善）──
   el.innerHTML = list.map(o => {
     const items = o.field_order_items || [];
     const preview = items.map(i=>`${escHtml(i.product_name)} x${i.quantity}`).join('、');
     const st = statusInfo[o.status] || statusInfo.pending;
-    // 管理員/店長 → 開處理視窗；業務 → 待處理可編輯，其他鎖定
-    let clickAttr;
-    if (isManager) {
-      clickAttr = `onclick="openFieldOrderManage('${o.id}')" style="cursor:pointer;"`;
-    } else if (o.status === 'pending') {
-      clickAttr = `onclick="editFieldOrder('${o.id}')" style="cursor:pointer;"`;
-    } else {
-      clickAttr = 'style="cursor:default;"';
-    }
+    const clickAttr = (o.status === 'pending')
+      ? `onclick="editFieldOrder('${o.id}')" style="cursor:pointer;"`
+      : 'style="cursor:default;"';
     return `<div class="order-card ${st.cls}" ${clickAttr}>
       <div class="order-card-top"><div class="order-no">${escHtml(o.order_no||'')}</div><span class="status-badge ${st.cls}">${st.label}</span></div>
       <div class="order-receiver">${escHtml(o.buyer_name)} <span style="font-size:13px;font-weight:400;color:var(--text2);">${escHtml(o.buyer_phone||'')}</span></div>
       <div class="order-meta">${escHtml(o.stores?.name||'')} · ${o.order_date||''} · 業務：${escHtml(o.staff?.name||'')}</div>
       <div class="order-items-preview">${escHtml(preview)}</div>
       <div style="margin-top:6px;font-size:13px;font-weight:700;color:var(--accent2);">總額 $${(o.total_amount||0).toLocaleString()} · ${escHtml(o.payment_sub||o.payment_type||'')}${o.tax_id?' · 統編'+escHtml(o.tax_id):''}</div>
-      ${!isManager && o.status!=='pending' ? `<div style="margin-top:6px;font-size:11px;color:var(--text2);">🔒 ${st.label}，內容已鎖定，如需修改請洽管理員</div>` : ''}
+      ${o.status!=='pending' ? `<div style="margin-top:6px;font-size:11px;color:var(--text2);">🔒 ${st.label}，內容已鎖定，如需修改請洽管理員</div>` : ''}
     </div>`;
   }).join('');
 }
