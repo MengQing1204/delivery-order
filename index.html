@@ -1501,19 +1501,12 @@ function initForm() {
   document.getElementById('custFillPrompt')?.remove();
   const detailHint = document.getElementById('detailHint');
   if (detailHint) { detailHint.textContent = '都市：竹光路100號3樓｜農村：1鄰100號'; detailHint.className = 'field-hint'; }
-  const isAdmin = currentUser?.role === 'admin';
-  const isManager = currentUser?.role === 'manager';
+  // 所有角色（含業務）都可自由選門市：一律顯示下拉、載入全部啟用門市
   const _asr = document.getElementById('adminStoreRow');
-  if (_asr) _asr.style.display = (isAdmin || isManager) ? 'block' : 'none';
+  if (_asr) _asr.style.display = 'block';
   const _ssr = document.getElementById('staffStoreRow');
-  if (_ssr) _ssr.style.display = (isAdmin || isManager) ? 'none' : 'block';
-  if (isAdmin) {
-    loadStoresSelect();
-  } else if (isManager) {
-    loadManagerStoresSelect();
-  } else {
-    document.getElementById('storeDisplay').value = currentStore?.name || '';
-  }
+  if (_ssr) _ssr.style.display = 'none';
+  loadStoresSelect();
   document.getElementById('sameBuyerCheck').classList.remove('checked');
   document.getElementById('receiverFields').style.display = 'block';
   document.getElementById('addrCity').value = '';
@@ -1531,7 +1524,14 @@ async function loadStoresSelect() {
     const stores = await sb.get('stores', '?is_active=eq.true&order=name.asc');
     const sel = document.getElementById('formStoreSelect');
     if (!sel || !stores?.length) return;
-    sel.innerHTML = '<option value="">請選擇門市</option>' + stores.map(s => `<option value="${s.id}">${escHtml(s.name)}</option>`).join('');
+    sel.innerHTML = '<option value="">請選擇門市</option>' +
+      stores.map(s => `<option value="${s.id}" data-name="${escHtml(s.name)}">${escHtml(s.name)}</option>`).join('');
+    // 預設帶入「我的預設門市」或帳號所屬門市（仍可當場改成任一門市）
+    const preferStore = currentUser?.default_store_id || currentUser?.store_id;
+    if (preferStore && sel.querySelector(`option[value="${preferStore}"]`)) {
+      sel.value = preferStore;
+      onFormStoreChange(preferStore);
+    }
   } catch(e) { console.log(e); }
 }
 
@@ -2525,10 +2525,15 @@ async function showAllMyOrders() {
     loadAdminOrders(null, adminCurrentStore || null);
   } else if (currentUser?.role === 'manager') {
     const bar = document.getElementById('adminStoreFilterBar');
-    if (bar) bar.style.display = 'none';
-    // 查詢此 manager 管轄的所有門市
+    if (bar) bar.style.display = 'flex';
+    // 查詢此 manager 管轄的所有門市（篩選列只列管轄門市）
     const storeIds = await getManagerStoreIds(currentUser.id);
-    loadAdminOrdersByStores(storeIds);
+    await loadManagerStoreFilter(storeIds);
+    if (adminCurrentStore && storeIds.includes(adminCurrentStore)) {
+      loadAdminOrdersByStores([adminCurrentStore]);
+    } else {
+      loadAdminOrdersByStores(storeIds);
+    }
   } else {
     const bar = document.getElementById('adminStoreFilterBar');
     if (bar) bar.style.display = 'none';
@@ -2571,8 +2576,29 @@ async function loadAdminStoreFilter() {
   } catch(e) { console.log(e); }
 }
 
-function onAdminStoreFilter(storeId) {
+// manager 專用：門市篩選只列出其管轄門市
+async function loadManagerStoreFilter(storeIds) {
+  try {
+    const sel = document.getElementById('adminStoreFilter');
+    if (!sel) return;
+    if (!storeIds?.length) { sel.innerHTML = '<option value="">無管轄門市</option>'; return; }
+    const inFilter = storeIds.map(id => `"${id}"`).join(',');
+    const stores = await sb.get('stores', `?id=in.(${inFilter})&is_active=eq.true&order=name.asc`);
+    sel.innerHTML = '<option value="">全部管轄門市</option>' +
+      (stores||[]).map(s => `<option value="${s.id}">${escHtml(s.name)}</option>`).join('');
+    if (adminCurrentStore && sel.querySelector(`option[value="${adminCurrentStore}"]`)) sel.value = adminCurrentStore;
+  } catch(e) { console.log('loadManagerStoreFilter', e); }
+}
+
+async function onAdminStoreFilter(storeId) {
   adminCurrentStore = storeId;
+  if (currentUser?.role === 'manager') {
+    // 店長/督導：選特定門市就只看該店，未選則看全部管轄門市
+    const storeIds = await getManagerStoreIds(currentUser.id);
+    if (storeId && storeIds.includes(storeId)) loadAdminOrdersByStores([storeId]);
+    else loadAdminOrdersByStores(storeIds);
+    return;
+  }
   loadAdminOrders(null, storeId || null);
 }
 
