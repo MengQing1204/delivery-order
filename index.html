@@ -2690,6 +2690,7 @@ const ADMIN_ACTION_LABEL = {
   change_order_no: { label: '改單號', icon: '🔢', color: '#3A6EA5' },
   edit_order: { label: '改訂單內容', icon: '✏️', color: '#3A6EA5' },
   cancel_order: { label: '取消訂單', icon: '🚫', color: '#B5504A' },
+  restore_order: { label: '復原訂單', icon: '♻️', color: '#3E7C5A' },
   delete_order: { label: '刪除訂單', icon: '🗑', color: '#B5504A' },
   edit_field_order: { label: '改場外單', icon: '✏️', color: '#3A6EA5' },
   delete_field_order: { label: '刪除場外單', icon: '🗑', color: '#B5504A' }
@@ -2823,6 +2824,7 @@ function renderDetail(o, containerId, isPublic) {
       <div style="display:flex;flex-wrap:wrap;gap:6px;">
         ${o.status==='pending'?`<button class="btn-status process" onclick="openEditOrder('${o.id}')">✏️ 修改訂單</button>`:''}
         ${(o.status!=='cancelled'&&o.status!=='shipped')?`<button class="btn-status cancel" onclick="showCancelModal('${o.id}')">❌ 取消訂單</button>`:''}
+        ${(o.status==='cancelled' && currentUser?.role==='admin')?`<button class="btn-status ship" style="background:#3E7C5A;color:#fff;" onclick="restoreOrder('${o.id}')">♻️ 復原訂單</button>`:''}
         <button class="btn-status cancel" style="background:#1a1a18;color:#fff;" onclick="deleteOrder('${o.id}')">🗑️ 刪除訂單</button>
       </div>
       ${o.cancel_reason?`<div style="margin-top:10px;padding:8px 10px;background:var(--danger-light);border-radius:6px;font-size:13px;color:var(--danger);">取消原因：${escHtml(o.cancel_reason)}</div>`:''}
@@ -3250,6 +3252,29 @@ async function updateOrderStatus(orderId, status) {
     await openOrderDetail(orderId); loadAdminOrders();
   } catch(e) { showToast('更新失敗', 'error'); }
   showLoading(false);
+}
+
+// 管理員：復原已取消的訂單（回到待處理，清除取消原因）
+async function restoreOrder(orderId) {
+  if (currentUser?.role !== 'admin') { showToast('只有管理員可復原訂單', 'error'); return; }
+  const _o = (typeof adminAllOrders !== 'undefined' ? adminAllOrders : []).find(x => x.id === orderId)
+          || (typeof allMyOrders !== 'undefined' ? allMyOrders : []).find(x => x.id === orderId);
+  const _label = _o?.order_no || '';
+  const _reason = _o?.cancel_reason || '';
+  if (!confirm(`確定要復原此訂單？\n\n單號：${_label}\n\n狀態將改回「待處理」，取消原因會清除。\n（若原本已拋 WMS，復原後請確認 WMS 那邊的狀態）`)) return;
+  showLoading(true);
+  try {
+    await sb.patch('orders', orderId, {
+      status: 'pending',
+      cancel_reason: null,
+      updated_at: new Date().toISOString()
+    });
+    await logAdminAction('restore_order', 'order', orderId, _label, `復原訂單（原取消原因：${_reason || '無'}）→ 待處理`);
+    showLoading(false);
+    showToast('✅ 訂單已復原為「待處理」', 'success');
+    await openOrderDetail(orderId);
+    loadAdminOrders(); loadMyOrders();
+  } catch(e) { showLoading(false); showToast('復原失敗：' + e.message, 'error'); }
 }
 
 let cancelOrderId = null;
