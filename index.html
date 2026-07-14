@@ -1139,7 +1139,7 @@ let selectedZip = '';
 let adminCurrentStore = '';
 let sameBuyer = false;
 
-const STORE_TERMINALS = { '富邦美術館-賣店': ['001','002','003'], '世界古文明-高雄': ['001','002'] };
+const STORE_TERMINALS = { '富邦美術館-賣店': ['001','002','003'], '世界古文明-高雄': ['001','002'], '2026年展出波隆那': ['001','002'], '動物王國大探險': ['001','002'] };
 const DEFAULT_TERMINALS = ['001'];
 
 // ── 可預購白名單（第一階段）──────────────────
@@ -2688,6 +2688,7 @@ const ADMIN_ACTION_LABEL = {
   change_store: { label: '改門市', icon: '🏪', color: '#E0A042' },
   change_status: { label: '改狀態', icon: '🔄', color: '#3A6EA5' },
   change_order_no: { label: '改單號', icon: '🔢', color: '#3A6EA5' },
+  change_pos: { label: '改機號/POS', icon: '🧾', color: '#E0A042' },
   edit_order: { label: '改訂單內容', icon: '✏️', color: '#3A6EA5' },
   cancel_order: { label: '取消訂單', icon: '🚫', color: '#B5504A' },
   restore_order: { label: '復原訂單', icon: '♻️', color: '#3E7C5A' },
@@ -2804,9 +2805,17 @@ function renderDetail(o, containerId, isPublic) {
           <button onclick="saveOrderNo('${o.id}')" style="padding:8px 12px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;">儲存</button>
         </div>
         <div style="font-size:12px;color:var(--text2);margin-bottom:6px;">📅 預約出貨日</div>
-        <div style="display:flex;gap:8px;align-items:center;">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">
           <input type="date" id="scheduledShippingDate_${o.id}" value="${o.scheduled_shipping_date||''}" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:14px;background:var(--surface);color:var(--text);">
           <button onclick="saveScheduledDate('${o.id}')" style="padding:8px 12px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;">儲存</button>
+        </div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:6px;">🧾 機號 / POS序號</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <select id="editPosTerminal_${o.id}" style="width:88px;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:14px;background:var(--surface);color:var(--text);font-family:'DM Mono',monospace;">
+            <option value="">機號</option>
+          </select>
+          <input type="text" id="editPosNo_${o.id}" value="${escHtml(o.pos_no||'')}" placeholder="POS序號" inputmode="numeric" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:14px;background:var(--surface);color:var(--text);font-family:'DM Mono',monospace;">
+          <button onclick="savePosInfo('${o.id}')" style="padding:8px 12px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;">儲存</button>
         </div>
       </div>
       ${(o.status==='submitted'||o.status==='processing')?`
@@ -2945,6 +2954,15 @@ function renderDetail(o, containerId, isPublic) {
   // 管理員：載入門市下拉（可改展別）
   if (currentUser?.role === 'admin') {
     loadDetailStoreSelect(o.store_id);
+    // 機號下拉：依該訂單門市可用的機號
+    const _termSel = document.getElementById(`editPosTerminal_${o.id}`);
+    if (_termSel) {
+      const _terms = STORE_TERMINALS[o.stores?.name] || DEFAULT_TERMINALS;
+      const _cur = o.pos_terminal || '';
+      // 若訂單既有機號不在清單內（例如門市改過），也一併列出，避免值消失
+      const _all = _cur && !_terms.includes(_cur) ? [..._terms, _cur] : _terms;
+      _termSel.innerHTML = _all.map(t => `<option value="${t}" ${t===_cur?'selected':''}>${t}</option>`).join('');
+    }
   }
 }
 
@@ -3255,6 +3273,35 @@ async function updateOrderStatus(orderId, status) {
 }
 
 // 管理員：復原已取消的訂單（回到待處理，清除取消原因）
+// 管理員：修改機號 / POS序號
+async function savePosInfo(orderId) {
+  if (currentUser?.role !== 'admin') { showToast('只有管理員可修改', 'error'); return; }
+  const termEl = document.getElementById(`editPosTerminal_${orderId}`);
+  const posEl = document.getElementById(`editPosNo_${orderId}`);
+  const newTerm = termEl?.value || '';
+  const newPos = (posEl?.value || '').trim();
+  const _o = (typeof adminAllOrders !== 'undefined' ? adminAllOrders : []).find(x => x.id === orderId);
+  const oldTerm = _o?.pos_terminal || '';
+  const oldPos = _o?.pos_no || '';
+  if (newTerm === oldTerm && newPos === oldPos) { showToast('沒有變更'); return; }
+  showLoading(true);
+  try {
+    await sb.patch('orders', orderId, {
+      pos_terminal: newTerm || null,
+      pos_no: newPos || null,
+      updated_at: new Date().toISOString()
+    });
+    const _ch = [];
+    if (newTerm !== oldTerm) _ch.push(`機號：${oldTerm||'(空)'} → ${newTerm||'(空)'}`);
+    if (newPos !== oldPos) _ch.push(`POS序號：${oldPos||'(空)'} → ${newPos||'(空)'}`);
+    await logAdminAction('change_pos', 'order', orderId, _o?.order_no || '', _ch.join('；'));
+    showLoading(false);
+    showToast('✅ 機號 / POS序號已更新', 'success');
+    await openOrderDetail(orderId);
+    loadAdminOrders();
+  } catch(e) { showLoading(false); showToast('修改失敗：' + e.message, 'error'); }
+}
+
 async function restoreOrder(orderId) {
   if (currentUser?.role !== 'admin') { showToast('只有管理員可復原訂單', 'error'); return; }
   const _o = (typeof adminAllOrders !== 'undefined' ? adminAllOrders : []).find(x => x.id === orderId)
