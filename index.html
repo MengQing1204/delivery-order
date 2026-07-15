@@ -2915,7 +2915,7 @@ function renderDetail(o, containerId, isPublic) {
           html += `<div style="padding:10px 14px 2px;font-size:12px;font-weight:800;color:#8B2A3A;background:#fbf5f6;border-top:${wmsItems.length?'1px solid var(--border)':'none'};">📦 南崁自倉 · 黑貓宅急便（${nankanItems.length} 項）</div>`;
           html += nankanItems.map(i => renderItemRow(i, true)).join('');
           if (o.tracking_number_nankan) {
-            html += `<div class="detail-row"><div class="detail-row-label">黑貓單號</div><div class="detail-row-value" style="font-family:'DM Mono',monospace;font-weight:700;color:#8B2A3A;">${escHtml(o.tracking_number_nankan)} <button onclick="openHCTTracking('${escHtml(o.tracking_number_nankan)}')" style="margin-left:6px;padding:2px 8px;background:#8B2A3A;color:#fff;border:none;border-radius:5px;font-size:11px;cursor:pointer;">查件</button></div></div>`;
+            html += `<div class="detail-row"><div class="detail-row-label">黑貓單號</div><div class="detail-row-value" style="font-family:'DM Mono',monospace;font-weight:700;color:#8B2A3A;">${escHtml(o.tracking_number_nankan)} <button onclick="openTCATTracking('${escHtml(o.tracking_number_nankan)}')" style="margin-left:6px;padding:2px 8px;background:#8B2A3A;color:#fff;border:none;border-radius:5px;font-size:11px;cursor:pointer;">查件</button></div></div>`;
           }
           if (isAdmin && o.status!=='cancelled' && nankanItems.some(i=>!i.nankan_shipped)) {
             html += `<div style="padding:10px 14px;"><button onclick="registerNankanShipping('${o.id}')" style="width:100%;padding:11px;background:#8B2A3A;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">📦 登記南崁出貨（填黑貓單號）</button><div style="font-size:11px;color:var(--text2);text-align:center;margin-top:4px;">南崁倉自行叫黑貓出貨後，於此登記托運單號</div></div>`;
@@ -3560,6 +3560,26 @@ async function saveEditOrder() {
     await openOrderDetail(editOrderId); loadMyOrders();
   } catch(e) { showToast('修改失敗：' + e.message, 'error'); }
   showLoading(false);
+}
+
+// 黑貓宅急便查件（南崁自倉出貨走黑貓；黑貓無即時 API，複製單號並開黑貓官網查詢）
+function openTCATTracking(trackingNo) {
+  navigator.clipboard.writeText(trackingNo).catch(() => {});
+  const modal = document.createElement('div');
+  modal.id = 'tcatTrackingModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
+  modal.innerHTML = `
+    <div style="background:var(--surface);border-radius:var(--radius);padding:24px;width:100%;max-width:420px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div style="font-size:17px;font-weight:800;color:#8B2A3A;">📦 黑貓宅急便查件</div>
+        <button onclick="document.getElementById('tcatTrackingModal').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text2);">✕</button>
+      </div>
+      <div style="background:#fbf5f6;border-radius:8px;padding:10px 14px;margin-bottom:8px;font-family:'DM Mono',monospace;font-size:16px;font-weight:800;text-align:center;color:#8B2A3A;">${escHtml(trackingNo)}</div>
+      <div style="font-size:12px;color:var(--text2);text-align:center;margin-bottom:16px;">單號已複製，點下方按鈕到黑貓官網貼上查詢</div>
+      <button onclick="navigator.clipboard.writeText('${trackingNo}').then(()=>window.open('https://www.t-cat.com.tw/inquire/trace.aspx','_blank'))" style="width:100%;padding:12px;background:#8B2A3A;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">📋 複製單號並開啟黑貓查件頁 →</button>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
 }
 
 async function openHCTTracking(trackingNo) {
