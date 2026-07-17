@@ -939,6 +939,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
   <div class="admin-tabs">
     <button class="admin-tab active" onclick="setAdminTab('all',this)">全部</button>
     <button class="admin-tab" onclick="setAdminTab('pending',this)">待處理</button>
+    <button class="admin-tab" onclick="setAdminTab('nankan_preorder',this)">🍷南崁預購</button>
     <button class="admin-tab" onclick="setAdminTab('partial',this)">部分已拋</button>
     <button class="admin-tab" onclick="setAdminTab('submitted',this)">已拋單</button>
     <button class="admin-tab" onclick="setAdminTab('processing',this)">作業中</button>
@@ -2979,23 +2980,10 @@ async function loadPublicOrder(token) {
   showLoading(false);
 }
 
+let adminSearchKeyword = '';
 function onAdminSearch(val) {
-  const q = (val||'').trim().toLowerCase();
-  if (!q) { renderAdminOrders(); return; }
-  const filtered = adminAllOrders.filter(o =>
-    (o.receiver_name||'').toLowerCase().includes(q) ||
-    (o.receiver_phone||'').toLowerCase().includes(q) ||
-    (o.order_no||'').toLowerCase().includes(q) ||
-    (o.staff?.name||'').toLowerCase().includes(q) ||
-    (o.stores?.name||'').toLowerCase().includes(q) ||
-    (o.sale_date||'').toLowerCase().includes(q) ||
-    (o.pos_no||'').toLowerCase().includes(q)
-  );
-  // 用過濾結果暫時渲染
-  const prev = adminAllOrders;
-  adminAllOrders = filtered;
+  adminSearchKeyword = (val||'').trim().toLowerCase();
   renderAdminOrders();
-  adminAllOrders = prev;
 }
 
 async function loadAdminOrders(staffIdFilter, storeIdFilter) {
@@ -3016,21 +3004,50 @@ function setAdminTab(tab, el) {
   renderAdminOrders();
 }
 
+// 判斷是否為「南崁預購」單：同時含南崁品 且 為預購
+function isNankanPreorder(o) {
+  return orderHasNankan(o) && orderHasPreorder(o);
+}
+
 function renderAdminOrders() {
-  // 過濾掉 id 為 null/undefined 的異常訂單
-  const base = (adminCurrentTab === 'all' ? adminAllOrders : adminAllOrders.filter(o => o.status === adminCurrentTab)).filter(o => o?.id);
-  const filtered = base;
+  let base = adminAllOrders.filter(o => o?.id);
+  // 分頁篩選
+  if (adminCurrentTab === 'nankan_preorder') {
+    base = base.filter(o => isNankanPreorder(o) && o.status !== 'cancelled');
+  } else if (adminCurrentTab === 'pending') {
+    // 待處理排除南崁預購（它們獨立在南崁預購分頁處理）
+    base = base.filter(o => o.status === 'pending' && !isNankanPreorder(o));
+  } else if (adminCurrentTab !== 'all') {
+    base = base.filter(o => o.status === adminCurrentTab);
+  }
+  // 搜尋關鍵字篩選（統一在這裡做）
+  const q = adminSearchKeyword;
+  const filtered = q ? base.filter(o =>
+    (o.receiver_name||'').toLowerCase().includes(q) ||
+    (o.receiver_phone||'').toLowerCase().includes(q) ||
+    (o.order_no||'').toLowerCase().includes(q) ||
+    (o.staff?.name||'').toLowerCase().includes(q) ||
+    (o.stores?.name||'').toLowerCase().includes(q) ||
+    (o.sale_date||'').toLowerCase().includes(q) ||
+    (o.pos_no||'').toLowerCase().includes(q)
+  ) : base;
   const el = document.getElementById('adminOrdersList');
-  if (!filtered?.length) { el.innerHTML = '<div class="empty-state"><div class="icon">📋</div><p>尚無訂單</p></div>'; return; }
+  if (!filtered?.length) {
+    const emptyMsg = q ? `找不到「${escHtml(q)}」的訂單` : (adminCurrentTab==='nankan_preorder' ? '目前沒有南崁預購單' : '尚無訂單');
+    el.innerHTML = `<div class="empty-state"><div class="icon">📋</div><p>${emptyMsg}</p></div>`;
+    return;
+  }
   const statusMap = { pending:'待處理', partial:'部分已拋', submitted:'已拋單', processing:'作業中', shipped:'已完成', cancelled:'已取消' };
   el.innerHTML = filtered.map(o => {
     const preview = (o.order_items||[]).map(i => `${isPreorderItem(i)?'⟨預⟩':''}${i.product_name} x${i.quantity}`).join('、');
     const cardBadge = (orderHasPreorder(o) ? PREORDER_BADGE_SM : '') + (orderHasNankan(o) ? NANKAN_BADGE_SM : '');
     return `<div class="order-card ${o.status}" data-order-id="${o.id}" style="display:flex;align-items:flex-start;gap:10px;cursor:default;">
-      <input type="checkbox" class="order-select-chk" data-id="${o.id}" onchange="onOrderCheckChange()" onclick="event.stopPropagation()" style="width:20px;height:20px;margin-top:6px;flex-shrink:0;cursor:pointer;accent-color:var(--accent);">
+      <label style="display:flex;align-items:center;padding:8px 4px 8px 0;margin-top:2px;flex-shrink:0;cursor:pointer;" onclick="event.stopPropagation()">
+        <input type="checkbox" class="order-select-chk" data-id="${o.id}" onchange="onOrderCheckChange()" style="width:22px;height:22px;cursor:pointer;accent-color:var(--accent);">
+      </label>
       <div style="flex:1;min-width:0;cursor:pointer;" onclick="(function(){document.getElementById('detailBack').onclick=()=>showScreen('adminScreen');openOrderDetail('${o.id}');})()">
         <div class="order-card-top"><div class="order-no">${cardBadge} ${o.order_no}</div><span class="status-badge ${o.status}">${statusMap[o.status]||o.status}</span></div>
-        <div class="order-receiver">${escHtml(o.receiver_name)}</div>
+        <div class="order-receiver">${escHtml(o.receiver_name)} <span style="font-size:12px;font-weight:600;color:var(--accent2);">・業務：${escHtml(o.staff?.name||'—')}</span></div>
         <div class="order-meta">${escHtml(o.receiver_phone)} · ${escHtml(o.stores?.name||'')} · ${formatDate(o.created_at)}</div>
         ${orderSaleMetaHtml(o)}
         <div class="order-items-preview">${escHtml(preview)}</div>
@@ -4194,36 +4211,51 @@ function clearSelection() {
   if (allChk) allChk.checked = false;
 }
 
-async function batchChangeDate() {
+function batchChangeDate() {
   if (!selectedOrderIds.size) { showToast('請先勾選要改日期的訂單'); return; }
-  const ids = [...selectedOrderIds];
-  // 跳出日期輸入（用 prompt 取 YYYY-MM-DD）
-  const today = new Date().toISOString().slice(0,10);
-  const input = prompt(`要把選取的 ${ids.length} 張訂單改成哪一天？\n（對齊鼎新匯入日期，格式 YYYY-MM-DD）`, today);
-  if (!input) return;
-  const m = input.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!m) { showToast('日期格式錯誤，請用 YYYY-MM-DD', 'error'); return; }
-  const yy = m[1].slice(2), mm = m[2], dd = m[3];
-  const dateStr = `${yy}${mm}${dd}`;          // 例 260626
-  const prefix = `1203-${dateStr}`;
-  if (!confirm(`確定把 ${ids.length} 張訂單的單號日期改成 ${input}？\n流水號會接續該日現有最大號往下排。`)) return;
+  const cnt = selectedOrderIds.size;
+  const today = new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Taipei'}));
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  document.getElementById('batchDateModal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'batchDateModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:100000;display:flex;align-items:center;justify-content:center;padding:20px;';
+  modal.innerHTML = `
+    <div style="background:var(--surface);border-radius:16px;padding:22px;width:100%;max-width:360px;box-shadow:0 12px 48px rgba(0,0,0,0.3);">
+      <div style="font-size:17px;font-weight:800;margin-bottom:6px;">📅 批次改日期</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:16px;">將選取的 <b>${cnt}</b> 張訂單，單號日期改為：</div>
+      <input type="date" id="batchDateInput" value="${todayStr}" style="width:100%;box-sizing:border-box;padding:14px;font-size:16px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;cursor:pointer;margin-bottom:8px;">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:16px;">流水號會接續該日現有最大號往下排。</div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="document.getElementById('batchDateModal').remove()" style="flex:1;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;">取消</button>
+        <button onclick="doBatchChangeDate()" style="flex:1.4;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">確定修改</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+}
 
+async function doBatchChangeDate() {
+  const input = document.getElementById('batchDateInput')?.value;
+  if (!input) { showToast('請選擇日期', 'error'); return; }
+  const m = input.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) { showToast('日期格式錯誤', 'error'); return; }
+  document.getElementById('batchDateModal')?.remove();
+  const ids = [...selectedOrderIds];
+  const yy = m[1].slice(2), mm = m[2], dd = m[3];
+  const dateStr = `${yy}${mm}${dd}`;
+  const prefix = `1203-${dateStr}`;
   showLoading(true);
   try {
-    // 查該日現有最大流水號
     const rows = await sb.get('orders', `?order_no=like.${encodeURIComponent(prefix+'%')}&select=order_no&order=order_no.desc&limit=1`);
     let seq = 0;
     if (rows?.length) seq = parseInt(rows[0].order_no.slice(-5)) || 0;
-
-    // 依建單時間排序選取的訂單，逐一改號
     const selected = adminAllOrders.filter(o => ids.includes(o.id))
       .sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
-
     let okCount = 0;
     for (const o of selected) {
       seq += 1;
-      const newNo = `${prefix}${String(seq).padStart(5,'0')}`;
-      // 避免與現有單號衝突（同號就再加）
+      let newNo = `${prefix}${String(seq).padStart(5,'0')}`;
       const dup = await sb.get('orders', `?order_no=eq.${encodeURIComponent(newNo)}&id=neq.${o.id}&select=id&limit=1`);
       if (dup?.length) { seq += 1; }
       const finalNo = `${prefix}${String(seq).padStart(5,'0')}`;
