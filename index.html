@@ -2049,9 +2049,11 @@ async function submitOrder() {
     const preorderItems = []; // 清單內無庫存或查不到 → 預購
     formItems.forEach(i => {
       if (isNankan(i.sku)) {
-        // 南崁自倉品：不查庫存、不擋，標記來源
+        // 南崁自倉品：不查委外倉庫存、不擋
         i.fulfill_source = 'nankan';
-        i.item_type = 'stock';
+        // 若同時在預購白名單 → 一律視為預購（南崁貨走自倉，不看委外庫存）
+        if (isPreorderable(i.sku)) { i.item_type = 'preorder'; preorderItems.push(i); }
+        else { i.item_type = 'stock'; }
         return;
       }
       i.fulfill_source = 'wms';
@@ -3572,7 +3574,20 @@ async function saveEditOrder() {
     const editDeliveryDate = document.getElementById('editDeliveryDate')?.value || null;
     await sb.patch('orders', editOrderId, { receiver_name: receiverName, receiver_phone: receiverPhone, receiver_address: address, pos_no: posNo, note: note||null, delivery_date: editDeliveryDate, updated_at: new Date().toISOString() });
     await fetch(`${SUPABASE_URL}/rest/v1/order_items?order_id=eq.${editOrderId}`, { method: 'DELETE', headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } });
-    for (const item of editFormItems) { await sb.post('order_items', { order_id: editOrderId, sku: item.sku, product_name: item.name, quantity: item.qty, fulfill_source: item.fulfill_source || (isNankan(item.sku) ? 'nankan' : 'wms') }); }
+    for (const item of editFormItems) {
+      const _isNk = isNankan(item.sku);
+      // 預購判定：南崁品在白名單→預購；委外品沿用原本標記，沒有就用白名單+庫存判斷
+      let _type = item.item_type;
+      if (!_type) {
+        if (_isNk) _type = isPreorderable(item.sku) ? 'preorder' : 'stock';
+        else _type = (isPreorderable(item.sku) && (liveStock?.[item.sku] ?? 0) <= 0) ? 'preorder' : 'stock';
+      }
+      await sb.post('order_items', {
+        order_id: editOrderId, sku: item.sku, product_name: item.name, quantity: item.qty,
+        item_type: _type,
+        fulfill_source: item.fulfill_source || (_isNk ? 'nankan' : 'wms')
+      });
+    }
     showToast('訂單修改成功！', 'success');
     await openOrderDetail(editOrderId); loadMyOrders();
   } catch(e) { showToast('修改失敗：' + e.message, 'error'); }
