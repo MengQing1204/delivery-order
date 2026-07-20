@@ -2692,6 +2692,7 @@ const ADMIN_ACTION_LABEL = {
   change_status: { label: '改狀態', icon: '🔄', color: '#3A6EA5' },
   change_order_no: { label: '改單號', icon: '🔢', color: '#3A6EA5' },
   change_pos: { label: '改機號/POS', icon: '🧾', color: '#E0A042' },
+  change_tracking: { label: '改託運單號', icon: '🚚', color: '#E0A042' },
   edit_order: { label: '改訂單內容', icon: '✏️', color: '#3A6EA5' },
   cancel_order: { label: '取消訂單', icon: '🚫', color: '#B5504A' },
   restore_order: { label: '復原訂單', icon: '♻️', color: '#3E7C5A' },
@@ -2819,6 +2820,11 @@ function renderDetail(o, containerId, isPublic) {
           </select>
           <input type="text" id="editPosNo_${o.id}" value="${escHtml(o.pos_no||'')}" placeholder="POS序號" inputmode="numeric" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:14px;background:var(--surface);color:var(--text);font-family:'DM Mono',monospace;">
           <button onclick="savePosInfo('${o.id}')" style="padding:8px 12px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;">儲存</button>
+        </div>
+        <div style="font-size:12px;color:var(--text2);margin:12px 0 6px;">🚚 新竹託運單號（委外倉，ibiza 同步不到時可手動補）</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="text" id="editTrackingNo_${o.id}" value="${escHtml(o.tracking_number||'')}" placeholder="新竹貨運託運單號" inputmode="numeric" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:14px;background:var(--surface);color:var(--text);font-family:'DM Mono',monospace;">
+          <button onclick="saveTrackingNo('${o.id}')" style="padding:8px 12px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;">儲存</button>
         </div>
       </div>
       ${(o.status==='submitted'||o.status==='processing')?`
@@ -3293,6 +3299,25 @@ async function updateOrderStatus(orderId, status) {
 
 // 管理員：復原已取消的訂單（回到待處理，清除取消原因）
 // 管理員：修改機號 / POS序號
+// 管理員：手動填/修改新竹託運單號（ibiza 同步不到時用）
+async function saveTrackingNo(orderId) {
+  if (currentUser?.role !== 'admin') { showToast('只有管理員可修改', 'error'); return; }
+  const el = document.getElementById(`editTrackingNo_${orderId}`);
+  const val = (el?.value || '').trim();
+  const _o = (typeof adminAllOrders !== 'undefined' ? adminAllOrders : []).find(x => x.id === orderId);
+  const oldVal = _o?.tracking_number || '';
+  if (val === oldVal) { showToast('託運單號沒有變更'); return; }
+  showLoading(true);
+  try {
+    await sb.patch('orders', orderId, { tracking_number: val || null, updated_at: new Date().toISOString() });
+    await logAdminAction('change_tracking', 'order', orderId, _o?.order_no || '', `新竹託運單號：${oldVal||'(空)'} → ${val||'(空)'}`);
+    showLoading(false);
+    showToast(val ? `✅ 託運單號已儲存：${val}` : '✅ 託運單號已清除', 'success');
+    await openOrderDetail(orderId);
+    loadAdminOrders();
+  } catch(e) { showLoading(false); showToast('儲存失敗：' + e.message, 'error'); }
+}
+
 async function savePosInfo(orderId) {
   if (currentUser?.role !== 'admin') { showToast('只有管理員可修改', 'error'); return; }
   const termEl = document.getElementById(`editPosTerminal_${orderId}`);
