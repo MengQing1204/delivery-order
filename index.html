@@ -2693,6 +2693,7 @@ const ADMIN_ACTION_LABEL = {
   change_order_no: { label: '改單號', icon: '🔢', color: '#3A6EA5' },
   change_pos: { label: '改機號/POS', icon: '🧾', color: '#E0A042' },
   change_tracking: { label: '改託運單號', icon: '🚚', color: '#E0A042' },
+  change_sale_date: { label: '改銷售日', icon: '📅', color: '#3A6EA5' },
   edit_order: { label: '改訂單內容', icon: '✏️', color: '#3A6EA5' },
   cancel_order: { label: '取消訂單', icon: '🚫', color: '#B5504A' },
   restore_order: { label: '復原訂單', icon: '♻️', color: '#3E7C5A' },
@@ -2951,7 +2952,26 @@ function renderDetail(o, containerId, isPublic) {
       <div class="detail-row"><div class="detail-row-label">門市</div><div class="detail-row-value">${escHtml(o.stores?.name||'')}</div></div>`}
       <div class="detail-row"><div class="detail-row-label">業務員</div><div class="detail-row-value">${escHtml(o.staff?.name||'')}</div></div>
       <div class="detail-row"><div class="detail-row-label">業務電話</div><div class="detail-row-value">${escHtml(o.staff?.phone||'')}</div></div>
-      ${o.sale_date?`<div class="detail-row"><div class="detail-row-label">實際銷售日</div><div class="detail-row-value" style="color:var(--accent2);font-weight:700;">${escHtml(o.sale_date)}</div></div>`:''}
+      ${(function(){
+        const _isAdmin = currentUser?.role === 'admin';
+        const _isMgr = currentUser?.role === 'manager';
+        const _isOwner = o.staff_id === currentUser?.id;
+        // 管理員/店長：不限狀態可改；業務：限自己的單且待處理
+        const _canEdit = _isAdmin || _isMgr || (_isOwner && o.status === 'pending');
+        if (!_canEdit) {
+          return o.sale_date ? `<div class="detail-row"><div class="detail-row-label">實際銷售日</div><div class="detail-row-value" style="color:var(--accent2);font-weight:700;">${escHtml(o.sale_date)}</div></div>` : '';
+        }
+        const _today = new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Taipei'}));
+        const _max = `${_today.getFullYear()}-${String(_today.getMonth()+1).padStart(2,'0')}-${String(_today.getDate()).padStart(2,'0')}`;
+        return `<div class="detail-row" style="flex-direction:column;align-items:stretch;gap:6px;">
+          <div class="detail-row-label" style="margin-bottom:2px;">實際銷售日（可修改）</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="date" id="editSaleDate_${o.id}" value="${escHtml(o.sale_date||'')}" max="${_max}" style="flex:1;padding:10px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;background:var(--surface);cursor:pointer;">
+            <button onclick="saveSaleDate('${o.id}')" style="padding:10px 16px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;">儲存</button>
+          </div>
+          ${(!_isAdmin && !_isMgr) ? '<div style="font-size:11px;color:var(--text2);">拋單後就不能再修改，請洽管理員</div>' : ''}
+        </div>`;
+      })()}
       <div class="detail-row"><div class="detail-row-label">登記時間</div><div class="detail-row-value">${formatDate(o.created_at)}</div></div>
     </div>
     <div class="qr-section">
@@ -3300,6 +3320,40 @@ async function updateOrderStatus(orderId, status) {
 // 管理員：復原已取消的訂單（回到待處理，清除取消原因）
 // 管理員：修改機號 / POS序號
 // 管理員：手動填/修改新竹託運單號（ibiza 同步不到時用）
+// 修改實際銷售日：管理員/店長不限狀態；業務限自己的單且待處理
+async function saveSaleDate(orderId) {
+  const el = document.getElementById(`editSaleDate_${orderId}`);
+  const val = (el?.value || '').trim();
+  if (!val) { showToast('請選擇實際銷售日', 'error'); return; }
+  const today = new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Taipei'}));
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  if (val > todayStr) { showToast('實際銷售日不能選未來日期', 'error'); return; }
+
+  const _o = (typeof adminAllOrders !== 'undefined' ? adminAllOrders : []).find(x => x.id === orderId)
+          || (typeof allMyOrders !== 'undefined' ? allMyOrders : []).find(x => x.id === orderId);
+  const oldVal = _o?.sale_date || '';
+  if (val === oldVal) { showToast('銷售日沒有變更'); return; }
+
+  showLoading(true);
+  try {
+    // 防呆：送出前再確認一次權限與狀態（避免中途被拋單）
+    const cur = await sb.get('orders', `?id=eq.${orderId}&select=status,staff_id&limit=1`);
+    const st = cur?.[0]?.status;
+    const ownerId = cur?.[0]?.staff_id;
+    const isMgr = currentUser?.role === 'admin' || currentUser?.role === 'manager';
+    if (!isMgr) {
+      if (ownerId !== currentUser?.id) { showLoading(false); showToast('只能修改自己的訂單', 'error'); return; }
+      if (st !== 'pending') { showLoading(false); showToast('此單已拋單，無法修改銷售日，請洽管理員', 'error'); return; }
+    }
+    await sb.patch('orders', orderId, { sale_date: val, updated_at: new Date().toISOString() });
+    if (isMgr) await logAdminAction('change_sale_date', 'order', orderId, _o?.order_no || '', `實際銷售日：${oldVal||'(空)'} → ${val}`);
+    showLoading(false);
+    showToast(`✅ 實際銷售日已更新：${val}`, 'success');
+    await openOrderDetail(orderId);
+    if (isMgr) loadAdminOrders(); else loadMyOrders();
+  } catch(e) { showLoading(false); showToast('修改失敗：' + e.message, 'error'); }
+}
+
 async function saveTrackingNo(orderId) {
   if (currentUser?.role !== 'admin') { showToast('只有管理員可修改', 'error'); return; }
   const el = document.getElementById(`editTrackingNo_${orderId}`);
