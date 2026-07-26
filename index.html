@@ -115,8 +115,8 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
 .product-search-input { width: 100%; border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 11px 13px 11px 38px; font-size: 16px; font-family: inherit; color: var(--text); background: var(--surface); outline: none; }
 .product-search-input:focus { border-color: var(--accent); }
 .product-search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 16px; pointer-events: none; }
-.product-dropdown { position: absolute; top: calc(100% + 2px); left: 0; right: 0; width: 100%; background: var(--surface); border: 1.5px solid var(--accent2); border-radius: var(--radius-sm); max-height: 40vh; overflow-y: auto; z-index: 99999; box-shadow: 0 8px 32px rgba(0,0,0,0.18); display: none; }
-.product-option { padding: 12px 14px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.15s; }
+.product-dropdown { position: absolute; top: calc(100% + 2px); left: 0; right: 0; width: 100%; background: var(--surface); border: 1.5px solid var(--accent2); border-radius: var(--radius-sm); max-height: 60vh; overflow-y: auto; z-index: 99999; box-shadow: 0 8px 32px rgba(0,0,0,0.18); display: none; -webkit-overflow-scrolling: touch; }
+.product-option { padding: 14px 16px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.15s; min-height: 52px; display: flex; align-items: center; }
 .product-option:last-child { border-bottom: none; }
 .product-option:hover, .product-option.highlighted { background: var(--accent-light); }
 .product-option .pname { font-weight: 500; font-size: 14px; }
@@ -594,7 +594,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
         <label class="form-label">搜尋商品加入</label>
         <div class="product-search-wrap" id="foProductSearchWrap">
           <span class="product-search-icon">🔍</span>
-          <input class="product-search-input" id="foProductSearch" placeholder="輸入品名或品號搜尋，點選即加入..." oninput="onFoProductSearch(this.value)" autocomplete="off">
+          <input class="product-search-input" id="foProductSearch" placeholder="輸入品名或品號搜尋，點選即加入..." oninput="onFoProductSearch(this.value)" onfocus="setTimeout(()=>this.scrollIntoView({behavior:'smooth',block:'start'}),300)" autocomplete="off">
           <div class="product-dropdown" id="foProductDropdown"></div>
         </div>
       </div>
@@ -853,7 +853,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
         <label class="form-label">搜尋商品</label>
         <div class="product-search-wrap" id="productSearchWrap">
           <span class="product-search-icon">🔍</span>
-          <input class="product-search-input" id="productSearch" placeholder="輸入品名或品號搜尋..." oninput="onProductSearch(this.value)" autocomplete="off">
+          <input class="product-search-input" id="productSearch" placeholder="輸入品名或品號搜尋..." oninput="onProductSearch(this.value)" onfocus="setTimeout(()=>this.scrollIntoView({behavior:'smooth',block:'start'}),300)" autocomplete="off">
           <div class="product-dropdown" id="productDropdown"></div>
         </div>
       </div>
