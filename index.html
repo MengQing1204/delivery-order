@@ -4583,6 +4583,9 @@ async function exportErpExcel(orders) {
       const transOut = isNankanOrder ? 'A0001' : 'B0003';
       // 單號取純數字（去掉「1203-」前綴），鼎新單號欄只接受純數字
       const orderNoOut = (o.order_no || '').replace(/^.*?-/, '').replace(/\D/g, '');
+      // 備註帶入業務員（鼎新轉撥單無業務員欄位，故放備註）：業務：XXX｜原備註
+      const _staffName = o.staff?.name || '';
+      const _noteOut = [_staffName ? `業務：${_staffName}` : '', o.note || ''].filter(Boolean).join('｜');
       const rows = [headers];
       allItems.forEach(it => {
         rows.push([
@@ -4599,7 +4602,7 @@ async function exportErpExcel(orders) {
           it.sku || '',                     // 品號
           it.product_name || '',            // 品名
           it.quantity || '',                // 數量
-          o.note || ''                      // 備註
+          _noteOut                          // 備註（含業務員）
         ]);
       });
       const ws = XLSX.utils.aoa_to_sheet(rows);
