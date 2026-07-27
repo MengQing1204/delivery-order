@@ -115,7 +115,10 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
 .product-search-input { width: 100%; border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 11px 13px 11px 38px; font-size: 16px; font-family: inherit; color: var(--text); background: var(--surface); outline: none; }
 .product-search-input:focus { border-color: var(--accent); }
 .product-search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 16px; pointer-events: none; }
-.product-dropdown { position: absolute; top: calc(100% + 2px); left: 0; right: 0; width: 100%; background: var(--surface); border: 1.5px solid var(--accent2); border-radius: var(--radius-sm); max-height: 60vh; overflow-y: auto; z-index: 99999; box-shadow: 0 8px 32px rgba(0,0,0,0.18); display: none; -webkit-overflow-scrolling: touch; }
+.product-dropdown { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: calc(100% - 40px); max-width: 440px; max-height: 70vh; background: var(--surface); border: 1.5px solid var(--accent2); border-radius: 14px; overflow-y: auto; z-index: 100001; box-shadow: 0 12px 48px rgba(0,0,0,0.3); display: none; -webkit-overflow-scrolling: touch; }
+.product-dropdown-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100000; display: none; }
+.product-dropdown-overlay.show { display: block; }
+.product-dropdown-header { position: sticky; top: 0; background: var(--accent2); color: #fff; padding: 12px 16px; font-size: 15px; font-weight: 800; display: flex; justify-content: space-between; align-items: center; z-index: 2; }
 .product-option { padding: 14px 16px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.15s; min-height: 52px; display: flex; align-items: center; }
 .product-option:last-child { border-bottom: none; }
 .product-option:hover, .product-option.highlighted { background: var(--accent-light); }
@@ -857,6 +860,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
           <span class="product-search-icon">🔍</span>
           <input class="product-search-input" id="productSearch" placeholder="輸入品名或品號搜尋..." oninput="onProductSearch(this.value)" onfocus="setTimeout(()=>this.scrollIntoView({behavior:'smooth',block:'start'}),300)" autocomplete="off">
           <div class="product-dropdown" id="productDropdown"></div>
+          <div class="product-dropdown-overlay" id="productDropdownOverlay" onclick="closeDropdown()"></div>
         </div>
       </div>
       <div class="item-list" id="itemList"></div>
@@ -1010,7 +1014,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
 </div>
 
 <script>
-const APP_VERSION = 'v2026.07.27';  // 每次改版更新此號碼，方便確認是否載入最新版
+const APP_VERSION = 'v2026.07.28-彈窗版';  // 每次改版更新此號碼，方便確認是否載入最新版
 const SUPABASE_URL = 'https://tlrfxsmrjueaqiectroe.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRscmZ4c21yanVlYXFpZWN0cm9lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1MjI3MjksImV4cCI6MjA5MjA5ODcyOX0.buW3x8ZTNHgaB8ZK14xL-unLsTFrcTVJFm3xYqV18CA';
 const STOCK_QUERY_URL = 'https://tlrfxsmrjueaqiectroe.supabase.co/functions/v1/ibiza-stock-query';
@@ -1421,7 +1425,7 @@ function renderDropdown(filtered, stockMap, inputEl) {
   const preOrder = filtered.filter(p=>!isNankan(p.sku) && (sm[p.sku]??0)<=0 && isPreorderable(p.sku)).sort((a,b)=>a.sku.localeCompare(b.sku));
   const locked = filtered.filter(p=>!isNankan(p.sku) && (sm[p.sku]??0)<=0 && !isPreorderable(p.sku)).sort((a,b)=>a.sku.localeCompare(b.sku));
   const list = stockMap ? [...nankan, ...inStock, ...preOrder, ...locked] : filtered;
-  dd.innerHTML = list.map(p => {
+  dd.innerHTML = `<div class="product-dropdown-header"><span>🔍 選擇商品（${list.length}）</span><span onclick="closeDropdown()" style="cursor:pointer;font-size:20px;">✕</span></div>` + list.map(p => {
     const nankanItem = isNankan(p.sku);
     const stock = stockMap ? (sm[p.sku] ?? 0) : (p.stock ?? 0);
     const canPreorder = stock <= 0 && isPreorderable(p.sku);
@@ -1432,7 +1436,7 @@ function renderDropdown(filtered, stockMap, inputEl) {
     const disabled = (!nankanItem && stock <= 0 && !canPreorder) ? 'style="opacity:0.5;pointer-events:none;"' : '';
     const stockStyle = nankanItem ? 'color:#8B2A3A;' : '';
     return `<div class="product-option" onclick="addItem('${escHtml(p.sku)}','${escHtml(p.product_name)}',${nankanItem?999:stock})" ${disabled}>
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;">
         <div style="min-width:0;flex:1;"><div class="pname" style="white-space:normal;line-height:1.4;">${nankanItem?NANKAN_BADGE_SM+' ':''}${escHtml(p.product_name)}</div><div class="pcode">${p.sku}</div></div>
         <div class="pstock ${stockClass}" style="flex-shrink:0;${stockStyle}">${stockText}</div>
       </div>
@@ -1448,10 +1452,10 @@ async function renderDropdownFromLocal(q) {
   const matched = allProducts.filter(p => p.product_name?.toLowerCase().includes(lower) || p.sku?.toLowerCase().includes(lower));
   // 先按品號排序取前 100，不依賴靜態 stock（避免 0 庫存品項被排到 ibiza 查詢範圍外）
   const filtered = matched.sort((a,b) => a.sku.localeCompare(b.sku)).slice(0, 100);
-  if (!filtered.length) { dd.innerHTML = `<div class="product-option"><div class="pname">找不到「${escHtml(q)}」相關商品</div></div>`; positionDropdown(inputEl, dd); dd.style.display = 'block'; return; }
+  if (!filtered.length) { dd.innerHTML = `<div class="product-dropdown-header"><span>🔍 選擇商品</span><span onclick="closeDropdown()" style="cursor:pointer;font-size:20px;">✕</span></div><div class="product-option" style="pointer-events:none;"><div class="pname">找不到「${escHtml(q)}」相關商品</div></div>`; positionDropdown(inputEl, dd); dd.style.display = "block"; return; }
   // 先顯示「查詢中」，等 ibiza 回傳後才渲染庫存，避免靜態舊資料誤導
-  dd.innerHTML = filtered.map(p => `<div class="product-option" style="pointer-events:none;opacity:0.7;">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+  dd.innerHTML = `<div class="product-dropdown-header"><span>🔍 選擇商品（${filtered.length}）</span><span onclick="closeDropdown()" style="cursor:pointer;font-size:20px;">✕</span></div>` + filtered.map(p => `<div class="product-option" style="pointer-events:none;opacity:0.7;">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;">
       <div style="min-width:0;flex:1;"><div class="pname" style="white-space:normal;line-height:1.4;">${escHtml(p.product_name)}</div><div class="pcode">${p.sku}</div></div>
       <div class="pstock" style="color:#4A6058;">查詢中...</div>
     </div></div>`).join('');
@@ -1475,20 +1479,15 @@ function addItem(sku, name, stock) {
 }
 
 function positionDropdown(inputEl, dropdownEl) {
-  // 若下拉是 absolute 定位（貼在搜尋框容器下方），不需 JS 算座標，直接交給 CSS
-  const pos = getComputedStyle(dropdownEl).position;
-  if (pos === 'absolute') { return; }
-  const rect = inputEl.getBoundingClientRect();
-  const viewportHeight = window.innerHeight;
-  const spaceBelow = viewportHeight - rect.bottom - 8;
-  const spaceAbove = rect.top - 8;
-  const maxH = Math.min(Math.max(spaceBelow, 160), 320);
-  dropdownEl.style.left = rect.left + 'px'; dropdownEl.style.width = rect.width + 'px'; dropdownEl.style.maxHeight = maxH + 'px';
-  if (spaceBelow < 160 && spaceAbove > spaceBelow) { const h = Math.min(spaceAbove, 320); dropdownEl.style.top = (rect.top - h - 4) + 'px'; dropdownEl.style.maxHeight = h + 'px'; }
-  else { dropdownEl.style.top = (rect.bottom + 2) + 'px'; }
+  // 彈窗模式：置中固定，不需算座標，只要顯示遮罩即可
+  const ov = document.getElementById('productDropdownOverlay');
+  if (ov) ov.classList.add('show');
 }
 
-function closeDropdown() { const dd = document.getElementById('productDropdown'); if (dd) dd.style.display = 'none'; }
+function closeDropdown() {
+  const dd = document.getElementById('productDropdown'); if (dd) dd.style.display = 'none';
+  const ov = document.getElementById('productDropdownOverlay'); if (ov) ov.classList.remove('show');
+}
 function closeEditDropdown() { const dd = document.getElementById('editProductDropdown'); if (dd) dd.style.display = 'none'; }
 
 function renderItems() {
