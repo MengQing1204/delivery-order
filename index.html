@@ -788,7 +788,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
   <button class="btn-new-order" onclick="showScreen('formScreen'); initForm()">＋ 新增宅配登記</button>
   <div class="section">
     <div class="section-header">
-      <span class="section-title">我的訂單</span>
+      <span class="section-title" id="myOrdersTitle">我的訂單</span>
       <button class="section-link" onclick="showAllMyOrders()">全部查看 →</button>
     </div>
     <div style="position:relative;margin-bottom:12px;">
@@ -1014,7 +1014,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
 </div>
 
 <script>
-const APP_VERSION = 'v2026.07.28-彈窗版';  // 每次改版更新此號碼，方便確認是否載入最新版
+const APP_VERSION = 'v2026.07.28c-管理員首頁';  // 每次改版更新此號碼，方便確認是否載入最新版
 const SUPABASE_URL = 'https://tlrfxsmrjueaqiectroe.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRscmZ4c21yanVlYXFpZWN0cm9lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1MjI3MjksImV4cCI6MjA5MjA5ODcyOX0.buW3x8ZTNHgaB8ZK14xL-unLsTFrcTVJFm3xYqV18CA';
 const STOCK_QUERY_URL = 'https://tlrfxsmrjueaqiectroe.supabase.co/functions/v1/ibiza-stock-query';
@@ -2490,15 +2490,33 @@ const MY_ORDERS_PAGE = 20;
 
 async function loadMyOrders() {
   if (!currentUser) return;
-  // 顯示業務員姓名
+  // 顯示姓名
   const nameEl = document.getElementById('mainHeaderName');
   if (nameEl) nameEl.textContent = currentUser.name || currentUser.phone || '';
   const storeEl = document.getElementById('mainHeaderStore');
   if (storeEl && currentUser.store_name) storeEl.textContent = currentUser.store_name;
+  // 「我的訂單」標題依角色調整
+  const listTitleEl = document.getElementById('myOrdersTitle');
+  const role = currentUser.role;
   try {
-    const orders = await sb.get('orders', `?staff_id=eq.${currentUser.id}&order=created_at.desc&limit=500&select=*,order_items(*),stores(name)`);
+    let query;
+    if (role === 'admin') {
+      // 管理員：全部訂單
+      query = `?order=created_at.desc&limit=500&select=*,order_items(*),stores(name),staff(name)`;
+      if (listTitleEl) listTitleEl.textContent = '全部訂單';
+    } else if (role === 'manager') {
+      // 店長/督導：管轄門市的訂單
+      const storeIds = await getManagerStoreIds(currentUser.id);
+      const inFilter = storeIds.length ? `&store_id=in.(${storeIds.map(i=>`"${i}"`).join(',')})` : '&store_id=eq.__none__';
+      query = `?order=created_at.desc&limit=500${inFilter}&select=*,order_items(*),stores(name),staff(name)`;
+      if (listTitleEl) listTitleEl.textContent = '管轄門市訂單';
+    } else {
+      // 業務：只看自己的
+      query = `?staff_id=eq.${currentUser.id}&order=created_at.desc&limit=500&select=*,order_items(*),stores(name)`;
+      if (listTitleEl) listTitleEl.textContent = '我的訂單';
+    }
+    const orders = await sb.get('orders', query);
     allMyOrders = orders || [];
-    // 統計（排除已取消）：待處理=pending+submitted+partial / 作業中=processing / 已完成=shipped+done
     document.getElementById('statPending').textContent = allMyOrders.filter(o => o.status==='pending'||o.status==='submitted'||o.status==='partial').length;
     document.getElementById('statProcessing').textContent = allMyOrders.filter(o => o.status==='processing').length;
     document.getElementById('statShipped').textContent = allMyOrders.filter(o => o.status==='shipped'||o.status==='done').length;
@@ -2545,7 +2563,8 @@ function searchMyOrders(q) {
   const filtered = allMyOrders.filter(o =>
     o.receiver_name?.toLowerCase().includes(lower) || o.buyer_name?.toLowerCase().includes(lower) ||
     o.receiver_phone?.includes(q) || o.buyer_phone?.includes(q) ||
-    o.order_no?.toLowerCase().includes(lower) || o.tracking_number?.includes(q)
+    o.order_no?.toLowerCase().includes(lower) || o.tracking_number?.includes(q) ||
+    o.staff?.name?.toLowerCase().includes(lower) || o.stores?.name?.toLowerCase().includes(lower)
   );
   renderMyOrdersPage(filtered);
 }
@@ -2770,9 +2789,10 @@ function renderOrderList(orders, containerId) {
   el.innerHTML = orders.map(o => {
     const preview = (o.order_items||[]).map(i => `${isPreorderItem(i)?'⟨預⟩':''}${i.product_name} x${i.quantity}`).join('、');
     const cardBadge = (orderHasPreorder(o) ? PREORDER_BADGE_SM : '') + (orderHasNankan(o) ? NANKAN_BADGE_SM : '');
+    const staffTag = o.staff?.name ? ` <span style="font-size:12px;font-weight:600;color:var(--accent2);">・業務：${escHtml(o.staff.name)}</span>` : '';
     return `<div class="order-card ${o.status}" data-order-id="${o.id}" onclick="openOrderDetail('${o.id}')">
       <div class="order-card-top"><div class="order-no">${cardBadge} ${o.order_no}</div><span class="status-badge ${o.status}">${statusMap[o.status]||o.status}</span></div>
-      <div class="order-receiver">${escHtml(o.receiver_name)}</div>
+      <div class="order-receiver">${escHtml(o.receiver_name)}${staffTag}</div>
       <div class="order-meta">${escHtml(o.receiver_phone)} · ${escHtml(o.stores?.name||'')} · ${formatDate(o.created_at)}</div>
       ${orderSaleMetaHtml(o)}
       <div class="order-items-preview">${escHtml(preview)}</div>
