@@ -1014,7 +1014,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
 </div>
 
 <script>
-const APP_BUILD = 'e・場外業務修正';  // ← 只維護這個「版本代號」，日期會自動帶今天的台灣日期
+const APP_BUILD = 'f・排序改最新在上';  // ← 只維護這個「版本代號」，日期會自動帶今天的台灣日期
 // 顯示用版本號：自動今日台灣日期 + 手動版本代號
 function getAppVersion() {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
@@ -2511,17 +2511,17 @@ async function loadMyOrders() {
     let query;
     if (role === 'admin') {
       // 管理員：全部訂單
-      query = `?order=order_no.asc&limit=500&select=*,order_items(*),stores(name),staff(name)`;
+      query = `?order=order_no.desc&limit=500&select=*,order_items(*),stores(name),staff(name)`;
       if (listTitleEl) listTitleEl.textContent = '全部訂單';
     } else if (role === 'manager') {
       // 店長/督導：管轄門市的訂單
       const storeIds = await getManagerStoreIds(currentUser.id);
       const inFilter = storeIds.length ? `&store_id=in.(${storeIds.map(i=>`"${i}"`).join(',')})` : '&store_id=eq.__none__';
-      query = `?order=order_no.asc&limit=500${inFilter}&select=*,order_items(*),stores(name),staff(name)`;
+      query = `?order=order_no.desc&limit=500${inFilter}&select=*,order_items(*),stores(name),staff(name)`;
       if (listTitleEl) listTitleEl.textContent = '管轄門市訂單';
     } else {
       // 業務：只看自己的
-      query = `?staff_id=eq.${currentUser.id}&order=order_no.asc&limit=500&select=*,order_items(*),stores(name)`;
+      query = `?staff_id=eq.${currentUser.id}&order=order_no.desc&limit=500&select=*,order_items(*),stores(name)`;
       if (listTitleEl) listTitleEl.textContent = '我的訂單';
     }
     const orders = await sb.get('orders', query);
@@ -2620,7 +2620,7 @@ async function loadAdminOrdersByStores(storeIds) {
   try {
     const inFilter = storeIds.map(id => `"${id}"`).join(',');
     const orders = await sb.get('orders',
-      `?order=order_no.asc&limit=500&store_id=in.(${inFilter})&select=*,order_items(*),stores(name),staff(name,phone)`
+      `?order=order_no.desc&limit=500&store_id=in.(${inFilter})&select=*,order_items(*),stores(name),staff(name,phone)`
     );
     adminAllOrders = orders || [];
     renderAdminOrders();
@@ -3052,7 +3052,7 @@ async function loadAdminOrders(staffIdFilter, storeIdFilter) {
   showLoading(true);
   try {
     const filter = staffIdFilter ? `&staff_id=eq.${staffIdFilter}` : storeIdFilter ? `&store_id=eq.${storeIdFilter}` : '';
-    const orders = await sb.get('orders', `?order=order_no.asc&limit=500${filter}&select=*,order_items(*),stores(name,dept_code,warehouse_code),staff(name,phone)`);
+    const orders = await sb.get('orders', `?order=order_no.desc&limit=500${filter}&select=*,order_items(*),stores(name,dept_code,warehouse_code),staff(name,phone)`);
     adminAllOrders = orders || [];
     renderAdminOrders();
   } catch(e) { showToast('載入失敗', 'error'); }
@@ -5225,7 +5225,7 @@ async function openFieldOrderList() {
   showLoading(true);
   try {
     const role = currentUser?.role;
-    let filter = '?order=order_no.asc&limit=500&select=*,field_order_items(*),stores!store_id(name),staff(name)';
+    let filter = '?order=order_no.desc&limit=500&select=*,field_order_items(*),stores!store_id(name),staff(name)';
     if (role === 'admin') {}
     else if (role === 'manager') {
       const ids = await getManagerStoreIds(currentUser.id);
