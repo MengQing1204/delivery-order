@@ -1014,7 +1014,15 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
 </div>
 
 <script>
-const APP_VERSION = 'v2026/08/03 a・版本號日期更新';  // 格式：v年/月/日 版本序・說明。每次改版更新，方便確認是否載入最新版
+const APP_BUILD = 'e・場外業務修正';  // ← 只維護這個「版本代號」，日期會自動帶今天的台灣日期
+// 顯示用版本號：自動今日台灣日期 + 手動版本代號
+function getAppVersion() {
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return `${y}/${m}/${d}｜版本 ${APP_BUILD}`;
+}
 const SUPABASE_URL = 'https://tlrfxsmrjueaqiectroe.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRscmZ4c21yanVlYXFpZWN0cm9lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1MjI3MjksImV4cCI6MjA5MjA5ODcyOX0.buW3x8ZTNHgaB8ZK14xL-unLsTFrcTVJFm3xYqV18CA';
 const STOCK_QUERY_URL = 'https://tlrfxsmrjueaqiectroe.supabase.co/functions/v1/ibiza-stock-query';
@@ -1217,8 +1225,9 @@ const TW_DISTRICTS = {
 
 window.addEventListener('DOMContentLoaded', async () => {
   // 顯示版本號（登入頁 + 首頁），方便確認是否載入最新版
-  const _vl = document.getElementById('appVersionLabel'); if (_vl) _vl.textContent = APP_VERSION;
-  const _hvl = document.getElementById('homeVersionLabel'); if (_hvl) _hvl.textContent = APP_VERSION;
+  const _ver = getAppVersion();
+  const _vl = document.getElementById('appVersionLabel'); if (_vl) _vl.textContent = _ver;
+  const _hvl = document.getElementById('homeVersionLabel'); if (_hvl) _hvl.textContent = _ver;
   const params = new URLSearchParams(location.search);
   const token = params.get('token');
   if (token) { return loadPublicOrder(token); }
