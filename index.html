@@ -1014,7 +1014,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
 </div>
 
 <script>
-const APP_BUILD = 'i・訂單拆分功能';  // ← 只維護這個「版本代號」，日期會自動帶今天的台灣日期
+const APP_BUILD = 'k・拆單手動填單號';  // ← 只維護這個「版本代號」，日期會自動帶今天的台灣日期
 // 顯示用版本號：自動今日台灣日期 + 手動版本代號
 function getAppVersion() {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
@@ -3475,7 +3475,9 @@ function openSplitOrder(orderId) {
       <div style="font-size:13px;font-weight:700;margin-bottom:8px;">① 勾選移到新單的品項</div>
       ${itemRows}
       <div style="font-size:11px;color:var(--text2);margin-bottom:16px;">※ 至少留 1 項在原單、至少移 1 項到新單</div>
-      <div style="font-size:13px;font-weight:700;margin-bottom:8px;">② 新單收件資訊（另一個地址）</div>
+      <div style="font-size:13px;font-weight:700;margin-bottom:8px;">② 新單號（鼎新銷貨單號，手動填）</div>
+      <input id="splitOrderNo" placeholder="例：1203-26080300032" style="width:100%;box-sizing:border-box;border:1.5px solid var(--border);border-radius:8px;padding:10px;font-size:14px;font-family:'DM Mono',monospace;margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:700;margin-bottom:8px;">③ 新單收件資訊（另一個地址）</div>
       <input id="splitName" value="${escHtml(o.receiver_name||'')}" placeholder="收件人姓名" style="width:100%;box-sizing:border-box;border:1.5px solid var(--border);border-radius:8px;padding:10px;font-size:14px;margin-bottom:8px;">
       <input id="splitPhone" value="${escHtml(o.receiver_phone||'')}" placeholder="收件人電話" inputmode="numeric" style="width:100%;box-sizing:border-box;border:1.5px solid var(--border);border-radius:8px;padding:10px;font-size:14px;margin-bottom:8px;">
       <textarea id="splitAddress" placeholder="新收件地址" style="width:100%;box-sizing:border-box;border:1.5px solid var(--border);border-radius:8px;padding:10px;font-size:14px;min-height:60px;font-family:inherit;margin-bottom:16px;">${escHtml(o.receiver_address||'')}</textarea>
@@ -3499,16 +3501,16 @@ async function doSplitOrder(orderId) {
   const newName = document.getElementById('splitName')?.value.trim();
   const newPhone = document.getElementById('splitPhone')?.value.trim();
   const newAddr = document.getElementById('splitAddress')?.value.trim();
+  const newNo = document.getElementById('splitOrderNo')?.value.trim();
+  if (!newNo) { showToast('請填新單號', 'error'); return; }
   if (!newName || !newPhone || !newAddr) { showToast('請填新單的收件人、電話、地址', 'error'); return; }
   const moveItems = allItems.filter(it => checkedIds.includes(String(it.id)));
   showLoading(true);
   try {
-    let finalNo = `${o.order_no}-1`, n = 1;
-    while (true) {
-      const dup = await sb.get('orders', `?order_no=eq.${encodeURIComponent(finalNo)}&select=id&limit=1`);
-      if (!dup?.length) break;
-      n++; finalNo = `${o.order_no}-${n}`;
-    }
+    // 檢查新單號是否已存在
+    const dup = await sb.get('orders', `?order_no=eq.${encodeURIComponent(newNo)}&select=id&limit=1`);
+    if (dup?.length) { showLoading(false); showToast('此單號已存在，請換一個', 'error'); return; }
+    const finalNo = newNo;
     const newOrder = {
       order_no: finalNo, sale_date: o.sale_date, delivery_date: o.delivery_date,
       store_id: o.store_id, staff_id: o.staff_id,
@@ -3531,6 +3533,10 @@ async function doSplitOrder(orderId) {
       });
     }
     await logAdminAction('split_order', 'order', orderId, o.order_no, `拆分出新單 ${finalNo}（移動 ${moveItems.length} 項到新地址：${newName}／${newAddr}）`);
+    // 重算原單 is_preorder：移走品項後，原單剩的品項若沒有預購，就改回非預購
+    const remainItems = allItems.filter(it => !checkedIds.includes(String(it.id)));
+    const remainHasPreorder = remainItems.some(isPreorderItem);
+    await sb.patch('orders', orderId, { is_preorder: remainHasPreorder, updated_at: new Date().toISOString() });
     showLoading(false);
     document.getElementById('splitOrderModal')?.remove();
     showToast(`✅ 已拆分，新單：${finalNo}`, 'success');
