@@ -1014,7 +1014,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
 </div>
 
 <script>
-const APP_BUILD = 'h・店長兼業務看得到自己的單';  // ← 只維護這個「版本代號」，日期會自動帶今天的台灣日期
+const APP_BUILD = 'i・訂單拆分功能';  // ← 只維護這個「版本代號」，日期會自動帶今天的台灣日期
 // 顯示用版本號：自動今日台灣日期 + 手動版本代號
 function getAppVersion() {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
@@ -2739,6 +2739,7 @@ const ADMIN_ACTION_LABEL = {
   edit_order: { label: '改訂單內容', icon: '✏️', color: '#3A6EA5' },
   cancel_order: { label: '取消訂單', icon: '🚫', color: '#B5504A' },
   restore_order: { label: '復原訂單', icon: '♻️', color: '#3E7C5A' },
+  split_order: { label: '拆分訂單', icon: '✂️', color: '#7A5FA0' },
   delete_order: { label: '刪除訂單', icon: '🗑', color: '#B5504A' },
   edit_field_order: { label: '改場外單', icon: '✏️', color: '#3A6EA5' },
   delete_field_order: { label: '刪除場外單', icon: '🗑', color: '#B5504A' }
@@ -2887,6 +2888,7 @@ function renderDetail(o, containerId, isPublic) {
         ${o.status==='pending'?`<button class="btn-status process" onclick="openEditOrder('${o.id}')">✏️ 修改訂單</button>`:''}
         ${(o.status!=='cancelled'&&o.status!=='shipped')?`<button class="btn-status cancel" onclick="showCancelModal('${o.id}')">❌ 取消訂單</button>`:''}
         ${(o.status==='cancelled' && currentUser?.role==='admin')?`<button class="btn-status ship" style="background:#3E7C5A;color:#fff;" onclick="restoreOrder('${o.id}')">♻️ 復原訂單</button>`:''}
+        ${(currentUser?.role==='admin' && (o.order_items||[]).length > 1 && o.status!=='cancelled')?`<button class="btn-status process" style="background:#7A5FA0;color:#fff;" onclick="openSplitOrder('${o.id}')">✂️ 拆分訂單</button>`:''}
         <button class="btn-status cancel" style="background:#1a1a18;color:#fff;" onclick="deleteOrder('${o.id}')">🗑️ 刪除訂單</button>
       </div>
       ${o.cancel_reason?`<div style="margin-top:10px;padding:8px 10px;background:var(--danger-light);border-radius:6px;font-size:13px;color:var(--danger);">取消原因：${escHtml(o.cancel_reason)}</div>`:''}
@@ -3441,6 +3443,100 @@ async function savePosInfo(orderId) {
     await openOrderDetail(orderId);
     loadAdminOrders();
   } catch(e) { showLoading(false); showToast('修改失敗：' + e.message, 'error'); }
+}
+
+// ✂️ 拆分訂單：勾選品項移到新單（原單號-1）、填新收件地址
+function openSplitOrder(orderId) {
+  if (currentUser?.role !== 'admin') { showToast('只有管理員可拆分訂單', 'error'); return; }
+  const o = (typeof adminAllOrders !== 'undefined' ? adminAllOrders : []).find(x => x.id === orderId)
+         || (typeof allMyOrders !== 'undefined' ? allMyOrders : []).find(x => x.id === orderId);
+  if (!o) { showToast('找不到訂單', 'error'); return; }
+  const items = o.order_items || [];
+  if (items.length < 2) { showToast('單項訂單無法拆分', 'error'); return; }
+  const itemRows = items.map((it) => `
+    <label style="display:flex;align-items:center;gap:10px;padding:12px;border:1.5px solid var(--border);border-radius:10px;margin-bottom:8px;cursor:pointer;">
+      <input type="checkbox" class="split-item-chk" data-item-id="${it.id}" style="width:20px;height:20px;accent-color:var(--accent);flex-shrink:0;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:14px;font-weight:700;">${escHtml(it.product_name)} x${it.quantity}</div>
+        <div style="font-size:12px;color:var(--text2);font-family:'DM Mono',monospace;">${escHtml(it.sku||'')}${isPreorderItem(it)?' ・預購':''}${isNankanItem(it)?' ・南崁':''}</div>
+      </div>
+    </label>`).join('');
+  document.getElementById('splitOrderModal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'splitOrderModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:100000;display:flex;align-items:center;justify-content:center;padding:16px;';
+  modal.innerHTML = `
+    <div style="background:var(--surface);border-radius:16px;padding:20px;width:100%;max-width:440px;max-height:88vh;overflow-y:auto;box-shadow:0 12px 48px rgba(0,0,0,0.3);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <div style="font-size:17px;font-weight:800;">✂️ 拆分訂單</div>
+        <button onclick="document.getElementById('splitOrderModal').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text2);">✕</button>
+      </div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:14px;">原單：${escHtml(o.order_no)}　勾選要「移到新單」的品項，填新地址</div>
+      <div style="font-size:13px;font-weight:700;margin-bottom:8px;">① 勾選移到新單的品項</div>
+      ${itemRows}
+      <div style="font-size:11px;color:var(--text2);margin-bottom:16px;">※ 至少留 1 項在原單、至少移 1 項到新單</div>
+      <div style="font-size:13px;font-weight:700;margin-bottom:8px;">② 新單收件資訊（另一個地址）</div>
+      <input id="splitName" value="${escHtml(o.receiver_name||'')}" placeholder="收件人姓名" style="width:100%;box-sizing:border-box;border:1.5px solid var(--border);border-radius:8px;padding:10px;font-size:14px;margin-bottom:8px;">
+      <input id="splitPhone" value="${escHtml(o.receiver_phone||'')}" placeholder="收件人電話" inputmode="numeric" style="width:100%;box-sizing:border-box;border:1.5px solid var(--border);border-radius:8px;padding:10px;font-size:14px;margin-bottom:8px;">
+      <textarea id="splitAddress" placeholder="新收件地址" style="width:100%;box-sizing:border-box;border:1.5px solid var(--border);border-radius:8px;padding:10px;font-size:14px;min-height:60px;font-family:inherit;margin-bottom:16px;">${escHtml(o.receiver_address||'')}</textarea>
+      <div style="background:#FBF2E9;border:1px solid #E0A042;border-radius:8px;padding:10px;font-size:12px;color:#8a5a1a;line-height:1.5;margin-bottom:16px;">
+        ⚠️ 若原單已拋單，拆分後新單為全新訂單需另外處理，原單的 WMS 資料請自行至 WMS 調整。
+      </div>
+      <button onclick="doSplitOrder('${orderId}')" style="width:100%;padding:13px;background:#7A5FA0;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;">確認拆分</button>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+}
+
+async function doSplitOrder(orderId) {
+  const o = (typeof adminAllOrders !== 'undefined' ? adminAllOrders : []).find(x => x.id === orderId)
+         || (typeof allMyOrders !== 'undefined' ? allMyOrders : []).find(x => x.id === orderId);
+  if (!o) { showToast('找不到訂單', 'error'); return; }
+  const checkedIds = [...document.querySelectorAll('.split-item-chk:checked')].map(c => c.dataset.itemId);
+  const allItems = o.order_items || [];
+  if (!checkedIds.length) { showToast('請至少勾選 1 項移到新單', 'error'); return; }
+  if (checkedIds.length >= allItems.length) { showToast('至少要留 1 項在原單', 'error'); return; }
+  const newName = document.getElementById('splitName')?.value.trim();
+  const newPhone = document.getElementById('splitPhone')?.value.trim();
+  const newAddr = document.getElementById('splitAddress')?.value.trim();
+  if (!newName || !newPhone || !newAddr) { showToast('請填新單的收件人、電話、地址', 'error'); return; }
+  const moveItems = allItems.filter(it => checkedIds.includes(String(it.id)));
+  showLoading(true);
+  try {
+    let finalNo = `${o.order_no}-1`, n = 1;
+    while (true) {
+      const dup = await sb.get('orders', `?order_no=eq.${encodeURIComponent(finalNo)}&select=id&limit=1`);
+      if (!dup?.length) break;
+      n++; finalNo = `${o.order_no}-${n}`;
+    }
+    const newOrder = {
+      order_no: finalNo, sale_date: o.sale_date, delivery_date: o.delivery_date,
+      store_id: o.store_id, staff_id: o.staff_id,
+      receiver_name: newName, receiver_phone: newPhone, receiver_address: newAddr,
+      buyer_name: o.buyer_name, buyer_phone: o.buyer_phone,
+      pos_no: o.pos_no, pos_terminal: o.pos_terminal,
+      status: 'pending', is_preorder: moveItems.some(isPreorderItem),
+      note: `（由 ${o.order_no} 拆分）${o.note||''}`,
+      created_at: new Date().toISOString()
+    };
+    const created = await sb.post('orders', newOrder);
+    const newId = Array.isArray(created) ? created[0].id : created.id;
+    for (const it of moveItems) {
+      await sb.post('order_items', {
+        order_id: newId, sku: it.sku, product_name: it.product_name,
+        quantity: it.quantity, fulfill_source: it.fulfill_source, item_type: it.item_type
+      });
+      await fetch(`${SUPABASE_URL}/rest/v1/order_items?id=eq.${it.id}`, {
+        method: 'DELETE', headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+      });
+    }
+    await logAdminAction('split_order', 'order', orderId, o.order_no, `拆分出新單 ${finalNo}（移動 ${moveItems.length} 項到新地址：${newName}／${newAddr}）`);
+    showLoading(false);
+    document.getElementById('splitOrderModal')?.remove();
+    showToast(`✅ 已拆分，新單：${finalNo}`, 'success');
+    loadAdminOrders(); loadMyOrders();
+    showScreen((currentUser?.role==='admin'||currentUser?.role==='manager')?'adminScreen':'mainScreen');
+  } catch(e) { showLoading(false); showToast('拆分失敗：' + e.message, 'error'); }
 }
 
 async function restoreOrder(orderId) {
