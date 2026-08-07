@@ -945,7 +945,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
   <div class="admin-tabs">
     <button class="admin-tab active" onclick="setAdminTab('all',this)">全部</button>
     <button class="admin-tab" onclick="setAdminTab('pending',this)">待處理</button>
-    <button class="admin-tab" onclick="setAdminTab('nankan_preorder',this)">🍷南崁預購</button>
+    <button class="admin-tab" onclick="setAdminTab('nankan',this)">🍷南崁倉</button>
     <button class="admin-tab" onclick="setAdminTab('partial',this)">部分已拋</button>
     <button class="admin-tab" onclick="setAdminTab('submitted',this)">已拋單</button>
     <button class="admin-tab" onclick="setAdminTab('processing',this)">作業中</button>
@@ -1014,7 +1014,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
 </div>
 
 <script>
-const APP_BUILD = 'k・拆單手動填單號';  // ← 只維護這個「版本代號」，日期會自動帶今天的台灣日期
+const APP_BUILD = 'l・南崁預購改南崁倉';  // ← 只維護這個「版本代號」，日期會自動帶今天的台灣日期
 // 顯示用版本號：自動今日台灣日期 + 手動版本代號
 function getAppVersion() {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
@@ -3077,19 +3077,19 @@ function setAdminTab(tab, el) {
   renderAdminOrders();
 }
 
-// 判斷是否為「南崁預購」單：同時含南崁品 且 為預購
-function isNankanPreorder(o) {
-  return orderHasNankan(o) && orderHasPreorder(o);
+// 判斷是否為「南崁倉」單：含南崁品（不分預購/現貨，因為出貨倉別才是重點）
+function isNankanOrder(o) {
+  return orderHasNankan(o);
 }
 
 function renderAdminOrders() {
   let base = adminAllOrders.filter(o => o?.id);
   // 分頁篩選
-  if (adminCurrentTab === 'nankan_preorder') {
-    base = base.filter(o => isNankanPreorder(o) && o.status !== 'cancelled');
+  if (adminCurrentTab === 'nankan') {
+    base = base.filter(o => isNankanOrder(o) && o.status !== 'cancelled');
   } else if (adminCurrentTab === 'pending') {
-    // 待處理排除南崁預購（它們獨立在南崁預購分頁處理）
-    base = base.filter(o => o.status === 'pending' && !isNankanPreorder(o));
+    // 待處理排除南崁單（它們獨立在南崁倉分頁處理）
+    base = base.filter(o => o.status === 'pending' && !isNankanOrder(o));
   } else if (adminCurrentTab !== 'all') {
     base = base.filter(o => o.status === adminCurrentTab);
   }
@@ -3106,7 +3106,7 @@ function renderAdminOrders() {
   ) : base;
   const el = document.getElementById('adminOrdersList');
   if (!filtered?.length) {
-    const emptyMsg = q ? `找不到「${escHtml(q)}」的訂單` : (adminCurrentTab==='nankan_preorder' ? '目前沒有南崁預購單' : '尚無訂單');
+    const emptyMsg = q ? `找不到「${escHtml(q)}」的訂單` : (adminCurrentTab==='nankan' ? '目前沒有南崁倉訂單' : '尚無訂單');
     el.innerHTML = `<div class="empty-state"><div class="icon">📋</div><p>${emptyMsg}</p></div>`;
     return;
   }
