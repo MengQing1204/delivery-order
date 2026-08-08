@@ -1014,7 +1014,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
 </div>
 
 <script>
-const APP_BUILD = 'm・場外單業務看得到託運碼';  // ← 只維護這個「版本代號」，日期會自動帶今天的台灣日期
+const APP_BUILD = 'n・場外單託運碼可查件';  // ← 只維護這個「版本代號」，日期會自動帶今天的台灣日期
 // 顯示用版本號：自動今日台灣日期 + 手動版本代號
 function getAppVersion() {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
@@ -5388,7 +5388,10 @@ function renderFieldOrders(list) {
         } else if (i.ship_type === 'delivery' || i.ship_type === 'wms' || i.ship_type === 'nankan') {
           const wh = i.actual_warehouse === 'wms' ? '委外/新竹' : i.actual_warehouse === 'nankan' ? '南崁/黑貓' : '未分倉';
           shipNote = `<span style="color:#8B2A3A;">🚚 宅配（${wh}）</span>`;
-          if (i.tracking_no) shipNote += `<br><span style="color:#3A6EA5;font-size:12px;font-family:'DM Mono',monospace;">📦 ${escHtml(i.tracking_no)}</span>`;
+          if (i.tracking_no) {
+            const fn = i.actual_warehouse === 'nankan' ? 'openTCATTracking' : 'openHCTTracking';
+            shipNote += `<br><span onclick="event.stopPropagation();${fn}('${escHtml(i.tracking_no)}')" style="color:#3A6EA5;font-size:12px;font-family:'DM Mono',monospace;text-decoration:underline;cursor:pointer;">📦 ${escHtml(i.tracking_no)} 🔍</span>`;
+          }
         } else {
           shipNote = `<span style="color:var(--text2);">${ship}</span>`;
         }
@@ -5440,9 +5443,10 @@ function renderFieldOrders(list) {
       } else if (i.ship_type==='delivery'||i.ship_type==='wms'||i.ship_type==='nankan') {
         const courier = i.actual_warehouse === 'nankan' ? '黑貓' : i.actual_warehouse === 'wms' ? '新竹' : '';
         note = ` <span style="color:#8B2A3A;">🚚宅配${courier?'（'+courier+'）':''}</span>`;
-        // 有託運碼就顯示，讓業務也查得到貨態
+        // 託運碼可點擊查件（黑貓→黑貓官網 / 新竹→新竹系統，邏輯同宅配訂單）
         if (i.tracking_no) {
-          note += `<br><span style="color:#3A6EA5;font-size:12px;font-family:'DM Mono',monospace;">📦 託運碼：${escHtml(i.tracking_no)}</span>`;
+          const fn = i.actual_warehouse === 'nankan' ? 'openTCATTracking' : 'openHCTTracking';
+          note += `<br><span onclick="event.stopPropagation();${fn}('${escHtml(i.tracking_no)}')" style="color:#3A6EA5;font-size:12px;font-family:'DM Mono',monospace;text-decoration:underline;cursor:pointer;">📦 ${escHtml(i.tracking_no)} 🔍查件</span>`;
         }
       } else {
         note = ` <span style="color:var(--text2);">${shipMapS[i.ship_type]||''}</span>`;
