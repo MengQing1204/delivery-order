@@ -1013,7 +1013,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
 </div>
 
 <script>
-const APP_BUILD = 'v・登入查詢改left join避免空結果卡舊role';  // ← 只維護這個「版本代號」，日期會自動帶今天的台灣日期
+const APP_BUILD = 'w・修復登入查詢語法';  // ← 只維護這個「版本代號」，日期會自動帶今天的台灣日期
 // 顯示用版本號：自動今日台灣日期 + 手動版本代號
 function getAppVersion() {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
@@ -1238,7 +1238,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       let u = u0;
       if (u0?.phone) {
         try {
-          const rows = await sb.get('staff', `?phone=eq.${encodeURIComponent(u0.phone)}&is_active=eq.true&select=*,stores!left(name)`);
+          const rows = await sb.get('staff', `?phone=eq.${encodeURIComponent(u0.phone)}&is_active=eq.true&select=*,stores(name)`);
           if (rows && rows.length) {
             u = rows[0];
             localStorage.setItem('delivery_user', JSON.stringify(u));
@@ -1263,7 +1263,7 @@ async function doLogin() {
   if (!phone || !password) return;
   showLoading(true);
   try {
-    const rows = await sb.get('staff', `?phone=eq.${encodeURIComponent(phone)}&is_active=eq.true&select=*,stores!left(name)`);
+    const rows = await sb.get('staff', `?phone=eq.${encodeURIComponent(phone)}&is_active=eq.true&select=*,stores(name)`);
     if (!rows || rows.length === 0 || rows[0].password !== password) {
       document.getElementById('loginError').style.display = 'block';
       showLoading(false); return;
