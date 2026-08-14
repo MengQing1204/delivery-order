@@ -1014,7 +1014,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
 </div>
 
 <script>
-const APP_BUILD = 'p・場外單督導可見自己開的單';  // ← 只維護這個「版本代號」，日期會自動帶今天的台灣日期
+const APP_BUILD = 'q・修正 or 查詢 UUID 引號';  // ← 只維護這個「版本代號」，日期會自動帶今天的台灣日期
 // 顯示用版本號：自動今日台灣日期 + 手動版本代號
 function getAppVersion() {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
@@ -1629,7 +1629,7 @@ async function lookupCustomerByPhone(phone) {
     } else if (role === 'manager') {
       const storeIds = await getManagerStoreIds(currentUser.id);
       if (!storeIds.length) return;
-      filter += `&store_id=in.(${storeIds.map(id=>`"${id}"`).join(',')})`;
+      filter += `&store_id=in.(${storeIds.map(id=>id).join(',')})`;
     } else {
       // 一般業務：只查自己經手
       if (!currentUser?.id) return;
@@ -1707,7 +1707,7 @@ async function initCustomerBook() {
         if (hintEl) hintEl.textContent = '⚠️ 帳號未設定管轄門市，請洽管理員';
         custAllRecords = []; renderCustomerList(custAllRecords); return;
       }
-      filter += `&store_id=in.(${storeIds.map(id=>`"${id}"`).join(',')})`;
+      filter += `&store_id=in.(${storeIds.map(id=>id).join(',')})`;
       if (hintEl) hintEl.textContent = '📌 顯示管轄門市客戶';
     } else {
       // 一般業務：只看自己經手的客戶（比照訂單管理用 staff_id）
@@ -1938,7 +1938,7 @@ async function loadHomeBadges() {
   else if (role === 'manager') {
     const ids = await getManagerStoreIds(currentUser.id);
     const orConds = [];
-    if (ids.length) orConds.push(`store_id.in.(${ids.map(i=>`"${i}"`).join(',')})`);
+    if (ids.length) orConds.push(`store_id.in.(${ids.map(i=>i).join(',')})`);
     orConds.push(`staff_id.eq.${currentUser.id}`);
     scope = `&or=(${orConds.join(',')})`;
   } else { scope = `&staff_id=eq.${currentUser.id}`; }
@@ -2520,7 +2520,7 @@ async function loadMyOrders() {
       // 店長/督導：管轄門市的訂單 + 自己開的單（兼業務時不漏單）
       const storeIds = await getManagerStoreIds(currentUser.id);
       const orConds = [];
-      if (storeIds.length) orConds.push(`store_id.in.(${storeIds.map(i=>`"${i}"`).join(',')})`);
+      if (storeIds.length) orConds.push(`store_id.in.(${storeIds.map(i=>i).join(',')})`);
       orConds.push(`staff_id.eq.${currentUser.id}`);
       const orFilter = `&or=(${orConds.join(',')})`;
       query = `?order=order_no.desc&limit=500${orFilter}&select=*,order_items(*),stores(name),staff(name)`;
@@ -2624,7 +2624,7 @@ async function loadAdminOrdersByStores(storeIds) {
   showLoading(true);
   try {
     const orConds = [];
-    if (storeIds?.length) orConds.push(`store_id.in.(${storeIds.map(id => `"${id}"`).join(',')})`);
+    if (storeIds?.length) orConds.push(`store_id.in.(${storeIds.map(id => id).join(',')})`);
     // 店長兼業務：也看得到自己開的單
     if (currentUser?.role === 'manager') orConds.push(`staff_id.eq.${currentUser.id}`);
     if (!orConds.length) { adminAllOrders = []; renderAdminOrders(); showLoading(false); return; }
@@ -5342,7 +5342,7 @@ async function openFieldOrderList() {
       // 店長/督導：管轄門市的單 + 自己開的單（兼業務時不漏單，比照宅配訂單）
       const ids = await getManagerStoreIds(currentUser.id);
       const orConds = [];
-      if (ids.length) orConds.push(`store_id.in.(${ids.map(i=>`"${i}"`).join(',')})`);
+      if (ids.length) orConds.push(`store_id.in.(${ids.map(i=>i).join(',')})`);
       orConds.push(`staff_id.eq.${currentUser.id}`);
       filter += `&or=(${orConds.join(',')})`;
     } else { filter += `&staff_id=eq.${currentUser.id}`; }
