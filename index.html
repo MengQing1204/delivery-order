@@ -1013,7 +1013,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
 </div>
 
 <script>
-const APP_BUILD = 't・門市改後台即時反映不卡舊值';  // ← 只維護這個「版本代號」，日期會自動帶今天的台灣日期
+const APP_BUILD = 'u・自動登入重查DB確保role門市最新';  // ← 只維護這個「版本代號」，日期會自動帶今天的台灣日期
 // 顯示用版本號：自動今日台灣日期 + 手動版本代號
 function getAppVersion() {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
@@ -1232,7 +1232,21 @@ window.addEventListener('DOMContentLoaded', async () => {
   if (token) { return loadPublicOrder(token); }
   const saved = localStorage.getItem('delivery_user');
   if (saved) {
-    try { const u = JSON.parse(saved); await loginWithData(u); }
+    try {
+      const u0 = JSON.parse(saved);
+      // 自動登入時用電話重查資料庫，確保 role / 門市為最新（後台改過會即時反映）
+      let u = u0;
+      if (u0?.phone) {
+        try {
+          const rows = await sb.get('staff', `?phone=eq.${encodeURIComponent(u0.phone)}&is_active=eq.true&select=*,stores!store_id(name)`);
+          if (rows && rows.length) {
+            u = rows[0];
+            localStorage.setItem('delivery_user', JSON.stringify(u));
+          }
+        } catch(_) { /* 離線或查詢失敗 → 沿用舊快取 */ }
+      }
+      await loginWithData(u);
+    }
     catch(e) { localStorage.removeItem('delivery_user'); }
   }
 });
