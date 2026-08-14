@@ -1014,7 +1014,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
 </div>
 
 <script>
-const APP_BUILD = 'o・管理員可改備註';  // ← 只維護這個「版本代號」，日期會自動帶今天的台灣日期
+const APP_BUILD = 'p・場外單督導兼業務不漏單';  // ← 只維護這個「版本代號」，日期會自動帶今天的台灣日期
 // 顯示用版本號：自動今日台灣日期 + 手動版本代號
 function getAppVersion() {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
@@ -5373,8 +5373,12 @@ async function openFieldOrderList() {
     let filter = '?order=order_no.desc&limit=500&select=*,field_order_items(*),stores!store_id(name),staff(name)';
     if (role === 'admin') {}
     else if (role === 'manager') {
+      // 店長/督導：管轄門市的單 + 自己開的單（兼業務時不漏單）
       const ids = await getManagerStoreIds(currentUser.id);
-      if (ids.length) filter += `&store_id=in.(${ids.map(i=>`"${i}"`).join(',')})`;
+      const orConds = [];
+      if (ids.length) orConds.push(`store_id.in.(${ids.map(i=>`"${i}"`).join(',')})`);
+      orConds.push(`staff_id.eq.${currentUser.id}`);
+      filter += `&or=(${orConds.join(',')})`;
     } else { filter += `&staff_id=eq.${currentUser.id}`; }
     foAllOrders = await sb.get('field_orders', filter) || [];
     foApplyFilter();
