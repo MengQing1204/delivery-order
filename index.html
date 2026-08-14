@@ -1013,7 +1013,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
 </div>
 
 <script>
-const APP_BUILD = 's・移除我的訂單頁固定門市標籤';  // ← 只維護這個「版本代號」，日期會自動帶今天的台灣日期
+const APP_BUILD = 't・門市改後台即時反映不卡舊值';  // ← 只維護這個「版本代號」，日期會自動帶今天的台灣日期
 // 顯示用版本號：自動今日台灣日期 + 手動版本代號
 function getAppVersion() {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
@@ -1369,10 +1369,19 @@ async function initStaffStoreSelect() {
       wrap.innerHTML = `<div class="store-tag" id="headerStore">${currentStore?.name || '門市'}</div>`;
       return;
     }
-    // 記住上次選的門市（localStorage），否則用登入帶的預設門市
+    // 預設門市邏輯：尊重業務手動切換，但後台改動帳號預設門市時強制更新一次
+    // 記錄「上次登入時的帳號預設門市」，用來偵測後台是否改過
+    const acctDefault = currentUser?.default_store_id || currentUser?.store_id || '';
+    const lastAcct = localStorage.getItem('staff_acct_default');
+    if (acctDefault && acctDefault !== lastAcct) {
+      // 後台改了帳號預設門市（或首次登入）→ 以新門市為準，清掉手動記憶
+      localStorage.setItem('staff_current_store', acctDefault);
+      localStorage.setItem('staff_acct_default', acctDefault);
+    }
     const saved = localStorage.getItem('staff_current_store');
-    let activeId = currentStore?.id || '';
+    let activeId = '';
     if (saved && stores.some(s => s.id === saved)) activeId = saved;
+    if (!activeId && acctDefault && stores.some(s => s.id === acctDefault)) activeId = acctDefault;
     if (!activeId) activeId = stores[0].id;
     const activeName = stores.find(s => s.id === activeId)?.name || '門市';
     currentStore = { id: activeId, name: activeName };
