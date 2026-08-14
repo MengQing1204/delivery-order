@@ -778,7 +778,6 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
       <div class="greeting">👋 歡迎回來</div>
     </div>
     <div class="name" id="mainHeaderName"></div>
-    <div class="store-tag" id="mainHeaderStore">門市</div>
   </div>
   <div class="stats-row">
     <div class="stat-card accent" onclick="filterMyOrdersByStat('pending')" style="cursor:pointer;"><div class="num" id="statPending">0</div><div class="label">待處理</div></div>
@@ -1014,7 +1013,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
 </div>
 
 <script>
-const APP_BUILD = 'r・業務可自選門市免改後台';  // ← 只維護這個「版本代號」，日期會自動帶今天的台灣日期
+const APP_BUILD = 's・移除我的訂單頁固定門市標籤';  // ← 只維護這個「版本代號」，日期會自動帶今天的台灣日期
 // 顯示用版本號：自動今日台灣日期 + 手動版本代號
 function getAppVersion() {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
@@ -2546,8 +2545,6 @@ async function loadMyOrders() {
   // 顯示姓名
   const nameEl = document.getElementById('mainHeaderName');
   if (nameEl) nameEl.textContent = currentUser.name || currentUser.phone || '';
-  const storeEl = document.getElementById('mainHeaderStore');
-  if (storeEl && currentUser.store_name) storeEl.textContent = currentUser.store_name;
   // 「我的訂單」標題依角色調整
   const listTitleEl = document.getElementById('myOrdersTitle');
   const role = currentUser.role;
