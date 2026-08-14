@@ -5336,7 +5336,7 @@ async function openFieldOrderList() {
   showLoading(true);
   try {
     const role = currentUser?.role;
-    let filter = '?order=order_no.desc&limit=500&select=*,field_order_items(*),stores!store_id(name),staff(name)';
+    let filter = '?order=order_no.desc&limit=500&select=*,field_order_items(*),stores!left(name),staff!left(name)';
     if (role === 'admin') {}
     else if (role === 'manager') {
       const ids = await getManagerStoreIds(currentUser.id);
