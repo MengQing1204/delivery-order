@@ -778,6 +778,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
       <div class="greeting">👋 歡迎回來</div>
     </div>
     <div class="name" id="mainHeaderName"></div>
+    <div class="store-tag" id="mainHeaderStore">門市</div>
   </div>
   <div class="stats-row">
     <div class="stat-card accent" onclick="filterMyOrdersByStat('pending')" style="cursor:pointer;"><div class="num" id="statPending">0</div><div class="label">待處理</div></div>
@@ -1013,7 +1014,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
 </div>
 
 <script>
-const APP_BUILD = 'w・修復登入查詢語法';  // ← 只維護這個「版本代號」，日期會自動帶今天的台灣日期
+const APP_BUILD = 'o・管理員可改備註';  // ← 只維護這個「版本代號」，日期會自動帶今天的台灣日期
 // 顯示用版本號：自動今日台灣日期 + 手動版本代號
 function getAppVersion() {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
@@ -1232,21 +1233,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   if (token) { return loadPublicOrder(token); }
   const saved = localStorage.getItem('delivery_user');
   if (saved) {
-    try {
-      const u0 = JSON.parse(saved);
-      // 自動登入時用電話重查資料庫，確保 role / 門市為最新（後台改過會即時反映）
-      let u = u0;
-      if (u0?.phone) {
-        try {
-          const rows = await sb.get('staff', `?phone=eq.${encodeURIComponent(u0.phone)}&is_active=eq.true&select=*,stores(name)`);
-          if (rows && rows.length) {
-            u = rows[0];
-            localStorage.setItem('delivery_user', JSON.stringify(u));
-          }
-        } catch(_) { /* 離線或查詢失敗 → 沿用舊快取 */ }
-      }
-      await loginWithData(u);
-    }
+    try { const u = JSON.parse(saved); await loginWithData(u); }
     catch(e) { localStorage.removeItem('delivery_user'); }
   }
 });
@@ -1263,7 +1250,7 @@ async function doLogin() {
   if (!phone || !password) return;
   showLoading(true);
   try {
-    const rows = await sb.get('staff', `?phone=eq.${encodeURIComponent(phone)}&is_active=eq.true&select=*,stores(name)`);
+    const rows = await sb.get('staff', `?phone=eq.${encodeURIComponent(phone)}&is_active=eq.true&select=*,stores!store_id(name)`);
     if (!rows || rows.length === 0 || rows[0].password !== password) {
       document.getElementById('loginError').style.display = 'block';
       showLoading(false); return;
@@ -1296,7 +1283,7 @@ async function loginWithData(u) {
   if (currentUser?.role === 'manager') {
     await initStoreSwitcher();
   } else {
-    await initStaffStoreSelect();
+    if (wrap) wrap.innerHTML = `<div class="store-tag" id="headerStore">${currentStore?.name || '門市'}</div>`;
   }
   if (currentUser?.role === 'admin') {
     showScreen('adminScreen');
@@ -1371,56 +1358,6 @@ function onStoreSwitcher(storeId, storeName) {
   // 直接跳到該門市的訂單管理
   showScreen('adminScreen');
   loadAdminOrders(null, storeId);
-}
-
-// ── 一般業務：門市下拉切換（全門市開放自選，記住上次選擇）──
-async function initStaffStoreSelect() {
-  const wrap = document.getElementById('storeSwitcherWrap');
-  if (!wrap) return;
-  try {
-    const stores = await sb.get('stores', '?is_active=eq.true&order=name.asc&select=id,name');
-    if (!stores?.length) {
-      wrap.innerHTML = `<div class="store-tag" id="headerStore">${currentStore?.name || '門市'}</div>`;
-      return;
-    }
-    // 預設門市邏輯：尊重業務手動切換，但後台改動帳號預設門市時強制更新一次
-    // 記錄「上次登入時的帳號預設門市」，用來偵測後台是否改過
-    const acctDefault = currentUser?.default_store_id || currentUser?.store_id || '';
-    const lastAcct = localStorage.getItem('staff_acct_default');
-    if (acctDefault && acctDefault !== lastAcct) {
-      // 後台改了帳號預設門市（或首次登入）→ 以新門市為準，清掉手動記憶
-      localStorage.setItem('staff_current_store', acctDefault);
-      localStorage.setItem('staff_acct_default', acctDefault);
-    }
-    const saved = localStorage.getItem('staff_current_store');
-    let activeId = '';
-    if (saved && stores.some(s => s.id === saved)) activeId = saved;
-    if (!activeId && acctDefault && stores.some(s => s.id === acctDefault)) activeId = acctDefault;
-    if (!activeId) activeId = stores[0].id;
-    const activeName = stores.find(s => s.id === activeId)?.name || '門市';
-    currentStore = { id: activeId, name: activeName };
-    const fsn = document.getElementById('formStoreName');
-    if (fsn) fsn.textContent = activeName;
-
-    wrap.innerHTML = `
-      <div style="display:flex;align-items:center;gap:6px;">
-        <span style="font-size:12px;color:var(--topbar-sub);">目前門市</span>
-        <select id="staffStoreSelect" onchange="onStaffStoreChange(this.value)"
-          style="background:rgba(255,255,255,0.2);color:#fff;border:1px solid rgba(255,255,255,0.35);border-radius:20px;padding:5px 12px;font-size:13px;font-family:inherit;cursor:pointer;max-width:200px;">
-          ${stores.map(s => `<option value="${s.id}" ${s.id===activeId?'selected':''} style="color:#1a1a18;">${escHtml(s.name)}</option>`).join('')}
-        </select>
-      </div>`;
-  } catch(e) { console.log(e); }
-}
-
-function onStaffStoreChange(storeId) {
-  const sel = document.getElementById('staffStoreSelect');
-  const storeName = sel?.options[sel.selectedIndex]?.text || '';
-  currentStore = { id: storeId, name: storeName };
-  localStorage.setItem('staff_current_store', storeId);
-  const fsn = document.getElementById('formStoreName');
-  if (fsn) fsn.textContent = storeName;
-  showToast(`已切換至 ${storeName}`, 'success');
 }
 
 async function ibizaGetStock(skus) {
@@ -1630,8 +1567,8 @@ async function loadStoresSelect() {
     if (!sel || !stores?.length) return;
     sel.innerHTML = '<option value="">請選擇門市</option>' +
       stores.map(s => `<option value="${s.id}" data-name="${escHtml(s.name)}">${escHtml(s.name)}</option>`).join('');
-    // 預設帶入「header 目前切換的門市」＞我的預設門市＞帳號所屬門市（仍可當場改成任一門市）
-    const preferStore = currentStore?.id || localStorage.getItem('staff_current_store') || currentUser?.default_store_id || currentUser?.store_id;
+    // 預設帶入「我的預設門市」或帳號所屬門市（仍可當場改成任一門市）
+    const preferStore = currentUser?.default_store_id || currentUser?.store_id;
     if (preferStore && sel.querySelector(`option[value="${preferStore}"]`)) {
       sel.value = preferStore;
       onFormStoreChange(preferStore);
@@ -1692,7 +1629,7 @@ async function lookupCustomerByPhone(phone) {
     } else if (role === 'manager') {
       const storeIds = await getManagerStoreIds(currentUser.id);
       if (!storeIds.length) return;
-      filter += `&store_id=in.(${storeIds.map(id=>id).join(',')})`;
+      filter += `&store_id=in.(${storeIds.map(id=>`"${id}"`).join(',')})`;
     } else {
       // 一般業務：只查自己經手
       if (!currentUser?.id) return;
@@ -1770,7 +1707,7 @@ async function initCustomerBook() {
         if (hintEl) hintEl.textContent = '⚠️ 帳號未設定管轄門市，請洽管理員';
         custAllRecords = []; renderCustomerList(custAllRecords); return;
       }
-      filter += `&store_id=in.(${storeIds.map(id=>id).join(',')})`;
+      filter += `&store_id=in.(${storeIds.map(id=>`"${id}"`).join(',')})`;
       if (hintEl) hintEl.textContent = '📌 顯示管轄門市客戶';
     } else {
       // 一般業務：只看自己經手的客戶（比照訂單管理用 staff_id）
@@ -2001,7 +1938,7 @@ async function loadHomeBadges() {
   else if (role === 'manager') {
     const ids = await getManagerStoreIds(currentUser.id);
     const orConds = [];
-    if (ids.length) orConds.push(`store_id.in.(${ids.map(i=>i).join(',')})`);
+    if (ids.length) orConds.push(`store_id.in.(${ids.map(i=>`"${i}"`).join(',')})`);
     orConds.push(`staff_id.eq.${currentUser.id}`);
     scope = `&or=(${orConds.join(',')})`;
   } else { scope = `&staff_id=eq.${currentUser.id}`; }
@@ -2568,6 +2505,8 @@ async function loadMyOrders() {
   // 顯示姓名
   const nameEl = document.getElementById('mainHeaderName');
   if (nameEl) nameEl.textContent = currentUser.name || currentUser.phone || '';
+  const storeEl = document.getElementById('mainHeaderStore');
+  if (storeEl && currentUser.store_name) storeEl.textContent = currentUser.store_name;
   // 「我的訂單」標題依角色調整
   const listTitleEl = document.getElementById('myOrdersTitle');
   const role = currentUser.role;
@@ -2581,7 +2520,7 @@ async function loadMyOrders() {
       // 店長/督導：管轄門市的訂單 + 自己開的單（兼業務時不漏單）
       const storeIds = await getManagerStoreIds(currentUser.id);
       const orConds = [];
-      if (storeIds.length) orConds.push(`store_id.in.(${storeIds.map(i=>i).join(',')})`);
+      if (storeIds.length) orConds.push(`store_id.in.(${storeIds.map(i=>`"${i}"`).join(',')})`);
       orConds.push(`staff_id.eq.${currentUser.id}`);
       const orFilter = `&or=(${orConds.join(',')})`;
       query = `?order=order_no.desc&limit=500${orFilter}&select=*,order_items(*),stores(name),staff(name)`;
@@ -2685,7 +2624,7 @@ async function loadAdminOrdersByStores(storeIds) {
   showLoading(true);
   try {
     const orConds = [];
-    if (storeIds?.length) orConds.push(`store_id.in.(${storeIds.map(id => id).join(',')})`);
+    if (storeIds?.length) orConds.push(`store_id.in.(${storeIds.map(id => `"${id}"`).join(',')})`);
     // 店長兼業務：也看得到自己開的單
     if (currentUser?.role === 'manager') orConds.push(`staff_id.eq.${currentUser.id}`);
     if (!orConds.length) { adminAllOrders = []; renderAdminOrders(); showLoading(false); return; }
@@ -2797,6 +2736,7 @@ const ADMIN_ACTION_LABEL = {
   change_pos: { label: '改機號/POS', icon: '🧾', color: '#E0A042' },
   change_tracking: { label: '改託運單號', icon: '🚚', color: '#E0A042' },
   change_sale_date: { label: '改銷售日', icon: '📅', color: '#3A6EA5' },
+  change_note: { label: '改備註', icon: '📝', color: '#3A6EA5' },
   edit_order: { label: '改訂單內容', icon: '✏️', color: '#3A6EA5' },
   cancel_order: { label: '取消訂單', icon: '🚫', color: '#B5504A' },
   restore_order: { label: '復原訂單', icon: '♻️', color: '#3E7C5A' },
@@ -2982,7 +2922,19 @@ function renderDetail(o, containerId, isPublic) {
       ${o.pos_no?`<div class="detail-row"><div class="detail-row-label">POS序號</div><div class="detail-row-value">${escHtml(o.pos_no)}</div></div>`:''}
       ${(currentUser?.role === 'admin' && o.delivery_date)?`<div class="detail-row"><div class="detail-row-label">預約到貨日</div><div class="detail-row-value">${o.delivery_date}</div></div>`:''}
       ${o.scheduled_shipping_date?`<div class="detail-row"><div class="detail-row-label">預約出貨日</div><div class="detail-row-value">${o.scheduled_shipping_date}</div></div>`:''}
-      ${o.note?`<div class="detail-row"><div class="detail-row-label">備註</div><div class="detail-row-value">${escHtml(o.note)}</div></div>`:''}
+      ${(function(){
+        // 只有管理員能改備註（任何狀態）；其他人維持唯讀
+        if (currentUser?.role !== 'admin') {
+          return o.note ? `<div class="detail-row"><div class="detail-row-label">備註</div><div class="detail-row-value">${escHtml(o.note)}</div></div>` : '';
+        }
+        return `<div class="detail-row" style="flex-direction:column;align-items:stretch;gap:6px;">
+          <div class="detail-row-label" style="margin-bottom:2px;">備註（可修改）</div>
+          <div style="display:flex;gap:8px;align-items:flex-start;">
+            <textarea id="editNote_${o.id}" placeholder="特殊要求、備註…" style="flex:1;padding:10px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;min-height:52px;resize:vertical;">${escHtml(o.note||'')}</textarea>
+            <button onclick="saveOrderNote('${o.id}')" style="padding:10px 16px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;">儲存</button>
+          </div>
+        </div>`;
+      })()}
     </div>
     <div class="detail-card">
       <div class="detail-card-title">📦 訂購品項</div>
@@ -3427,6 +3379,27 @@ async function updateOrderStatus(orderId, status) {
 // 管理員：修改機號 / POS序號
 // 管理員：手動填/修改新竹託運單號（ibiza 同步不到時用）
 // 修改實際銷售日：管理員/店長不限狀態；業務限自己的單且待處理
+// 修改備註：只有管理員可改（任何狀態）
+async function saveOrderNote(orderId) {
+  if (currentUser?.role !== 'admin') { showToast('只有管理員可修改備註', 'error'); return; }
+  const el = document.getElementById(`editNote_${orderId}`);
+  if (!el) return;
+  const val = el.value.trim();
+  const _o = (typeof adminAllOrders !== 'undefined' ? adminAllOrders : []).find(x => x.id === orderId)
+          || (typeof allMyOrders !== 'undefined' ? allMyOrders : []).find(x => x.id === orderId);
+  const oldVal = _o?.note || '';
+  if (val === oldVal) { showToast('備註沒有變更'); return; }
+  showLoading(true);
+  try {
+    await sb.patch('orders', orderId, { note: val || null, updated_at: new Date().toISOString() });
+    await logAdminAction('change_note', 'order', orderId, _o?.order_no || '', `備註：${oldVal||'(空)'} → ${val||'(空)'}`);
+    showLoading(false);
+    showToast('✅ 備註已更新', 'success');
+    await openOrderDetail(orderId);
+    loadAdminOrders();
+  } catch(e) { showLoading(false); showToast('修改失敗：' + e.message, 'error'); }
+}
+
 async function saveSaleDate(orderId) {
   const el = document.getElementById(`editSaleDate_${orderId}`);
   const val = (el?.value || '').trim();
@@ -5122,8 +5095,8 @@ async function foLoadStores() {
     const sel = document.getElementById('foStore');
     if (sel) {
       sel.innerHTML = '<option value="">請選擇門市</option>' + foStoresCache.map(s=>`<option value="${s.id}">${escHtml(s.name)} 場外單</option>`).join('');
-      // 預設帶入 header 目前切換的門市＞預設門市＞固定門市
-      const prefer = currentStore?.id || localStorage.getItem('staff_current_store') || currentUser?.default_store_id || currentUser?.store_id;
+      // 預設帶入業務的預設門市/固定門市
+      const prefer = currentUser?.default_store_id || currentUser?.store_id;
       if (prefer && sel.querySelector(`option[value="${prefer}"]`)) sel.value = prefer;
     }
   } catch(e) { console.log('foLoadStores', e); }
@@ -5397,15 +5370,11 @@ async function openFieldOrderList() {
   showLoading(true);
   try {
     const role = currentUser?.role;
-    let filter = '?order=order_no.desc&limit=500&select=*,field_order_items(*),stores!left(name),staff!left(name)';
+    let filter = '?order=order_no.desc&limit=500&select=*,field_order_items(*),stores!store_id(name),staff(name)';
     if (role === 'admin') {}
     else if (role === 'manager') {
-      // 店長/督導：管轄門市的單 + 自己開的單（兼業務時不漏單，比照宅配訂單）
       const ids = await getManagerStoreIds(currentUser.id);
-      const orConds = [];
-      if (ids.length) orConds.push(`store_id.in.(${ids.map(i=>i).join(',')})`);
-      orConds.push(`staff_id.eq.${currentUser.id}`);
-      filter += `&or=(${orConds.join(',')})`;
+      if (ids.length) filter += `&store_id=in.(${ids.map(i=>`"${i}"`).join(',')})`;
     } else { filter += `&staff_id=eq.${currentUser.id}`; }
     foAllOrders = await sb.get('field_orders', filter) || [];
     foApplyFilter();
