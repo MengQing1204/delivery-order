@@ -1014,7 +1014,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
 </div>
 
 <script>
-const APP_BUILD = 'q・修正 or 查詢 UUID 引號';  // ← 只維護這個「版本代號」，日期會自動帶今天的台灣日期
+const APP_BUILD = 'r・業務可自選門市免改後台';  // ← 只維護這個「版本代號」，日期會自動帶今天的台灣日期
 // 顯示用版本號：自動今日台灣日期 + 手動版本代號
 function getAppVersion() {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
@@ -1283,7 +1283,7 @@ async function loginWithData(u) {
   if (currentUser?.role === 'manager') {
     await initStoreSwitcher();
   } else {
-    if (wrap) wrap.innerHTML = `<div class="store-tag" id="headerStore">${currentStore?.name || '門市'}</div>`;
+    await initStaffStoreSelect();
   }
   if (currentUser?.role === 'admin') {
     showScreen('adminScreen');
@@ -1358,6 +1358,47 @@ function onStoreSwitcher(storeId, storeName) {
   // 直接跳到該門市的訂單管理
   showScreen('adminScreen');
   loadAdminOrders(null, storeId);
+}
+
+// ── 一般業務：門市下拉切換（全門市開放自選，記住上次選擇）──
+async function initStaffStoreSelect() {
+  const wrap = document.getElementById('storeSwitcherWrap');
+  if (!wrap) return;
+  try {
+    const stores = await sb.get('stores', '?is_active=eq.true&order=name.asc&select=id,name');
+    if (!stores?.length) {
+      wrap.innerHTML = `<div class="store-tag" id="headerStore">${currentStore?.name || '門市'}</div>`;
+      return;
+    }
+    // 記住上次選的門市（localStorage），否則用登入帶的預設門市
+    const saved = localStorage.getItem('staff_current_store');
+    let activeId = currentStore?.id || '';
+    if (saved && stores.some(s => s.id === saved)) activeId = saved;
+    if (!activeId) activeId = stores[0].id;
+    const activeName = stores.find(s => s.id === activeId)?.name || '門市';
+    currentStore = { id: activeId, name: activeName };
+    const fsn = document.getElementById('formStoreName');
+    if (fsn) fsn.textContent = activeName;
+
+    wrap.innerHTML = `
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span style="font-size:12px;color:var(--topbar-sub);">目前門市</span>
+        <select id="staffStoreSelect" onchange="onStaffStoreChange(this.value)"
+          style="background:rgba(255,255,255,0.2);color:#fff;border:1px solid rgba(255,255,255,0.35);border-radius:20px;padding:5px 12px;font-size:13px;font-family:inherit;cursor:pointer;max-width:200px;">
+          ${stores.map(s => `<option value="${s.id}" ${s.id===activeId?'selected':''} style="color:#1a1a18;">${escHtml(s.name)}</option>`).join('')}
+        </select>
+      </div>`;
+  } catch(e) { console.log(e); }
+}
+
+function onStaffStoreChange(storeId) {
+  const sel = document.getElementById('staffStoreSelect');
+  const storeName = sel?.options[sel.selectedIndex]?.text || '';
+  currentStore = { id: storeId, name: storeName };
+  localStorage.setItem('staff_current_store', storeId);
+  const fsn = document.getElementById('formStoreName');
+  if (fsn) fsn.textContent = storeName;
+  showToast(`已切換至 ${storeName}`, 'success');
 }
 
 async function ibizaGetStock(skus) {
@@ -1567,8 +1608,8 @@ async function loadStoresSelect() {
     if (!sel || !stores?.length) return;
     sel.innerHTML = '<option value="">請選擇門市</option>' +
       stores.map(s => `<option value="${s.id}" data-name="${escHtml(s.name)}">${escHtml(s.name)}</option>`).join('');
-    // 預設帶入「我的預設門市」或帳號所屬門市（仍可當場改成任一門市）
-    const preferStore = currentUser?.default_store_id || currentUser?.store_id;
+    // 預設帶入「header 目前切換的門市」＞我的預設門市＞帳號所屬門市（仍可當場改成任一門市）
+    const preferStore = currentStore?.id || localStorage.getItem('staff_current_store') || currentUser?.default_store_id || currentUser?.store_id;
     if (preferStore && sel.querySelector(`option[value="${preferStore}"]`)) {
       sel.value = preferStore;
       onFormStoreChange(preferStore);
@@ -5061,8 +5102,8 @@ async function foLoadStores() {
     const sel = document.getElementById('foStore');
     if (sel) {
       sel.innerHTML = '<option value="">請選擇門市</option>' + foStoresCache.map(s=>`<option value="${s.id}">${escHtml(s.name)} 場外單</option>`).join('');
-      // 預設帶入業務的預設門市/固定門市
-      const prefer = currentUser?.default_store_id || currentUser?.store_id;
+      // 預設帶入 header 目前切換的門市＞預設門市＞固定門市
+      const prefer = currentStore?.id || localStorage.getItem('staff_current_store') || currentUser?.default_store_id || currentUser?.store_id;
       if (prefer && sel.querySelector(`option[value="${prefer}"]`)) sel.value = prefer;
     }
   } catch(e) { console.log('foLoadStores', e); }
