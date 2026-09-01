@@ -753,7 +753,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
 <!-- SALES LOG LIST SCREEN -->
 <div class="screen" id="salesLogListScreen">
   <div class="topbar">
-    <button class="topbar-back" onclick="showScreen('salesLogScreen')">← 返回</button>
+    <button class="topbar-back" onclick="showScreen('homeScreen')">← 返回</button>
     <div class="topbar-title">📋 補登紀錄</div>
     <button class="topbar-action" id="slExportBtn" onclick="exportSalesLogCSV()" style="display:none;">匯出CSV</button>
   </div>
@@ -4415,6 +4415,8 @@ async function cancelSalesLogGroup(ids) {
 }
 
 function editSalesLogGroup(ids) {
+  showToast('⚠️ 業績補登暫停使用，資料整理中，暫不開放修改', 'error');
+  return;
   const items = slAllLogs.filter(o => ids.includes(o.id));
   if (!items.length) return;
   const first = items[0];
