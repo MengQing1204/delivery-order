@@ -4053,6 +4053,8 @@ let editSlId = null;
 let slEditGroupIds = null;
 
 function initSalesLog() {
+  showToast('⚠️ 業績補登暫停使用，資料整理中，僅開放查詢舊紀錄', 'error');
+  showScreen('salesLogListScreen'); openSalesLogList(); return;
   slItems = [];
   editSlId = null;
   slEditGroupIds = null;
