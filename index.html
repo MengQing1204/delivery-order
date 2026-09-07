@@ -5553,12 +5553,7 @@ function openFieldOrderManage(id) {
   const statusOpts = [['pending','待處理'],['processing','作業中'],['done','完成']];
   // 只有「宅配」品項需要管理員分倉+填追蹤碼
   const deliveryItems = items.filter(it => it.ship_type==='delivery' || it.ship_type==='wms' || it.ship_type==='nankan');
-  const itemsHtml = items.map((it,idx) => {
-    const isDelivery = it.ship_type==='delivery' || it.ship_type==='wms' || it.ship_type==='nankan';
-    if (!isDelivery) {
-      return `<div style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;font-size:13px;">
-        ${escHtml(it.product_name)} x${it.quantity} <span style="color:var(--text2);">· ${shipMap[it.ship_type]||''}</span></div>`;
-    }
+  const itemsHtml = deliveryItems.map((it,idx) => {
     return `<div style="padding:10px;border:1.5px solid #8B2A3A;border-radius:8px;margin-bottom:8px;background:#fbf5f6;">
       <div style="font-size:13px;font-weight:600;margin-bottom:6px;">${escHtml(it.product_name)} x${it.quantity} <span style="color:#8B2A3A;">· 宅配</span></div>
       <div style="display:flex;gap:6px;margin-bottom:6px;">
