@@ -5425,7 +5425,7 @@ function foApplyFilter() {
   if (q) list = list.filter(o => (o.buyer_name||'').toLowerCase().includes(q) || (o.buyer_phone||'').includes(q) || (o.order_no||'').toLowerCase().includes(q));
   renderFieldOrders(list);
 }
-// 判斷一張場外單是否需要打 RRP 扣帳
+// 判斷一張場外單是否需要打 ERP 扣帳
 // rrp_override 有設（true/false）就聽它的；沒設（null/undefined）就看有沒有門市代寄品項
 function foNeedRRP(o) {
   if (o.rrp_override === true) return true;
@@ -5474,7 +5474,7 @@ function renderFieldOrders(list) {
       }).join('');
       const st = statusInfo[o.status] || statusInfo.pending;
       return `<tr onclick="openFieldOrderManage('${o.id}')" style="cursor:pointer;border-bottom:1px solid var(--border);" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
-        <td style="padding:12px 10px;font-size:14px;font-family:'DM Mono',monospace;font-weight:700;white-space:nowrap;vertical-align:top;">${escHtml(o.order_no||'')}${foNeedRRP(o)?'<br><span style="display:inline-block;margin-top:4px;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;color:#E0A042;background:#FBF2E9;font-family:inherit;">🏷 打RRP</span>':''}</td>
+        <td style="padding:12px 10px;font-size:14px;font-family:'DM Mono',monospace;font-weight:700;white-space:nowrap;vertical-align:top;">${escHtml(o.order_no||'')}${foNeedRRP(o)?'<br><span style="display:inline-block;margin-top:4px;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;color:#E0A042;background:#FBF2E9;font-family:inherit;">🏷 打ERP</span>':''}</td>
         <td style="padding:12px 10px;font-size:14px;white-space:nowrap;vertical-align:top;">${o.order_date||''}</td>
         <td style="padding:12px 10px;font-size:15px;font-weight:700;vertical-align:top;">${escHtml(o.buyer_name||'')}<div style="font-size:13px;font-weight:400;color:var(--text2);">${escHtml(o.buyer_phone||'')}</div></td>
         <td style="padding:12px 10px;font-size:13px;color:var(--text2);vertical-align:top;">${escHtml(o.stores?.name||'')}<div>業務：${escHtml(o.staff?.name||'')}</div></td>
@@ -5604,12 +5604,12 @@ function openFieldOrderManage(id) {
         <div style="background:#FBF2E9;border-radius:8px;padding:10px 12px;margin-top:10px;display:flex;gap:8px;align-items:flex-start;">
           <span style="font-size:16px;">⚠️</span>
           <div style="font-size:13px;color:#B5791C;line-height:1.5;flex:1;">
-            <b>含門市代寄品項，需至鼎新 ERP 打 RRP 扣帳</b><br>扣帳門市：${escHtml(foRRPStoreName(o))}
-            <div style="margin-top:6px;"><button onclick="toggleRRP('${o.id}', false)" style="background:none;border:1px solid #E0A042;border-radius:6px;padding:3px 10px;font-size:12px;color:#B5791C;cursor:pointer;font-family:inherit;">此單不用打 RRP</button></div>
+            <b>含門市代寄品項，需至鼎新打 ERP 扣帳</b><br>扣帳門市：${escHtml(foRRPStoreName(o))}
+            <div style="margin-top:6px;"><button onclick="toggleRRP('${o.id}', false)" style="background:none;border:1px solid #E0A042;border-radius:6px;padding:3px 10px;font-size:12px;color:#B5791C;cursor:pointer;font-family:inherit;">此單不用打 ERP</button></div>
           </div>
         </div>` : `
         <div style="margin-top:10px;text-align:right;">
-          <button onclick="toggleRRP('${o.id}', true)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 10px;font-size:12px;color:var(--text2);cursor:pointer;font-family:inherit;">🏷 標記此單要打 RRP</button>
+          <button onclick="toggleRRP('${o.id}', true)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 10px;font-size:12px;color:var(--text2);cursor:pointer;font-family:inherit;">🏷 標記此單要打 ERP</button>
         </div>`}
       <table style="width:100%;border-collapse:collapse;margin-top:8px;">
         <thead><tr style="border-bottom:2px solid var(--border);"><th style="padding:4px;font-size:11px;text-align:left;">#</th><th style="padding:4px;font-size:11px;text-align:left;">品名/品號</th><th style="padding:4px;font-size:11px;">數量</th><th style="padding:4px;font-size:11px;text-align:right;">金額</th><th style="padding:4px;font-size:11px;text-align:left;">出貨</th></tr></thead>
@@ -5697,9 +5697,9 @@ async function toggleRRP(id, val) {
   try {
     await sb.patch('field_orders', id, { rrp_override: val, updated_at: new Date().toISOString() });
     o.rrp_override = val;  // 同步本地資料，重開視窗才會即時反映
-    await logAdminAction('edit_field_order', 'field_order', id, o.order_no||'', val ? '手動標記：要打 RRP' : '手動標記：不用打 RRP');
+    await logAdminAction('edit_field_order', 'field_order', id, o.order_no||'', val ? '手動標記：要打 ERP' : '手動標記：不用打 ERP');
     showLoading(false);
-    showToast(val ? '已標記要打 RRP' : '已標記不用打 RRP', 'success');
+    showToast(val ? '已標記要打 ERP' : '已標記不用打 ERP', 'success');
     document.getElementById('foManageModal')?.remove();
     openFieldOrderManage(id);  // 重開視窗刷新提示
   } catch(e) { showLoading(false); showToast('設定失敗：'+e.message, 'error'); }
@@ -5770,7 +5770,7 @@ function exportFieldOrderCSV() {
   const shipMap = { picked:'現場已取', proxy:'門市代寄', delivery:'宅配', wms:'宅配委外', nankan:'宅配南崁' };
   const whMap = { wms:'WMS委外倉', nankan:'南崁自倉' };
   const stMap = { pending:'待處理', processing:'作業中', done:'完成' };
-  const rows = [['場外單號','訂購日期','門市','業務','客戶','電話','地址','統編','載具','品名','品號','數量','金額','出貨方式','代寄門市','實際倉別','追蹤碼','付款','匯款日','轉帳後5碼','總額','狀態','RRP扣帳','備註']];
+  const rows = [['場外單號','訂購日期','門市','業務','客戶','電話','地址','統編','載具','品名','品號','數量','金額','出貨方式','代寄門市','實際倉別','追蹤碼','付款','匯款日','轉帳後5碼','總額','狀態','ERP扣帳','備註']];
   foAllOrders.forEach(o => {
     const items = o.field_order_items || [{}];
     items.forEach(it => {
