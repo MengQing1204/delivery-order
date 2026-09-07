@@ -5426,16 +5426,30 @@ function foApplyFilter() {
   renderFieldOrders(list);
 }
 // 判斷一張場外單是否需要打 ERP 扣帳
-// rrp_override 有設（true/false）就聽它的；沒設（null/undefined）就看有沒有門市代寄品項
+// 原則：每張都要打；rrp_override 設 false 時才不打（讓管理員能對特殊單關閉）
 function foNeedRRP(o) {
-  if (o.rrp_override === true) return true;
   if (o.rrp_override === false) return false;
-  const items = o.field_order_items || [];
-  return items.some(it => it.ship_type === 'proxy');
+  return true;
 }
-// 取這張單的扣帳門市名稱（即開單門市）
+// 取各品項的扣帳門市：現場已取/宅配→開單門市；門市代寄→代寄門市
+// 回傳去重後的門市名稱清單
+function foRRPStores(o) {
+  const openStore = o.stores?.name || '';
+  const items = o.field_order_items || [];
+  const names = new Set();
+  items.forEach(it => {
+    if (it.ship_type === 'proxy') {
+      const pn = foStoresCache.find(s=>s.id===it.proxy_store_id)?.name || '未指定代寄門市';
+      names.add(pn);
+    } else {
+      if (openStore) names.add(openStore);
+    }
+  });
+  if (!names.size && openStore) names.add(openStore);
+  return [...names];
+}
 function foRRPStoreName(o) {
-  return o.stores?.name || '';
+  return foRRPStores(o).join('、');
 }
 
 function renderFieldOrders(list) {
@@ -5598,9 +5612,17 @@ function openFieldOrderManage(id) {
       ${foNeedRRP(o) ? `
         <div style="background:#FBF2E9;border-radius:8px;padding:10px 12px;margin-top:10px;display:flex;gap:8px;align-items:flex-start;">
           <span style="font-size:16px;">⚠️</span>
-          <div style="font-size:13px;color:#B5791C;line-height:1.5;flex:1;">
-            <b>含門市代寄品項，需至鼎新打 ERP 扣帳</b><br>扣帳門市：${escHtml(foRRPStoreName(o))}
-            <div style="margin-top:6px;"><button onclick="toggleRRP('${o.id}', false)" style="background:none;border:1px solid #E0A042;border-radius:6px;padding:3px 10px;font-size:12px;color:#B5791C;cursor:pointer;font-family:inherit;">此單不用打 ERP</button></div>
+          <div style="font-size:13px;color:#B5791C;line-height:1.6;flex:1;">
+            <b>需至鼎新打 ERP 扣帳</b>
+            ${(o.field_order_items||[]).map(it=>{
+              const isProxy = it.ship_type==='proxy';
+              const isDeliv = it.ship_type==='delivery'||it.ship_type==='wms'||it.ship_type==='nankan';
+              const store = isProxy ? (foStoresCache.find(s=>s.id===it.proxy_store_id)?.name||'未指定代寄門市') : (o.stores?.name||'');
+              const way = isProxy ? '門市代寄' : it.ship_type==='picked' ? '現場已取' : isDeliv ? '宅配' : '';
+              const from = isDeliv ? '（倉庫出貨，不扣門市）' : `扣帳門市：${escHtml(store)}`;
+              return `<div style="margin-top:4px;">· ${escHtml(it.product_name)} <span style="color:#8B6914;">${way}</span> → ${from}</div>`;
+            }).join('')}
+            <div style="margin-top:8px;"><button onclick="toggleRRP('${o.id}', false)" style="background:none;border:1px solid #E0A042;border-radius:6px;padding:3px 10px;font-size:12px;color:#B5791C;cursor:pointer;font-family:inherit;">此單不用打 ERP</button></div>
           </div>
         </div>` : `
         <div style="margin-top:10px;text-align:right;">
