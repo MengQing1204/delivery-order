@@ -3799,10 +3799,10 @@ async function saveEditOrder() {
       const checkSkus = editFormItems.filter(i => !isNankan(i.sku)).map(i => i.sku);
       const liveStock = checkSkus.length ? await ibizaGetStock(checkSkus) : {};
       // 非白名單、非南崁品才檢查庫存不足
-      const outOfStock = editFormItems.filter(i => !isNankan(i.sku) && !isPreorderable(i.sku) && (liveStock?.[i.sku] ?? null) !== null && (liveStock?.[i.sku] ?? 0) <= 0);
+      const outOfStock = editFormItems.filter(i => !isNankan(i.sku) && !isPreorderable(i.sku) && (liveStock?.[i.sku] ?? 0) <= 0);
       if (outOfStock.length > 0) {
         showLoading(false);
-        showToast(`庫存不足，無法儲存：${outOfStock.map(i=>`「${i.name}」`).join('、')}`, 'error');
+        showToast(`庫存不足或查無庫存，無法儲存：${outOfStock.map(i=>`「${i.name}」`).join('、')}`, 'error');
         return;
       }
       // 庫存查詢失敗防呆：只看非南崁、非白名單品是否全 null
@@ -5296,6 +5296,26 @@ async function submitFieldOrder() {
   if (payMethod==='atm_cash' && !remitDate) { showToast('請填匯款日', 'error'); return; }
   if (payMethod==='atm_transfer' && (!transfer5 || transfer5.length!==5)) { showToast('請填轉帳帳號後5碼', 'error'); return; }
 
+  // 宅配品項需檢查 WMS 庫存（現場已取、門市代寄不擋；南崁品、預購白名單品不擋）
+  const deliveryItems = foItems.filter(it => it.ship_type === 'delivery' && !isNankan(it.sku) && !isPreorderable(it.sku));
+  if (deliveryItems.length > 0) {
+    showLoading(true);
+    try {
+      const liveStock = await ibizaGetStock(deliveryItems.map(i => i.sku));
+      const outOfStock = deliveryItems.filter(i => (liveStock?.[i.sku] ?? 0) <= 0);
+      if (outOfStock.length > 0) {
+        showLoading(false);
+        showToast(`宅配品項庫存不足或查無庫存：${outOfStock.map(i=>`「${i.name}」`).join('、')}`, 'error');
+        return;
+      }
+    } catch(e) {
+      showLoading(false);
+      showToast('庫存驗證失敗：' + e.message, 'error');
+      return;
+    }
+    showLoading(false);
+  }
+
   // 單號重複檢查（編輯時排除自己）
   showLoading(true);
   try {
@@ -5405,6 +5425,19 @@ function foApplyFilter() {
   if (q) list = list.filter(o => (o.buyer_name||'').toLowerCase().includes(q) || (o.buyer_phone||'').includes(q) || (o.order_no||'').toLowerCase().includes(q));
   renderFieldOrders(list);
 }
+// 判斷一張場外單是否需要打 RRP 扣帳
+// rrp_override 有設（true/false）就聽它的；沒設（null/undefined）就看有沒有門市代寄品項
+function foNeedRRP(o) {
+  if (o.rrp_override === true) return true;
+  if (o.rrp_override === false) return false;
+  const items = o.field_order_items || [];
+  return items.some(it => it.ship_type === 'proxy');
+}
+// 取這張單的扣帳門市名稱（即開單門市）
+function foRRPStoreName(o) {
+  return o.stores?.name || '';
+}
+
 function renderFieldOrders(list) {
   const el = document.getElementById('fieldOrdersList');
   if (!list.length) { el.innerHTML = '<div class="empty-state"><div class="icon">📋</div><p>尚無場外單</p></div>'; return; }
@@ -5441,7 +5474,7 @@ function renderFieldOrders(list) {
       }).join('');
       const st = statusInfo[o.status] || statusInfo.pending;
       return `<tr onclick="openFieldOrderManage('${o.id}')" style="cursor:pointer;border-bottom:1px solid var(--border);" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
-        <td style="padding:12px 10px;font-size:14px;font-family:'DM Mono',monospace;font-weight:700;white-space:nowrap;vertical-align:top;">${escHtml(o.order_no||'')}</td>
+        <td style="padding:12px 10px;font-size:14px;font-family:'DM Mono',monospace;font-weight:700;white-space:nowrap;vertical-align:top;">${escHtml(o.order_no||'')}${foNeedRRP(o)?'<br><span style="display:inline-block;margin-top:4px;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;color:#E0A042;background:#FBF2E9;font-family:inherit;">🏷 打RRP</span>':''}</td>
         <td style="padding:12px 10px;font-size:14px;white-space:nowrap;vertical-align:top;">${o.order_date||''}</td>
         <td style="padding:12px 10px;font-size:15px;font-weight:700;vertical-align:top;">${escHtml(o.buyer_name||'')}<div style="font-size:13px;font-weight:400;color:var(--text2);">${escHtml(o.buyer_phone||'')}</div></td>
         <td style="padding:12px 10px;font-size:13px;color:var(--text2);vertical-align:top;">${escHtml(o.stores?.name||'')}<div>業務：${escHtml(o.staff?.name||'')}</div></td>
@@ -5567,6 +5600,17 @@ function openFieldOrderManage(id) {
         <div><b>統編：</b>${escHtml(o.tax_id||'（無）')}　<b>載具：</b>${escHtml(o.invoice_carrier||'（無）')}</div>
         <div style="border-top:1px dashed var(--border);margin:6px 0;padding-top:6px;"><b>付款：</b>${escHtml(payLabel)}${payExtra}</div>
       </div>
+      ${foNeedRRP(o) ? `
+        <div style="background:#FBF2E9;border-radius:8px;padding:10px 12px;margin-top:10px;display:flex;gap:8px;align-items:flex-start;">
+          <span style="font-size:16px;">⚠️</span>
+          <div style="font-size:13px;color:#B5791C;line-height:1.5;flex:1;">
+            <b>含門市代寄品項，需至鼎新 ERP 打 RRP 扣帳</b><br>扣帳門市：${escHtml(foRRPStoreName(o))}
+            <div style="margin-top:6px;"><button onclick="toggleRRP('${o.id}', false)" style="background:none;border:1px solid #E0A042;border-radius:6px;padding:3px 10px;font-size:12px;color:#B5791C;cursor:pointer;font-family:inherit;">此單不用打 RRP</button></div>
+          </div>
+        </div>` : `
+        <div style="margin-top:10px;text-align:right;">
+          <button onclick="toggleRRP('${o.id}', true)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 10px;font-size:12px;color:var(--text2);cursor:pointer;font-family:inherit;">🏷 標記此單要打 RRP</button>
+        </div>`}
       <table style="width:100%;border-collapse:collapse;margin-top:8px;">
         <thead><tr style="border-bottom:2px solid var(--border);"><th style="padding:4px;font-size:11px;text-align:left;">#</th><th style="padding:4px;font-size:11px;text-align:left;">品名/品號</th><th style="padding:4px;font-size:11px;">數量</th><th style="padding:4px;font-size:11px;text-align:right;">金額</th><th style="padding:4px;font-size:11px;text-align:left;">出貨</th></tr></thead>
         <tbody>${detailRows}</tbody>
@@ -5647,6 +5691,20 @@ function foMgWhChange(itemId) {
   if (hint) hint.textContent = wh==='wms' ? '🚚 新竹貨運追蹤碼' : wh==='nankan' ? '📦 黑貓宅急便追蹤碼' : '';
 }
 
+async function toggleRRP(id, val) {
+  const o = foAllOrders.find(x=>x.id===id); if (!o) return;
+  showLoading(true);
+  try {
+    await sb.patch('field_orders', id, { rrp_override: val, updated_at: new Date().toISOString() });
+    o.rrp_override = val;  // 同步本地資料，重開視窗才會即時反映
+    await logAdminAction('edit_field_order', 'field_order', id, o.order_no||'', val ? '手動標記：要打 RRP' : '手動標記：不用打 RRP');
+    showLoading(false);
+    showToast(val ? '已標記要打 RRP' : '已標記不用打 RRP', 'success');
+    document.getElementById('foManageModal')?.remove();
+    openFieldOrderManage(id);  // 重開視窗刷新提示
+  } catch(e) { showLoading(false); showToast('設定失敗：'+e.message, 'error'); }
+}
+
 async function saveFieldOrderManage(id) {
   const o = foAllOrders.find(x=>x.id===id); if (!o) return;
   const newNo = document.getElementById('foMgOrderNo').value.trim();
@@ -5712,12 +5770,12 @@ function exportFieldOrderCSV() {
   const shipMap = { picked:'現場已取', proxy:'門市代寄', delivery:'宅配', wms:'宅配委外', nankan:'宅配南崁' };
   const whMap = { wms:'WMS委外倉', nankan:'南崁自倉' };
   const stMap = { pending:'待處理', processing:'作業中', done:'完成' };
-  const rows = [['場外單號','訂購日期','門市','業務','客戶','電話','地址','統編','載具','品名','品號','數量','金額','出貨方式','代寄門市','實際倉別','追蹤碼','付款','匯款日','轉帳後5碼','總額','狀態','備註']];
+  const rows = [['場外單號','訂購日期','門市','業務','客戶','電話','地址','統編','載具','品名','品號','數量','金額','出貨方式','代寄門市','實際倉別','追蹤碼','付款','匯款日','轉帳後5碼','總額','狀態','RRP扣帳','備註']];
   foAllOrders.forEach(o => {
     const items = o.field_order_items || [{}];
     items.forEach(it => {
       const proxyName = it.proxy_store_id ? (foStoresCache.find(s=>s.id===it.proxy_store_id)?.name||'') : '';
-      rows.push([o.order_no,o.order_date,o.stores?.name||'',o.staff?.name||'',o.buyer_name,o.buyer_phone,o.receiver_address||'',o.tax_id||'',o.invoice_carrier||'',it.product_name||'',it.sku||'',it.quantity||'',it.amount||'',shipMap[it.ship_type]||'',proxyName,whMap[it.actual_warehouse]||'',it.tracking_no||'',o.payment_sub||o.payment_type||'',o.remit_date||'',o.transfer_last5||'',o.total_amount||'',stMap[o.status]||'待處理',o.note||'']);
+      rows.push([o.order_no,o.order_date,o.stores?.name||'',o.staff?.name||'',o.buyer_name,o.buyer_phone,o.receiver_address||'',o.tax_id||'',o.invoice_carrier||'',it.product_name||'',it.sku||'',it.quantity||'',it.amount||'',shipMap[it.ship_type]||'',proxyName,whMap[it.actual_warehouse]||'',it.tracking_no||'',o.payment_sub||o.payment_type||'',o.remit_date||'',o.transfer_last5||'',o.total_amount||'',stMap[o.status]||'待處理',foNeedRRP(o)?'是':'',o.note||'']);
     });
   });
   const csv = '\uFEFF' + rows.map(r=>r.map(c=>`"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\n');
