@@ -1,4 +1,212 @@
-radius-sm); padding: 8px 12px; font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer; white-space: nowrap; }
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1a1a2e">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>宅配登記系統</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #F4F6F2;
+  --surface: #ffffff;
+  --surface2: #E8EEE8;
+  --border: #C0CCC0;
+  --text: #1a1a18;
+  --text2: #4A6058;
+  --accent: #C4A44A;
+  --accent-light: #FBF4DC;
+  --accent2: #2A5240;
+  --success: #2a8c5a;
+  --success-light: #e0f0e8;
+  --danger: #c82a2a;
+  --danger-light: #f0e0e0;
+  --warning: #c87a2a;
+  --warning-light: #f0ece0;
+  --shadow: 0 2px 12px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.12);
+  --radius: 12px;
+  --radius-sm: 8px;
+  --topbar-bg: #4A8066;
+  --topbar-title: #ECD888;
+  --topbar-sub: #F0E8C8;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 16px; line-height: 1.7; }
+.screen { display: none; min-height: 100vh; }
+.screen.active { display: flex; flex-direction: column; }
+#loginScreen { background: linear-gradient(160deg, #1A3A28 0%, #2A5240 50%, #3A6A52 100%); align-items: center; justify-content: center; padding: 24px; }
+.login-box { background: rgba(255,255,255,0.06); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.12); border-radius: 20px; padding: 40px 32px; width: 100%; max-width: 380px; }
+.login-logo { text-align: center; margin-bottom: 32px; }
+.login-logo .icon { width: 64px; height: 64px; background: linear-gradient(135deg, var(--accent), #e8823a); border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 28px; margin: 0 auto 16px; box-shadow: 0 8px 24px rgba(200,98,42,0.4); }
+.login-logo h1 { color: #fff; font-size: 20px; font-weight: 700; }
+.login-logo p { color: rgba(255,255,255,0.5); font-size: 13px; margin-top: 4px; }
+.login-field { margin-bottom: 16px; }
+.login-field label { display: block; color: rgba(255,255,255,0.6); font-size: 12px; margin-bottom: 6px; letter-spacing: 0.5px; }
+.login-field input { width: 100%; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: var(--radius-sm); color: #fff; padding: 12px 14px; font-size: 16px; font-family: inherit; outline: none; transition: border-color 0.2s; }
+.login-field input:focus { border-color: var(--accent); }
+.login-field input::placeholder { color: rgba(255,255,255,0.3); }
+.btn-login { width: 100%; background: var(--accent); color: #1a1a10; border: none; border-radius: var(--radius-sm); padding: 16px; font-size: 17px; font-weight: 700; font-family: inherit; cursor: pointer; margin-top: 8px; box-shadow: 0 4px 16px rgba(196,164,74,0.4); transition: opacity 0.2s, transform 0.1s; }
+.btn-login:active { transform: scale(0.98); opacity: 0.9; }
+.login-error { color: #ff8080; font-size: 13px; text-align: center; margin-top: 12px; display: none; }
+.topbar { background: var(--topbar-bg); border-bottom: 1px solid rgba(0,0,0,0.1); padding: 12px 16px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow); }
+.topbar-back { background: rgba(255,255,255,0.15); border: none; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 6px 12px; font-size: 14px; font-weight: 600; flex-shrink: 0; color: #fff; gap: 4px; white-space: nowrap; font-family: inherit; }
+.topbar-title { font-weight: 700; font-size: 18px; flex: 1; color: var(--topbar-title); }
+.topbar-sub { font-size: 13px; color: var(--topbar-sub); }
+.topbar-action { background: var(--accent); color: #1a1a10; border: none; border-radius: var(--radius-sm); padding: 8px 14px; font-size: 14px; font-weight: 700; font-family: inherit; cursor: pointer; white-space: nowrap; }
+.main-header { background: var(--topbar-bg); padding: 20px 16px 24px; color: #fff; }
+.main-header .greeting { font-size: 14px; color: var(--topbar-sub); margin-bottom: 4px; }
+.main-header .name { font-size: 24px; font-weight: 700; color: var(--topbar-title); }
+.main-header .store-tag { display: inline-block; background: rgba(255,255,255,0.15); border-radius: 20px; padding: 4px 12px; font-size: 13px; margin-top: 8px; color: var(--topbar-sub); }
+.stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 16px; margin-top: -12px; }
+.stat-card { background: var(--surface); border-radius: var(--radius); padding: 14px 12px; text-align: center; box-shadow: var(--shadow); }
+.stat-card .num { font-size: 28px; font-weight: 700; font-family: 'DM Mono', monospace; }
+.stat-card .label { font-size: 13px; color: var(--text2); margin-top: 4px; font-weight: 500; }
+.stat-card.accent .num { color: var(--accent); }
+.stat-card.blue .num { color: var(--accent2); }
+.stat-card.green .num { color: var(--success); }
+.section { padding: 0 16px 16px; }
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.section-title { font-weight: 700; font-size: 17px; }
+.section-link { font-size: 14px; color: var(--accent2); font-weight: 600; background: none; border: none; cursor: pointer; font-family: inherit; }
+.btn-new-order { background: var(--accent); color: #1a1a10; border: none; border-radius: var(--radius); padding: 20px; font-size: 18px; font-weight: 700; font-family: inherit; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 16px rgba(196,164,74,0.35); margin: 8px 16px 20px; transition: transform 0.1s; width: calc(100% - 32px); }
+.btn-new-order:active { transform: scale(0.98); }
+.order-card { background: var(--surface); border-radius: var(--radius); padding: 14px; margin-bottom: 10px; box-shadow: var(--shadow); cursor: pointer; transition: transform 0.1s; border-left: 4px solid transparent; }
+.order-card:active { transform: scale(0.99); }
+.order-card.pending { border-left-color: var(--warning); }
+.order-card.partial { border-left-color: #E0A042; }
+.order-card.submitted { border-left-color: var(--accent2); }
+.order-card.processing { border-left-color: var(--accent); }
+.order-card.shipped { border-left-color: var(--success); }
+.order-card.cancelled { border-left-color: #ccc; opacity: 0.6; }
+.preorder-badge { display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border:1.5px solid #E0A042; color:#C8881C; border-radius:50%; font-size:11px; font-weight:800; line-height:1; flex-shrink:0; vertical-align:middle; }
+.preorder-badge.sm { width:17px; height:17px; font-size:10px; }
+.order-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.order-no { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text2); }
+.status-badge { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 20px; white-space: nowrap; }
+.status-badge.pending { background: var(--warning-light); color: var(--warning); }
+.status-badge.partial { background: #FBF2E9; color: #C8881C; }
+.status-badge.submitted { background: #e0e8f8; color: var(--accent2); }
+.status-badge.processing { background: var(--accent-light); color: var(--accent); }
+.status-badge.shipped { background: var(--success-light); color: var(--success); }
+.status-badge.cancelled { background: #f0f0f0; color: #999; }
+.order-receiver { font-weight: 700; font-size: 16px; margin: 6px 0 2px; }
+.order-meta { font-size: 13px; color: var(--text2); }
+.order-items-preview { font-size: 13px; color: var(--text2); margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.form-body { flex: 1; padding: 16px; overflow-y: auto; }
+.form-section { background: var(--surface); border-radius: var(--radius); margin-bottom: 16px; overflow: hidden; box-shadow: var(--shadow); }
+.form-section-title { padding: 12px 16px; font-weight: 700; font-size: 13px; letter-spacing: 0.5px; color: var(--text2); background: var(--surface2); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 6px; }
+.form-row { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.form-row:last-child { border-bottom: none; }
+.form-label { font-size: 14px; color: var(--text2); margin-bottom: 6px; display: block; font-weight: 600; }
+.form-label .req { color: var(--danger); margin-left: 2px; }
+.form-input { width: 100%; border: 2px solid #3A5A48; border-radius: var(--radius-sm); padding: 13px 14px; font-size: 17px; font-family: inherit; color: var(--text); background: var(--surface); outline: none; transition: border-color 0.2s; line-height: 1.5; }
+.form-input:focus { border-color: var(--accent); }
+.form-select { width: 100%; border: 2px solid #3A5A48; border-radius: var(--radius-sm); padding: 13px 14px; font-size: 17px; font-family: inherit; color: var(--text); background: var(--surface); outline: none; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'%3E%3Cpath d='M1 1l6 6 6-6' stroke='%233A5A48' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; }
+.form-select:focus { border-color: var(--accent); }
+.form-textarea { width: 100%; border: 2px solid #3A5A48; border-radius: var(--radius-sm); padding: 13px 14px; font-size: 16px; font-family: inherit; color: var(--text); background: var(--surface); outline: none; resize: none; min-height: 90px; line-height: 1.7; }
+.form-textarea:focus { border-color: var(--accent); }
+.product-search-wrap { position: relative; }
+.product-search-input { width: 100%; border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 11px 13px 11px 38px; font-size: 16px; font-family: inherit; color: var(--text); background: var(--surface); outline: none; }
+.product-search-input:focus { border-color: var(--accent); }
+.product-search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 16px; pointer-events: none; }
+.product-dropdown { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: calc(100% - 40px); max-width: 440px; max-height: 70vh; background: var(--surface); border: 1.5px solid var(--accent2); border-radius: 14px; overflow-y: auto; z-index: 100001; box-shadow: 0 12px 48px rgba(0,0,0,0.3); display: none; -webkit-overflow-scrolling: touch; }
+.product-dropdown-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100000; display: none; }
+.product-dropdown-overlay.show { display: block; }
+.product-dropdown-header { position: sticky; top: 0; background: var(--accent2); color: #fff; padding: 12px 16px; font-size: 15px; font-weight: 800; display: flex; justify-content: space-between; align-items: center; z-index: 2; }
+.product-option { padding: 14px 16px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.15s; min-height: 52px; display: flex; align-items: center; }
+.product-option:last-child { border-bottom: none; }
+.product-option:hover, .product-option.highlighted { background: var(--accent-light); }
+.product-option .pname { font-weight: 500; font-size: 14px; }
+.product-option .pcode { font-size: 12px; color: var(--text2); font-family: 'DM Mono', monospace; }
+.product-option .pstock { font-size: 12px; font-weight: 700; }
+.product-option .pstock.ok { color: var(--success); }
+.product-option .pstock.low { color: var(--warning); }
+.product-option .pstock.none { color: var(--danger); }
+.item-list { padding: 8px 16px; }
+.item-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.item-row:last-child { border-bottom: none; }
+.item-info { flex: 1; min-width: 0; }
+.item-name { font-weight: 500; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item-code { font-size: 11px; color: var(--text2); font-family: 'DM Mono', monospace; }
+.item-stock { font-size: 11px; font-weight: 700; }
+.item-stock.ok { color: var(--success); }
+.item-stock.none { color: var(--danger); }
+.qty-control { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.qty-btn { width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--border); background: var(--surface2); font-size: 18px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; font-family: inherit; color: var(--text); }
+.qty-btn:active { background: var(--border); }
+.qty-num { font-family: 'DM Mono', monospace; font-size: 16px; font-weight: 700; min-width: 24px; text-align: center; }
+.item-delete { background: none; border: none; color: var(--danger); font-size: 20px; cursor: pointer; padding: 4px; flex-shrink: 0; }
+.form-footer { padding: 16px; background: var(--surface); border-top: 1px solid var(--border); box-shadow: 0 -4px 16px rgba(0,0,0,0.06); }
+.btn-submit { width: 100%; background: var(--accent); color: #1a1a10; border: none; border-radius: var(--radius); padding: 18px; font-size: 18px; font-weight: 700; font-family: inherit; cursor: pointer; box-shadow: 0 4px 16px rgba(196,164,74,0.35); transition: opacity 0.2s, transform 0.1s; }
+.btn-submit:active { transform: scale(0.98); }
+.btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+.detail-body { flex: 1; padding: 16px; overflow-y: auto; }
+.detail-status-hero { background: linear-gradient(135deg, #1a1a2e, #2a2a4e); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; color: #fff; text-align: center; }
+.detail-status-icon { font-size: 40px; margin-bottom: 8px; }
+.detail-status-text { font-size: 20px; font-weight: 700; }
+.detail-order-no { font-family: 'DM Mono', monospace; font-size: 13px; color: rgba(255,255,255,0.6); margin-top: 4px; }
+.detail-card { background: var(--surface); border-radius: var(--radius); margin-bottom: 12px; overflow: hidden; box-shadow: var(--shadow); }
+.detail-card-title { padding: 10px 14px; font-size: 12px; font-weight: 700; letter-spacing: 0.5px; color: var(--text2); background: var(--surface2); border-bottom: 1px solid var(--border); }
+.detail-row { padding: 12px 14px; display: flex; border-bottom: 1px solid var(--border); gap: 8px; }
+.detail-row:last-child { border-bottom: none; }
+.detail-row-label { font-size: 12px; color: var(--text2); min-width: 60px; flex-shrink: 0; padding-top: 1px; }
+.detail-row-value { font-size: 14px; font-weight: 500; flex: 1; word-break: break-all; }
+.tracking-box { background: var(--success-light); border: 1px solid var(--success); border-radius: var(--radius-sm); padding: 12px 14px; margin: 12px 14px; display: flex; align-items: center; gap: 8px; }
+.tracking-box .tracking-num { font-family: 'DM Mono', monospace; font-size: 15px; font-weight: 700; color: var(--success); flex: 1; }
+.tracking-box .copy-btn { background: var(--success); color: #fff; border: none; border-radius: 6px; padding: 6px 10px; font-size: 12px; cursor: pointer; font-family: inherit; }
+.qr-section { background: var(--surface); border-radius: var(--radius); padding: 20px; margin-bottom: 12px; box-shadow: var(--shadow); text-align: center; }
+.qr-section h3 { font-size: 14px; color: var(--text2); margin-bottom: 12px; }
+.qr-code-wrap { display: inline-block; padding: 12px; background: #fff; border-radius: 8px; border: 2px solid var(--border); }
+.qr-hint { font-size: 12px; color: var(--text2); margin-top: 10px; }
+.admin-tabs { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.admin-tab { padding: 12px 16px; font-size: 14px; font-weight: 600; color: var(--text2); cursor: pointer; white-space: nowrap; border-bottom: 2.5px solid transparent; transition: color 0.2s; background: none; border-top: none; border-left: none; border-right: none; font-family: inherit; }
+.admin-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.orders-list { padding: 12px 16px; flex: 1; overflow-y: auto; }
+.btn-status { display: inline-block; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; border: none; font-family: inherit; margin: 2px; }
+.btn-status.process { background: var(--accent-light); color: var(--accent); }
+.btn-status.ship { background: var(--success-light); color: var(--success); }
+.btn-status.cancel { background: var(--danger-light); color: var(--danger); }
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: #1a1a18; color: #fff; padding: 12px 20px; border-radius: 24px; font-size: 14px; font-weight: 500; z-index: 9999; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); white-space: nowrap; max-width: calc(100vw - 32px); }
+.toast.show { transform: translateX(-50%) translateY(0); }
+.toast.success { background: var(--success); }
+.toast.error { background: var(--danger); }
+.loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.85); display: flex; align-items: center; justify-content: center; z-index: 9998; display: none; }
+.loading-overlay.show { display: flex; }
+.spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.empty-state { text-align: center; padding: 48px 24px; color: var(--text2); }
+.empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+.empty-state p { font-size: 15px; }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 500; display: none; align-items: flex-end; }
+.modal-overlay.show { display: flex; }
+.modal-sheet { background: var(--surface); border-radius: 20px 20px 0 0; padding: 20px; width: 100%; max-height: 80vh; overflow-y: auto; }
+.modal-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
+.modal-input-row { margin-bottom: 12px; }
+.modal-input-row label { font-size: 12px; color: var(--text2); display: block; margin-bottom: 6px; }
+.same-buyer-label { display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 4px 0; font-size: 15px; font-weight: 500; user-select: none; }
+.checkbox-wrap { width: 24px; height: 24px; border: 2px solid var(--border); border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; background: var(--surface); }
+.checkbox-wrap.checked { background: var(--accent); border-color: var(--accent); }
+.checkbox-inner { display: none; }
+.checkbox-wrap.checked .checkbox-inner { display: block; width: 6px; height: 10px; border: 2px solid #fff; border-top: none; border-left: none; transform: rotate(45deg) translateY(-1px); }
+.field-hint { font-size: 12px; margin-top: 4px; }
+.field-hint.error { color: var(--danger); }
+.field-hint.ok { color: var(--success); }
+.store-filter-bar { display:flex; align-items:center; gap:8px; padding:10px 16px; background:var(--surface); border-bottom:1px solid var(--border); }
+.store-filter-bar label { font-size:13px; color:var(--text2); font-weight:600; white-space:nowrap; }
+.store-filter-select { flex:1; border:1.5px solid var(--border); border-radius:var(--radius-sm); padding:8px 10px; font-size:14px; font-family:inherit; color:var(--text); background:var(--surface); outline:none; }
+.sync-btn { background:var(--surface2); border:1.5px solid var(--border); border-radius:var(--radius-sm); padding:8px 12px; font-size:13px; font-family:inherit; color:var(--text2); cursor:pointer; white-space:nowrap; }
+/* 門市篩選 */
+.store-filter-bar { padding: 10px 16px; background: var(--surface2); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+.store-filter-bar label { font-size: 13px; font-weight: 600; color: var(--text2); white-space: nowrap; }
+.store-filter-select { flex: 1; border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 8px 12px; font-size: 14px; font-family: inherit; color: var(--text); background: var(--surface); outline: none; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%233A5A48' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; }
+.store-filter-select:focus { border-color: var(--accent); }
+.sync-btn { background: var(--accent2); color: #fff; border: none; border-radius: var(--radius-sm); padding: 8px 12px; font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer; white-space: nowrap; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -750,7 +958,7 @@ radius-sm); padding: 8px 12px; font-size: 13px; font-weight: 700; font-family: i
     <div style="flex:1;"></div>
     <button onclick="batchAction('push')" style="background:rgba(255,255,255,0.2);border:none;border-radius:6px;padding:6px 12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">🚀 批次拋單</button>
     <button onclick="batchAction('status')" style="background:rgba(255,255,255,0.2);border:none;border-radius:6px;padding:6px 12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">📋 更新狀態</button>
-    <button onclick="batchChangeDate()" style="background:rgba(255,255,255,0.2);border:none;border-radius:6px;padding:6px 12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">📅 批次改日期</button>
+    <button onclick="batchChangeDate()" style="background:rgba(255,255,255,0.2);border:none;border-radius:6px;padding:6px 12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">🔢 批次編ERP單號</button>
     <button onclick="batchAction('csv')" style="background:rgba(255,255,255,0.2);border:none;border-radius:6px;padding:6px 12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">📥 匯出CSV</button>
     <button onclick="batchAction('erp')" style="background:rgba(255,255,255,0.95);border:none;border-radius:6px;padding:6px 12px;color:var(--accent2);font-size:13px;font-weight:700;cursor:pointer;">📦 匯出鼎新</button>
     <button onclick="batchAction('delete')" style="background:rgba(220,50,50,0.7);border:none;border-radius:6px;padding:6px 12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">🗑️ 批次刪除</button>
@@ -4299,13 +4507,13 @@ function batchChangeDate() {
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:100000;display:flex;align-items:center;justify-content:center;padding:20px;';
   modal.innerHTML = `
     <div style="background:var(--surface);border-radius:16px;padding:22px;width:100%;max-width:360px;box-shadow:0 12px 48px rgba(0,0,0,0.3);">
-      <div style="font-size:17px;font-weight:800;margin-bottom:6px;">📅 批次改日期</div>
-      <div style="font-size:13px;color:var(--text2);margin-bottom:16px;">將選取的 <b>${cnt}</b> 張訂單，單號日期改為：</div>
+      <div style="font-size:17px;font-weight:800;margin-bottom:6px;">🔢 批次編 ERP 單號</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:16px;">將選取的 <b>${cnt}</b> 張訂單重新編號。<br>請填「Key 入 ERP 的日期」（上班日）：</div>
       <input type="date" id="batchDateInput" value="${todayStr}" style="width:100%;box-sizing:border-box;padding:14px;font-size:16px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;cursor:pointer;margin-bottom:8px;">
-      <div style="font-size:12px;color:var(--text2);margin-bottom:16px;">流水號會接續該日現有最大號往下排。</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:16px;line-height:1.6;">格式：1203-日期(YYMMDD)+5碼流水號。依「門市代號→銷售日期」排序，全部門市一起從 <b>00001</b> 累加。</div>
       <div style="display:flex;gap:8px;">
         <button onclick="document.getElementById('batchDateModal').remove()" style="flex:1;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;">取消</button>
-        <button onclick="doBatchChangeDate()" style="flex:1.4;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">確定修改</button>
+        <button onclick="doBatchChangeDate()" style="flex:1.4;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">確定編號</button>
       </div>
     </div>`;
   document.body.appendChild(modal);
@@ -4324,26 +4532,40 @@ async function doBatchChangeDate() {
   const prefix = `1203-${dateStr}`;
   showLoading(true);
   try {
-    const rows = await sb.get('orders', `?order_no=like.${encodeURIComponent(prefix+'%')}&select=order_no&order=order_no.desc&limit=1`);
+    // 流水號從 00001 開始；排序：門市代號 → 銷售日期(早到晚) → 原單號
     let seq = 0;
-    if (rows?.length) seq = parseInt(rows[0].order_no.slice(-5)) || 0;
     const selected = adminAllOrders.filter(o => ids.includes(o.id))
-      .sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
+      .sort((a,b) => {
+        const da = a.stores?.dept_code || '';
+        const db = b.stores?.dept_code || '';
+        if (da !== db) return da.localeCompare(db);
+        const sa = a.sale_date || '';
+        const sb2 = b.sale_date || '';
+        if (sa !== sb2) return sa.localeCompare(sb2);
+        return (a.order_no || '').localeCompare(b.order_no || '');
+      });
     let okCount = 0;
     for (const o of selected) {
       seq += 1;
-      let newNo = `${prefix}${String(seq).padStart(5,'0')}`;
-      const dup = await sb.get('orders', `?order_no=eq.${encodeURIComponent(newNo)}&id=neq.${o.id}&select=id&limit=1`);
-      if (dup?.length) { seq += 1; }
-      const finalNo = `${prefix}${String(seq).padStart(5,'0')}`;
+      let finalNo = `${prefix}${String(seq).padStart(5,'0')}`;
+      // 若該號已被別張訂單占用（非本次選取者），往下跳號避免衝突
+      let guard = 0;
+      while (guard < 50) {
+        const dup = await sb.get('orders', `?order_no=eq.${encodeURIComponent(finalNo)}&id=neq.${o.id}&select=id&limit=1`);
+        if (!dup?.length) break;
+        seq += 1;
+        finalNo = `${prefix}${String(seq).padStart(5,'0')}`;
+        guard++;
+      }
       const r = await sb.patch('orders', o.id, { order_no: finalNo, updated_at: new Date().toISOString() });
       if (r && !r.error) okCount++;
     }
+    await logAdminAction('batch_renumber', 'order', ids[0], prefix, `批次自動編ERP單號：${okCount} 張，前綴 ${prefix}，依門市→銷售日排序，從00001起`);
     showLoading(false);
-    showToast(`✅ 已改 ${okCount} 張訂單日期為 ${input}`, 'success');
+    showToast(`✅ 已編號 ${okCount} 張訂單（${prefix}00001 起）`, 'success');
     clearSelection();
     loadAdminOrders();
-  } catch(e) { showLoading(false); showToast('批次改日期失敗：' + e.message, 'error'); }
+  } catch(e) { showLoading(false); showToast('批次編號失敗：' + e.message, 'error'); }
 }
 
 async function batchAction(action) {
