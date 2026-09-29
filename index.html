@@ -274,7 +274,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
       <span id="badgeField" style="display:none;background:#D9534F;color:#fff;font-size:12px;font-weight:800;min-width:22px;height:22px;border-radius:11px;padding:0 6px;align-items:center;justify-content:center;margin-right:4px;"></span>
       <div style="font-size:18px;color:#4A6058;">›</div>
     </div>
-    <div onclick="showToast('⚠️ 業績補登暫停新增，資料整理中，僅開放查詢舊紀錄','error');openSalesLogList();" style="background:#fff;border-radius:10px;padding:12px 16px;
+    <div onclick="showToast('⚠️ 業績補登暫停新增，資料整理中，僅開放查詢舊紀錄','error');openSalesLogList();" style="background:#fff;border-radius:10px;padding:12px 16px;box-shadow:0 2px 12px rgba(0,0,0,0.08);cursor:pointer;display:flex;align-items:center;gap:12px;">
       <div style="width:36px;height:36px;background:#e0e8f8;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">📊</div>
       <div style="flex:1;">
         <div style="font-size:13px;font-weight:700;color:#1a1a18;">業績補登</div>
@@ -2890,6 +2890,7 @@ function renderDetail(o, containerId, isPublic) {
         ${(o.status!=='cancelled'&&o.status!=='shipped')?`<button class="btn-status cancel" onclick="showCancelModal('${o.id}')">❌ 取消訂單</button>`:''}
         ${(o.status==='cancelled' && currentUser?.role==='admin')?`<button class="btn-status ship" style="background:#3E7C5A;color:#fff;" onclick="restoreOrder('${o.id}')">♻️ 復原訂單</button>`:''}
         ${(currentUser?.role==='admin' && (o.order_items||[]).length > 1 && o.status!=='cancelled')?`<button class="btn-status process" style="background:#7A5FA0;color:#fff;" onclick="openSplitOrder('${o.id}')">✂️ 拆分訂單</button>`:''}
+        ${(currentUser?.role==='admin')?`<button class="btn-status process" style="background:#2E7D8A;color:#fff;" onclick="openAddItem('${o.id}')">➕ 補品項</button>`:''}
         <button class="btn-status cancel" style="background:#1a1a18;color:#fff;" onclick="deleteOrder('${o.id}')">🗑️ 刪除訂單</button>
       </div>
       ${o.cancel_reason?`<div style="margin-top:10px;padding:8px 10px;background:var(--danger-light);border-radius:6px;font-size:13px;color:var(--danger);">取消原因：${escHtml(o.cancel_reason)}</div>`:''}
@@ -3589,6 +3590,118 @@ async function doSplitOrder(orderId) {
   } catch(e) { showLoading(false); showToast('拆分失敗：' + e.message, 'error'); }
 }
 
+// 補漏品項：開一張新單，POS序號/營業日/業務帶原單，只放新選的漏Key品項
+let _addItemList = [];
+
+function openAddItem(orderId) {
+  if (currentUser?.role !== 'admin') { showToast('只有管理員可補漏品項', 'error'); return; }
+  const o = (typeof adminAllOrders !== 'undefined' ? adminAllOrders : []).find(x => x.id === orderId)
+         || (typeof allMyOrders !== 'undefined' ? allMyOrders : []).find(x => x.id === orderId);
+  if (!o) { showToast('找不到訂單', 'error'); return; }
+  _addItemList = [];
+  document.getElementById('addItemModal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'addItemModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:100000;display:flex;align-items:center;justify-content:center;padding:16px;';
+  modal.innerHTML = `
+    <div style="background:var(--surface);border-radius:16px;padding:20px;width:100%;max-width:460px;max-height:88vh;overflow-y:auto;box-shadow:0 12px 48px rgba(0,0,0,0.3);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <div style="font-size:17px;font-weight:800;">➕ 補漏品項</div>
+        <button onclick="document.getElementById('addItemModal').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text2);">✕</button>
+      </div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:14px;">
+        原單：${escHtml(o.order_no)}　業務：${escHtml(o.staff?.name||'')}<br>
+        會建立一張<b>新單</b>補漏掉的品項，POS序號（${escHtml(o.pos_no||'無')}）、營業日、業務都沿用原單，對應 ERP 另開的新銷貨單。
+      </div>
+      <div style="font-size:13px;font-weight:700;margin-bottom:6px;">搜尋商品加入</div>
+      <input id="addItemSearch" placeholder="輸入品名或品號搜尋..." oninput="onAddItemSearch(this.value)" autocomplete="off" style="width:100%;box-sizing:border-box;border:1.5px solid var(--border);border-radius:8px;padding:10px;font-size:14px;margin-bottom:4px;">
+      <div id="addItemResults" style="max-height:180px;overflow-y:auto;margin-bottom:12px;"></div>
+      <div style="font-size:13px;font-weight:700;margin-bottom:6px;">已選要補的品項</div>
+      <div id="addItemSelected" style="margin-bottom:16px;"><div style="font-size:13px;color:var(--text2);padding:8px;">尚未選擇品項</div></div>
+      <button onclick="doAddItem('${orderId}')" style="width:100%;padding:13px;background:#2E7D8A;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;">確認補單</button>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+}
+
+function onAddItemSearch(kw) {
+  const box = document.getElementById('addItemResults');
+  if (!box) return;
+  kw = (kw||'').trim().toLowerCase();
+  if (!kw) { box.innerHTML = ''; return; }
+  const hits = allProducts.filter(p =>
+    (p.product_name||'').toLowerCase().includes(kw) || (p.sku||'').toLowerCase().includes(kw)
+  ).slice(0, 20);
+  if (!hits.length) { box.innerHTML = '<div style="font-size:13px;color:var(--text2);padding:8px;">查無商品</div>'; return; }
+  box.innerHTML = hits.map(p => `
+    <div onclick="addItemPick('${escHtml(p.sku)}')" style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;cursor:pointer;">
+      <div style="font-size:14px;font-weight:600;">${escHtml(p.product_name)}</div>
+      <div style="font-size:12px;color:var(--text2);font-family:'DM Mono',monospace;">${escHtml(p.sku)}</div>
+    </div>`).join('');
+}
+
+function addItemPick(sku) {
+  const p = allProducts.find(x => x.sku === sku);
+  if (!p) return;
+  if (_addItemList.find(x => x.sku === sku)) { showToast('已在清單中', 'error'); return; }
+  _addItemList.push({ sku: p.sku, product_name: p.product_name, quantity: 1 });
+  document.getElementById('addItemSearch').value = '';
+  document.getElementById('addItemResults').innerHTML = '';
+  renderAddItemSelected();
+}
+
+function renderAddItemSelected() {
+  const box = document.getElementById('addItemSelected');
+  if (!box) return;
+  if (!_addItemList.length) { box.innerHTML = '<div style="font-size:13px;color:var(--text2);padding:8px;">尚未選擇品項</div>'; return; }
+  box.innerHTML = _addItemList.map((it, i) => `
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:14px;font-weight:600;">${escHtml(it.product_name)}</div>
+        <div style="font-size:12px;color:var(--text2);font-family:'DM Mono',monospace;">${escHtml(it.sku)}</div>
+      </div>
+      <input type="number" min="1" value="${it.quantity}" onchange="_addItemList[${i}].quantity=Math.max(1,parseInt(this.value)||1)" style="width:56px;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:14px;text-align:center;">
+      <button onclick="_addItemList.splice(${i},1);renderAddItemSelected()" style="background:none;border:none;color:var(--danger);font-size:18px;cursor:pointer;">✕</button>
+    </div>`).join('');
+}
+
+async function doAddItem(orderId) {
+  const o = (typeof adminAllOrders !== 'undefined' ? adminAllOrders : []).find(x => x.id === orderId)
+         || (typeof allMyOrders !== 'undefined' ? allMyOrders : []).find(x => x.id === orderId);
+  if (!o) { showToast('找不到訂單', 'error'); return; }
+  if (!_addItemList.length) { showToast('請至少選一個要補的品項', 'error'); return; }
+  showLoading(true);
+  try {
+    const newNo = await generateOrderNoSafe();
+    const newOrder = {
+      order_no: newNo, sale_date: o.sale_date, delivery_date: o.delivery_date,
+      store_id: o.store_id, staff_id: o.staff_id,
+      receiver_name: o.receiver_name, receiver_phone: o.receiver_phone, receiver_address: o.receiver_address,
+      buyer_name: o.buyer_name, buyer_phone: o.buyer_phone,
+      pos_no: o.pos_no, pos_terminal: o.pos_terminal,
+      status: 'pending',
+      is_preorder: _addItemList.some(it => isPreorderable(it.sku)),
+      note: `（補漏品項，原單 ${o.order_no}）`,
+      created_at: new Date().toISOString()
+    };
+    const created = await sb.post('orders', newOrder);
+    const newId = Array.isArray(created) ? created[0].id : created.id;
+    for (const it of _addItemList) {
+      await sb.post('order_items', {
+        order_id: newId, sku: it.sku, product_name: it.product_name,
+        quantity: it.quantity,
+        fulfill_source: isNankan(it.sku) ? 'nankan' : 'wms',
+        item_type: isPreorderable(it.sku) ? 'preorder' : 'normal'
+      });
+    }
+    await logAdminAction('add_item_order', 'order', orderId, o.order_no, `補漏品項另開新單 ${newNo}（${_addItemList.map(i=>i.product_name+'x'+i.quantity).join('、')}）`);
+    showLoading(false);
+    document.getElementById('addItemModal')?.remove();
+    document.getElementById('orderDetailModal')?.remove();
+    showToast(`✅ 已補單，新單：${newNo}`, 'success');
+    loadAdminOrders(); loadMyOrders();
+  } catch(e) { showLoading(false); showToast('補單失敗：' + e.message, 'error'); }
+}
 async function restoreOrder(orderId) {
   if (currentUser?.role !== 'admin') { showToast('只有管理員可復原訂單', 'error'); return; }
   const _o = (typeof adminAllOrders !== 'undefined' ? adminAllOrders : []).find(x => x.id === orderId)
