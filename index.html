@@ -841,7 +841,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
       <div class="form-row"><label class="form-label">備註</label><textarea class="form-textarea" id="orderNote" placeholder="特殊要求等（選填）"></textarea></div>
     </div>
     <div class="form-section">
-      <div class="form-section-title">📦 訂購品項（最多5項）</div>
+      <div class="form-section-title">📦 訂購品項（最多20項）</div>
       <div class="form-row">
         <label class="form-label">快捷分類</label>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -864,7 +864,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
         </div>
       </div>
       <div class="item-list" id="itemList"></div>
-      <div style="padding:0 16px 12px;"><div style="font-size:12px;color:var(--text2);" id="itemCountHint">已選 0 / 5 項</div></div>
+      <div style="padding:0 16px 12px;"><div style="font-size:12px;color:var(--text2);" id="itemCountHint">已選 0 / 20 項</div></div>
     </div>
   </div>
   <div id="preorderBox" style="display:none;margin:0 16px 4px;padding:12px 14px;background:#FBF2E9;border:1.5px solid #E0A042;border-radius:10px;">
@@ -899,7 +899,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
       <div class="form-row"><label class="form-label">備註</label><textarea class="form-textarea" id="editNote" placeholder="特殊要求等（選填）"></textarea></div>
     </div>
     <div class="form-section">
-      <div class="form-section-title">📦 訂購品項（最多5項）</div>
+      <div class="form-section-title">📦 訂購品項（最多20項）</div>
       <div class="form-row">
         <label class="form-label">搜尋商品</label>
         <div class="product-search-wrap" id="editProductSearchWrap">
@@ -1421,7 +1421,7 @@ function onProductSearch(val) {
   clearTimeout(searchDebounce);
   const dd = document.getElementById('productDropdown');
   if (!val.trim()) { dd.style.display = 'none'; return; }
-  if (formItems.length >= 5) { showToast('最多只能選5項商品'); dd.style.display = 'none'; return; }
+  if (formItems.length >= 20) { showToast('最多只能選20項商品'); dd.style.display = 'none'; return; }
   searchDebounce = setTimeout(() => renderDropdownFromLocal(val.trim()), 200);
 }
 
@@ -1475,9 +1475,10 @@ async function renderDropdownFromLocal(q) {
 
 function addItem(sku, name, stock) {
   if (formItems.find(i => i.sku === sku)) { showToast('此商品已加入'); closeDropdown(); return; }
-  if (formItems.length >= 5) { showToast('最多只能選5項商品'); closeDropdown(); return; }
+  if (formItems.length >= 20) { showToast('最多只能選20項商品'); closeDropdown(); return; }
   const nankanItem = isNankan(sku);
   formItems.push({ sku, name, stock, qty: 1, fulfill_source: nankanItem ? 'nankan' : 'wms' });
+  _itemsCollapsed = false;  // 剛加品項自動展開，確保看得到
   // 選到可預購且無庫存的品項 → 自動顯示預訂單勾選區（南崁品不算預購）
   if (!nankanItem && stock <= 0 && isPreorderable(sku)) {
     const box = document.getElementById('preorderBox');
@@ -1499,16 +1500,39 @@ function closeDropdown() {
 }
 function closeEditDropdown() { const dd = document.getElementById('editProductDropdown'); if (dd) dd.style.display = 'none'; }
 
+let _itemsCollapsed = true;  // 品項清單是否收合（預設收合）
+const ITEMS_COLLAPSE_THRESHOLD = 5;  // 超過幾項才啟用折疊
+const ITEMS_SHOW_WHEN_COLLAPSED = 3;  // 收合時顯示幾項
+
+function toggleItemsCollapse() { _itemsCollapsed = !_itemsCollapsed; renderItems(); }
+
 function renderItems() {
   const list = document.getElementById('itemList');
-  document.getElementById('itemCountHint').textContent = `已選 ${formItems.length} / 5 項`;
+  document.getElementById('itemCountHint').textContent = `已選 ${formItems.length} / 20 項`;
   if (!formItems.length) { list.innerHTML = ''; return; }
-  list.innerHTML = formItems.map((item, i) => `
+  const rowHtml = (item, i) => `
     <div class="item-row">
       <div class="item-info"><div class="item-name">${item.fulfill_source==='nankan'?NANKAN_BADGE_SM+' ':''}${escHtml(item.name)}</div><div class="item-code">${item.sku}</div><div class="item-stock ${item.fulfill_source==='nankan'?'ok':(item.stock > 0 ? 'ok' : 'none')}" ${item.fulfill_source==='nankan'?'style="color:#8B2A3A;"':''}>${item.fulfill_source==='nankan'?'🍷 南崁自倉出貨':'庫存 '+item.stock}</div></div>
       <div class="qty-control"><button class="qty-btn" onclick="changeQty(${i},-1)">−</button><span class="qty-num">${item.qty}</span><button class="qty-btn" onclick="changeQty(${i},1)">＋</button></div>
       <button class="item-delete" onclick="removeItem(${i})">✕</button>
-    </div>`).join('');
+    </div>`;
+  const total = formItems.length;
+  // 品項數超過門檻才折疊；收合時只顯示前幾項
+  if (total > ITEMS_COLLAPSE_THRESHOLD && _itemsCollapsed) {
+    const shown = formItems.slice(0, ITEMS_SHOW_WHEN_COLLAPSED).map(rowHtml).join('');
+    list.innerHTML = shown + `
+      <div onclick="toggleItemsCollapse()" style="text-align:center;padding:10px;margin-top:4px;background:var(--accent-light);border:1.5px dashed var(--accent);border-radius:8px;font-size:14px;font-weight:700;color:var(--accent);cursor:pointer;">
+        ▼ 展開全部 ${total} 項（還有 ${total - ITEMS_SHOW_WHEN_COLLAPSED} 項）
+      </div>`;
+  } else {
+    list.innerHTML = formItems.map(rowHtml).join('');
+    if (total > ITEMS_COLLAPSE_THRESHOLD) {
+      list.innerHTML += `
+        <div onclick="toggleItemsCollapse()" style="text-align:center;padding:10px;margin-top:4px;background:var(--surface2);border:1.5px dashed var(--border);border-radius:8px;font-size:14px;font-weight:700;color:var(--text2);cursor:pointer;">
+          ▲ 收合品項清單
+        </div>`;
+    }
+  }
 }
 
 function changeQty(i, d) {
@@ -3831,7 +3855,7 @@ function onEditProductSearch(val) {
   clearTimeout(editSearchDebounce);
   const dd = document.getElementById('editProductDropdown');
   if (!val.trim()) { dd.style.display = 'none'; return; }
-  if (editFormItems.length >= 5) { showToast('最多只能選5項商品'); dd.style.display = 'none'; return; }
+  if (editFormItems.length >= 20) { showToast('最多只能選20項商品'); dd.style.display = 'none'; return; }
   editSearchDebounce = setTimeout(() => renderEditDropdown(val.trim()), 200);
 }
 
@@ -3881,7 +3905,7 @@ function renderEditDropdownItems(filtered, stockMap, inputEl, dd) {
 
 function addEditItem(sku, name, stock) {
   if (editFormItems.find(i=>i.sku===sku)) { showToast('此商品已加入'); closeEditDropdown(); return; }
-  if (editFormItems.length >= 5) { showToast('最多只能選5項商品'); return; }
+  if (editFormItems.length >= 20) { showToast('最多只能選20項商品'); return; }
   editFormItems.push({ sku, name, stock, qty: 1, fulfill_source: isNankan(sku) ? 'nankan' : 'wms' });
   renderEditItems(); closeEditDropdown();
   document.getElementById('editProductSearch').value = '';
@@ -4225,7 +4249,7 @@ function quickSearch(keyword) {
 
 // 🍷 酒快捷：用置中彈窗列出南崁品（不依賴下拉定位，絕對顯示在螢幕中央）
 async function quickSearchNankan() {
-  if (formItems.length >= 5) { showToast('最多只能選5項商品'); return; }
+  if (formItems.length >= 20) { showToast('最多只能選20項商品'); return; }
   if (!nankanWhitelist || nankanWhitelist.size === 0) { await loadNankanWhitelist(); }
   let nankanList = allProducts.filter(p => isNankan(p.sku)).sort((a,b)=>a.sku.localeCompare(b.sku));
   if (!nankanList.length && nankanWhitelist.size > 0) {
