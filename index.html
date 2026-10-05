@@ -969,6 +969,13 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
     <input type="checkbox" id="selectAllChk" onchange="toggleSelectAll(this.checked)" style="width:18px;height:18px;cursor:pointer;accent-color:var(--accent);">
     <label for="selectAllChk" style="font-size:13px;color:var(--text2);cursor:pointer;">全選</label>
   </div>
+  <div style="padding:0 14px 8px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+    <span style="font-size:13px;color:var(--text2);font-weight:700;">📅 快速篩選</span>
+    <button onclick="filterByToday()" style="padding:6px 12px;background:var(--accent-light);border:1.5px solid var(--accent);border-radius:16px;font-size:13px;font-weight:700;color:var(--accent);cursor:pointer;font-family:inherit;">今天</button>
+    <input type="date" id="adminDateFilter" onchange="onAdminDateFilter(this.value)" style="padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;cursor:pointer;">
+    <span style="font-size:12px;color:var(--text2);">（依銷售日）</span>
+    <button onclick="clearDateFilter()" id="clearDateBtn" style="display:none;padding:6px 10px;background:var(--surface2);border:1.5px solid var(--border);border-radius:16px;font-size:13px;color:var(--text2);cursor:pointer;font-family:inherit;">✕ 清除日期</button>
+  </div>
   <div style="padding:0 14px 8px;"><div style="position:relative;"><span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;">🔍</span><input type="text" id="adminSearchInput" style="width:100%;box-sizing:border-box;border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px 10px 36px;font-size:15px;font-family:inherit;outline:none;background:var(--surface);" placeholder="搜尋收件人、電話、訂單號、銷售日(2026-06-29)、POS序號..." oninput="onAdminSearch(this.value)"></div></div>
   <div class="orders-list" id="adminOrdersList"></div>
 </div>
@@ -3097,6 +3104,27 @@ function onAdminSearch(val) {
   renderAdminOrders();
 }
 
+let adminDateFilter = '';  // 日期快速篩選（依 sale_date）
+function filterByToday() {
+  const t = new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Taipei'}));
+  const ds = `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
+  adminDateFilter = ds;
+  const inp = document.getElementById('adminDateFilter'); if (inp) inp.value = ds;
+  const btn = document.getElementById('clearDateBtn'); if (btn) btn.style.display = '';
+  renderAdminOrders();
+}
+function onAdminDateFilter(val) {
+  adminDateFilter = val || '';
+  const btn = document.getElementById('clearDateBtn'); if (btn) btn.style.display = adminDateFilter ? '' : 'none';
+  renderAdminOrders();
+}
+function clearDateFilter() {
+  adminDateFilter = '';
+  const inp = document.getElementById('adminDateFilter'); if (inp) inp.value = '';
+  const btn = document.getElementById('clearDateBtn'); if (btn) btn.style.display = 'none';
+  renderAdminOrders();
+}
+
 async function loadAdminOrders(staffIdFilter, storeIdFilter) {
   showLoading(true);
   try {
@@ -3131,6 +3159,10 @@ function renderAdminOrders() {
   } else if (adminCurrentTab !== 'all') {
     base = base.filter(o => o.status === adminCurrentTab);
   }
+  // 日期快速篩選（依銷售日 sale_date）
+  if (adminDateFilter) {
+    base = base.filter(o => (o.sale_date || '') === adminDateFilter);
+  }
   // 搜尋關鍵字篩選（統一在這裡做）
   const q = adminSearchKeyword;
   const filtered = q ? base.filter(o =>
@@ -3148,16 +3180,8 @@ function renderAdminOrders() {
     el.innerHTML = `<div class="empty-state"><div class="icon">📋</div><p>${emptyMsg}</p></div>`;
     return;
   }
-  // 依「門市代號 → 銷售日期 → 單號」排序（方便批次改 ERP 單號時對照）
-  filtered.sort((a, b) => {
-    const da = a.stores?.dept_code || '';
-    const db = b.stores?.dept_code || '';
-    if (da !== db) return da.localeCompare(db);
-    const sa = a.sale_date || '';
-    const sb2 = b.sale_date || '';
-    if (sa !== sb2) return sa.localeCompare(sb2);
-    return (a.order_no || '').localeCompare(b.order_no || '');
-  });
+  // 依「訂單單號」排序（大→小，最新在上，方便逐筆瀏覽不跳號）
+  filtered.sort((a, b) => (b.order_no || '').localeCompare(a.order_no || ''));
   const statusMap = { pending:'待處理', partial:'部分已拋', submitted:'已拋單', processing:'作業中', shipped:'已完成', cancelled:'已取消' };
   el.innerHTML = filtered.map(o => {
     const preview = (o.order_items||[]).map(i => `${isPreorderItem(i)?'⟨預⟩':''}${i.product_name} x${i.quantity}`).join('、');
