@@ -627,13 +627,20 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
     </div>
 
     <div class="form-section">
-      <div class="form-section-title">📸 匯款截圖 <span style="font-size:12px;color:var(--text2);font-weight:400;">（選填，客人匯款完成的截圖）</span></div>
+      <div class="form-section-title">📸 匯款截圖 <span style="font-size:12px;color:var(--text2);font-weight:400;">（選填，最多 2 張）</span></div>
       <div class="form-row">
         <input type="file" id="foProofFile" accept="image/*" style="display:none;" onchange="onFoProofSelected(this)">
         <button type="button" onclick="document.getElementById('foProofFile').click()" style="width:100%;padding:14px;background:var(--accent-light);border:2px dashed var(--accent);border-radius:10px;font-size:15px;font-weight:700;color:var(--accent);cursor:pointer;font-family:inherit;">
-          📷 選擇 / 拍攝匯款截圖
+          📷 匯款截圖 ①
         </button>
         <div id="foProofPreview" style="margin-top:10px;"></div>
+      </div>
+      <div class="form-row">
+        <input type="file" id="foProofFile2" accept="image/*" style="display:none;" onchange="onFoProofSelected2(this)">
+        <button type="button" onclick="document.getElementById('foProofFile2').click()" style="width:100%;padding:14px;background:var(--accent-light);border:2px dashed var(--accent);border-radius:10px;font-size:15px;font-weight:700;color:var(--accent);cursor:pointer;font-family:inherit;">
+          📷 匯款截圖 ②（第 2 張）
+        </button>
+        <div id="foProofPreview2" style="margin-top:10px;"></div>
       </div>
     </div>
 
@@ -5103,10 +5110,12 @@ let foItems = [];              // 品項：{sku,name,qty,amount,ship_type,proxy_
 let foSearchDebounce = null;
 let foStoresCache = [];        // 門市清單（代寄選門市用）
 let foEditId = null;           // 編輯中的場外單 id（null=新增）
-let foProofFile = null;        // 待上傳的匯款截圖檔案
-let foProofUrl = null;         // 已上傳/既有的匯款截圖網址
+let foProofFile = null;        // 待上傳的匯款截圖檔案（第1張）
+let foProofUrl = null;         // 已上傳/既有的匯款截圖網址（第1張）
+let foProofFile2 = null;       // 待上傳的匯款截圖檔案（第2張）
+let foProofUrl2 = null;        // 已上傳/既有的匯款截圖網址（第2張）
 
-// ── 匯款截圖：選檔 → 預覽 ──
+// ── 匯款截圖①：選檔 → 預覽 ──
 function onFoProofSelected(input) {
   const file = input.files?.[0];
   if (!file) return;
@@ -5128,6 +5137,30 @@ function clearFoProof() {
   foProofFile = null; foProofUrl = null;
   const inp = document.getElementById('foProofFile'); if (inp) inp.value = '';
   const prev = document.getElementById('foProofPreview'); if (prev) prev.innerHTML = '';
+}
+
+// ── 匯款截圖②：選檔 → 預覽 ──
+function onFoProofSelected2(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  if (!file.type.startsWith('image/')) { showToast('請選擇圖片檔', 'error'); return; }
+  if (file.size > 10 * 1024 * 1024) { showToast('圖片過大（上限 10MB）', 'error'); return; }
+  foProofFile2 = file;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('foProofPreview2').innerHTML = `
+      <div style="position:relative;display:inline-block;">
+        <img src="${e.target.result}" style="max-width:100%;max-height:260px;border-radius:10px;border:1.5px solid var(--border);">
+        <button type="button" onclick="clearFoProof2()" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.6);color:#fff;border:none;border-radius:50%;width:28px;height:28px;font-size:16px;cursor:pointer;">✕</button>
+      </div>
+      <div style="font-size:12px;color:var(--text2);margin-top:4px;">${escHtml(file.name)}（送出時上傳）</div>`;
+  };
+  reader.readAsDataURL(file);
+}
+function clearFoProof2() {
+  foProofFile2 = null; foProofUrl2 = null;
+  const inp = document.getElementById('foProofFile2'); if (inp) inp.value = '';
+  const prev = document.getElementById('foProofPreview2'); if (prev) prev.innerHTML = '';
 }
 
 // 圖片壓縮：等比例縮到最大寬/高 1600px、品質 0.85
@@ -5222,7 +5255,7 @@ async function editFieldOrder(id) {
   setV('foPayMethod', backMap[o.payment_sub] || '');
   foOnPayMethodChange();
   setTimeout(()=>{ setV('foRemitDate', o.remit_date); setV('foTransfer5', o.transfer_last5); }, 60);
-  // 既有匯款截圖回填
+  // 既有匯款截圖回填（第1張）
   foProofFile = null;
   foProofUrl = o.payment_proof_url || null;
   if (foProofUrl) {
@@ -5231,7 +5264,18 @@ async function editFieldOrder(id) {
         <img src="${escHtml(foProofUrl)}" style="max-width:100%;max-height:260px;border-radius:10px;border:1.5px solid var(--border);">
         <button type="button" onclick="clearFoProof()" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.6);color:#fff;border:none;border-radius:50%;width:28px;height:28px;font-size:16px;cursor:pointer;">✕</button>
       </div>
-      <div style="font-size:12px;color:var(--text2);margin-top:4px;">目前的匯款截圖（可按 ✕ 移除或重新選擇覆蓋）</div>`;
+      <div style="font-size:12px;color:var(--text2);margin-top:4px;">目前的匯款截圖①（可按 ✕ 移除或重新選擇覆蓋）</div>`;
+  }
+  // 既有匯款截圖回填（第2張）
+  foProofFile2 = null;
+  foProofUrl2 = o.payment_proof_url2 || null;
+  if (foProofUrl2) {
+    document.getElementById('foProofPreview2').innerHTML = `
+      <div style="position:relative;display:inline-block;">
+        <img src="${escHtml(foProofUrl2)}" style="max-width:100%;max-height:260px;border-radius:10px;border:1.5px solid var(--border);">
+        <button type="button" onclick="clearFoProof2()" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.6);color:#fff;border:none;border-radius:50%;width:28px;height:28px;font-size:16px;cursor:pointer;">✕</button>
+      </div>
+      <div style="font-size:12px;color:var(--text2);margin-top:4px;">目前的匯款截圖②（可按 ✕ 移除或重新選擇覆蓋）</div>`;
   }
   // 品項回填
   foItems = (o.field_order_items||[]).map(it => ({
@@ -5255,6 +5299,7 @@ async function initFieldOrder() {
   foItems = [];
   foEditId = null;
   clearFoProof();
+  clearFoProof2();
   ['foBuyerName','foBuyerPhone','foAddrDetail','foTaxId','foCarrier','foNote','foProductSearch','foRemitDate','foTransfer5'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   // 場外單號：先給暫用隨機碼（TMP-日期-4碼），管理員之後改成正確鼎新銷貨單號
   const _t0 = new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Taipei'}));
@@ -5508,6 +5553,12 @@ async function submitFieldOrder() {
       try { proofUrl = await uploadPaymentProof(foProofFile); }
       catch(err) { showLoading(false); showToast(err.message, 'error'); return; }
     }
+    // 第2張匯款截圖
+    let proofUrl2 = foProofUrl2 || null;
+    if (foProofFile2) {
+      try { proofUrl2 = await uploadPaymentProof(foProofFile2); }
+      catch(err) { showLoading(false); showToast(err.message, 'error'); return; }
+    }
     const row = {
       order_no: orderNo, order_date: orderDate, store_id: storeId,
       buyer_name: buyerName, buyer_phone: buyerPhone, receiver_address: address,
@@ -5516,6 +5567,7 @@ async function submitFieldOrder() {
       remit_date: (payMethod==='atm_cash')?remitDate:null,
       transfer_last5: (payMethod==='atm_transfer')?transfer5:null,
       payment_proof_url: proofUrl,
+      payment_proof_url2: proofUrl2,
       note: note||null
     };
     let foId;
@@ -5634,7 +5686,7 @@ function renderFieldOrders(list) {
         <td style="padding:12px 10px;font-size:13px;color:var(--text2);vertical-align:top;">${escHtml(o.stores?.name||'')}<div>業務：${escHtml(o.staff?.name||'')}</div></td>
         <td style="padding:12px 10px;font-size:13px;max-width:260px;vertical-align:top;">${itemLines}</td>
         <td style="padding:12px 10px;font-size:15px;font-weight:800;color:var(--accent2);text-align:right;white-space:nowrap;vertical-align:top;">$${(o.total_amount||0).toLocaleString()}</td>
-        <td style="padding:12px 10px;font-size:13px;white-space:nowrap;vertical-align:top;">${escHtml(o.payment_sub||o.payment_type||'')}${o.payment_proof_url?'<div style="font-size:12px;color:#3E7C5A;font-weight:700;">📸 有截圖</div>':''}${o.note?`<div style="font-size:13px;color:#fff;background:#D9342B;font-weight:700;border-radius:6px;padding:2px 8px;margin-top:4px;display:inline-block;">📝 有備註</div>`:''}${o.tax_id?`<div style="font-size:12px;color:var(--text2);">統編 ${escHtml(o.tax_id)}</div>`:''}</td>
+        <td style="padding:12px 10px;font-size:13px;white-space:nowrap;vertical-align:top;">${escHtml(o.payment_sub||o.payment_type||'')}${(o.payment_proof_url||o.payment_proof_url2)?`<div style="font-size:12px;color:#3E7C5A;font-weight:700;">📸 有截圖${(o.payment_proof_url&&o.payment_proof_url2)?' x2':''}</div>`:''}${o.note?`<div style="font-size:13px;color:#fff;background:#D9342B;font-weight:700;border-radius:6px;padding:2px 8px;margin-top:4px;display:inline-block;">📝 有備註</div>`:''}${o.tax_id?`<div style="font-size:12px;color:var(--text2);">統編 ${escHtml(o.tax_id)}</div>`:''}</td>
         <td style="padding:12px 10px;text-align:center;white-space:nowrap;vertical-align:top;"><span style="display:inline-block;padding:4px 12px;border-radius:12px;font-size:13px;font-weight:700;color:${st.color};background:${st.bg};">${st.label}</span></td>
       </tr>`;
     }).join('');
@@ -5759,10 +5811,13 @@ function openFieldOrderManage(id) {
         <tbody>${detailRows}</tbody>
       </table>
       <div style="text-align:right;font-size:15px;font-weight:800;color:var(--accent2);margin-top:8px;">總額 $${(o.total_amount||0).toLocaleString()}</div>
-      ${o.payment_proof_url ? `
+      ${(o.payment_proof_url || o.payment_proof_url2) ? `
         <div style="margin-top:10px;border-top:1px dashed var(--border);padding-top:8px;">
           <div style="font-size:12px;font-weight:700;margin-bottom:6px;">📸 匯款截圖（點擊放大）</div>
-          <img src="${escHtml(o.payment_proof_url)}" onclick="window.open('${escHtml(o.payment_proof_url)}','_blank')" style="max-width:100%;max-height:200px;border-radius:8px;border:1.5px solid var(--border);cursor:zoom-in;">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          ${o.payment_proof_url ? `<img src="${escHtml(o.payment_proof_url)}" onclick="window.open('${escHtml(o.payment_proof_url)}','_blank')" style="max-width:48%;max-height:200px;border-radius:8px;border:1.5px solid var(--border);cursor:zoom-in;">` : ''}
+          ${o.payment_proof_url2 ? `<img src="${escHtml(o.payment_proof_url2)}" onclick="window.open('${escHtml(o.payment_proof_url2)}','_blank')" style="max-width:48%;max-height:200px;border-radius:8px;border:1.5px solid var(--border);cursor:zoom-in;">` : ''}
+          </div>
         </div>` : ''}
       ${o.note?`<div style="font-size:16px;color:#D9342B;font-weight:700;margin-top:6px;border-top:1px dashed var(--border);padding-top:6px;"><b>備註：</b>${escHtml(o.note)}</div>`:''}
     </div>`;
