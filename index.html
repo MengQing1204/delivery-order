@@ -663,6 +663,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
   <div class="topbar">
     <button class="topbar-back" onclick="showScreen('homeScreen')">← 返回</button>
     <div class="topbar-title">📋 場外單管理</div>
+    <button class="topbar-action" onclick="exportFieldErpAll()" style="margin-right:6px;">匯鼎新</button>
     <button class="topbar-action" onclick="exportFieldOrderCSV()">匯出CSV</button>
   </div>
   <div style="padding:12px 14px 0;">
@@ -5614,7 +5615,7 @@ async function openFieldOrderList() {
   showLoading(true);
   try {
     const role = currentUser?.role;
-    let filter = '?order=order_no.desc&limit=500&select=*,field_order_items(*),stores!store_id(name),staff(name)';
+    let filter = '?order=order_no.desc&limit=500&select=*,field_order_items(*),stores!store_id(name,dept_code,warehouse_code),staff(name,erp_code)';
     if (role === 'admin') {}
     else if (role === 'manager') {
       // 店長/督導：管轄門市的單 + 自己開的單（兼業務時不漏單）
@@ -5965,6 +5966,161 @@ function exportFieldOrderCSV() {
   });
   const csv = '\uFEFF' + rows.map(r=>r.map(c=>`"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\n');
   const a = document.createElement('a'); a.href = 'data:text/csv;charset=utf-8,'+encodeURIComponent(csv); a.download = `場外單_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+}
+
+// ═══════════════════════════════════════════
+// 匯出鼎新客戶訂單格式（場外單→2201 通路訂單批次轉入）
+// 每張場外單一個 Excel，打包成 zip
+// ═══════════════════════════════════════════
+async function exportFieldErpExcel(orders) {
+  if (!orders || !orders.length) { showToast('沒有可匯出的場外單', 'error'); return; }
+  if (typeof XLSX === 'undefined' || typeof JSZip === 'undefined') { showToast('匯出元件載入中，請稍候再試', 'error'); return; }
+
+  // 確保門市代號表已載入（代寄門市倉別、現場取門市倉別要用）
+  if (!foStoresCache.length) {
+    try { foStoresCache = await sb.get('stores', '?select=*') || []; } catch(e) {}
+  }
+  const storeById = (id) => foStoresCache.find(s => s.id === id) || {};
+
+  // 付款方式 → 鼎新付款條件代號
+  const payCondMap = {
+    atm_cash:   'S0001',  // ATM匯款－無卡存款 → 匯款
+    atm_transfer:'S0001', // ATM匯款－轉帳 → 匯款
+    store_card: 'S0006',  // 展場門市刷卡 → 現場刷卡公司打單
+    hq_card:    'S0002',  // 總公司代刷 → 信用卡
+    cod:        'S0003'   // 貨到付款
+  };
+
+  // 檢查門市鼎新代號是否齊全（開單門市 + 有用到的代寄門市）
+  const missing = [];
+  orders.forEach(o => {
+    const own = o.stores || storeById(o.store_id) || {};
+    if (!own.dept_code) { const nm = own.name || o.store_id; if (!missing.includes(nm+'（部門代號）')) missing.push(nm+'（部門代號）'); }
+    (o.field_order_items || []).forEach(it => {
+      if (it.ship_type === 'picked' && !own.warehouse_code) { const nm = own.name || o.store_id; if (!missing.includes(nm+'（倉別）')) missing.push(nm+'（倉別）'); }
+      if (it.ship_type === 'proxy') {
+        const ps = storeById(it.proxy_store_id);
+        if (!ps.warehouse_code) { const nm = ps.name || '代寄門市'; if (!missing.includes(nm+'（倉別）')) missing.push(nm+'（倉別）'); }
+      }
+    });
+  });
+  if (missing.length) { showToast('下列門市尚未設定鼎新代號：' + missing.join('、'), 'error'); return; }
+
+  showLoading(true);
+  try {
+    const zip = new JSZip();
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}${String(today.getMonth()+1).padStart(2,'0')}${String(today.getDate()).padStart(2,'0')}`;
+
+    // 欄位順序＝鼎新批次欄位設定 A～AD（單頭A-V、單身W-AD）
+    const headers = [
+      '訂單單別','通路訂單編號','單據日期','客戶代號','客戶簡稱','部門代號','業務人員','出貨廠別',
+      '交易幣別','匯率','付款條件','客戶全名','收貨人','聯絡電話(一)','行動電話','送貨地址(一)',
+      '統一編號','發票聯數','載具類別','載具顯碼ID','載具隱碼ID','備註',
+      '序號','品號','品名','庫別','訂單數量','單價','金額','類型'
+    ];
+
+    let fileCount = 0;
+    for (const o of orders) {
+      const own = o.stores || storeById(o.store_id) || {};
+      const carrier = (o.invoice_carrier || '').trim();
+      const hasCarrier = !!carrier;
+      const items = (o.field_order_items && o.field_order_items.length) ? o.field_order_items : [{}];
+
+      const rows = [headers];
+      items.forEach((it, idx) => {
+        // 單身：庫別
+        let wh = '';
+        if (it.ship_type === 'picked') wh = own.warehouse_code || '';            // 現場已取 → 開單門市倉
+        else if (it.ship_type === 'proxy') wh = storeById(it.proxy_store_id).warehouse_code || ''; // 門市代寄 → 代寄門市倉
+        else wh = 'B0003';                                                       // 宅配（delivery/wms/nankan）→ B0003
+
+        const qty = parseInt(it.quantity, 10) || 0;
+        const amt = parseInt(it.amount, 10) || 0;
+        const unitPrice = qty > 0 ? Math.round(amt / qty) : 0;
+        const isGift = amt === 0;
+
+        // 單頭欄位只放在第一列（鼎新單頭以第一列為準），其餘品項列單頭留空
+        const head = (idx === 0) ? {
+          type: '2201',                          // A 訂單單別（固定）
+          srcNo: o.order_no || '',               // B 通路訂單編號（場外單號）
+          date: (o.order_date || '').replace(/-/g,'/'), // C 單據日期
+          custNo: (o.buyer_phone || '').replace(/\D/g,''), // D 客戶代號＝手機號
+          custAbbr: '業務場外單專用',             // E 客戶簡稱（固定）
+          dept: own.dept_code || '',             // F 部門代號
+          sales: o.staff?.erp_code || '',        // G 業務人員
+          factory: '00',                         // H 出貨廠別（固定）
+          cur: 'NTD',                            // I 交易幣別
+          rate: '1',                             // J 匯率
+          payCond: payCondMap[o.payment_type] || '', // K 付款條件
+          fullName: o.buyer_name || '',          // L 客戶全名
+          receiver: o.buyer_name || '',          // M 收貨人
+          tel: o.buyer_phone || '',              // N 聯絡電話(一)
+          mobile: o.buyer_phone || '',           // O 行動電話
+          addr: o.receiver_address || '',        // P 送貨地址(一)
+          taxId: o.tax_id || '',                 // Q 統一編號
+          invoice: '7.電子發票',                 // R 發票聯數（固定）
+          carrierType: hasCarrier ? '3J0002' : '', // S 載具類別（有載具才填手機載具）
+          carrierShow: hasCarrier ? carrier : '',   // T 載具顯碼ID
+          carrierHide: hasCarrier ? carrier : '',   // U 載具隱碼ID
+          note: o.note || ''                     // V 備註
+        } : {
+          type:'',srcNo:'',date:'',custNo:'',custAbbr:'',dept:'',sales:'',factory:'',
+          cur:'',rate:'',payCond:'',fullName:'',receiver:'',tel:'',mobile:'',addr:'',
+          taxId:'',invoice:'',carrierType:'',carrierShow:'',carrierHide:'',note:''
+        };
+
+        rows.push([
+          head.type, head.srcNo, head.date, head.custNo, head.custAbbr, head.dept, head.sales, head.factory,
+          head.cur, head.rate, head.payCond, head.fullName, head.receiver, head.tel, head.mobile, head.addr,
+          head.taxId, head.invoice, head.carrierType, head.carrierShow, head.carrierHide, head.note,
+          idx + 1,                               // W 序號
+          it.sku || '',                          // X 品號
+          it.product_name || '',                 // Y 品名
+          wh,                                    // Z 庫別
+          qty,                                   // AA 訂單數量
+          unitPrice,                             // AB 單價（金額÷數量）
+          amt,                                   // AC 金額
+          isGift ? '1.贈品量' : ''               // AD 類型（0元→贈品）
+        ]);
+      });
+
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      ws['!cols'] = headers.map(h => ({ wch: Math.max(8, h.length * 2) }));
+      const wb = XLSX.utils.book_new();
+      const safeNo = (o.order_no || ('order'+fileCount)).replace(/[\\/?*:[\]]/g,'');
+      XLSX.utils.book_append_sheet(wb, ws, safeNo.slice(0,28));
+      const wbout = XLSX.write(wb, { bookType:'xlsx', type:'array' });
+      zip.file(`${safeNo}.xlsx`, wbout);
+      fileCount++;
+    }
+
+    const blob = await zip.generateAsync({ type:'blob' });
+    const url = URL.createObjectURL(blob);
+    const a2 = document.createElement('a');
+    a2.href = url;
+    a2.download = `鼎新客戶訂單_場外單_${dateStr}_共${fileCount}張.zip`;
+    a2.click();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+
+    showLoading(false);
+    showToast(`✅ 已匯出 ${fileCount} 張客戶訂單`, 'success');
+  } catch(e) {
+    showLoading(false);
+    showToast('匯出失敗：' + e.message, 'error');
+    console.error('exportFieldErpExcel error', e);
+  }
+}
+
+// 匯出目前清單篩選後的場外單（鼎新客戶訂單格式）
+function exportFieldErpAll() {
+  const q = (document.getElementById('foSearchInput')?.value||'').trim().toLowerCase();
+  let list = foAllOrders;
+  if (foCurrentStatus !== 'all') list = list.filter(o => (o.status||'pending') === foCurrentStatus);
+  if (q) list = list.filter(o => (o.buyer_name||'').toLowerCase().includes(q) || (o.buyer_phone||'').includes(q) || (o.order_no||'').toLowerCase().includes(q));
+  if (!list.length) { showToast('目前篩選結果沒有場外單', 'error'); return; }
+  if (!confirm(`要匯出目前清單的 ${list.length} 張場外單成鼎新客戶訂單格式嗎？`)) return;
+  exportFieldErpExcel(list);
 }
 
 function escHtml(str) { return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
