@@ -5227,8 +5227,9 @@ async function editFieldOrder(id) {
   const o = foAllOrders.find(x=>x.id===id);
   if (!o) return;
   const isManager = currentUser?.role === 'admin' || currentUser?.role === 'manager';
-  // 業務：限「待處理」才可改；管理員/店長：任何狀態都可改
-  if (!isManager && o.status !== 'pending') { showToast('此單已進入作業中，無法修改，請洽管理員','error'); return; }
+  // 只有管理員(admin)可改任何狀態；店長/督導(manager)與業務(staff)都限「待處理」才可改
+  const canEditAnyStatus = currentUser?.role === 'admin';
+  if (!canEditAnyStatus && o.status !== 'pending') { showToast('此單已進入作業中，無法修改，請洽管理員','error'); return; }
   document.getElementById('foManageModal')?.remove();  // 若從管理視窗進來，先關閉
   showScreen('fieldScreen');
   await initFieldOrder();   // 先重置（會載門市、清空）
@@ -5573,9 +5574,9 @@ async function submitFieldOrder() {
     let foId;
     if (foEditId) {
       // 更新模式：不動 staff_id（保留原業務員，管理員修改不會把業務改成自己）
-      const _isMgr = currentUser?.role === 'admin' || currentUser?.role === 'manager';
+      const _canEditAny = currentUser?.role === 'admin';  // 只有管理員可改作業中/完成；店長督導與業務限待處理
       const cur = await sb.get('field_orders', `?id=eq.${foEditId}&select=status&limit=1`);
-      if (!_isMgr && cur?.[0]?.status && cur[0].status !== 'pending') { showLoading(false); showToast('此單已進入作業中，無法修改','error'); return; }
+      if (!_canEditAny && cur?.[0]?.status && cur[0].status !== 'pending') { showLoading(false); showToast('此單已進入作業中，無法修改','error'); return; }
       row.updated_at = new Date().toISOString();
       await sb.patch('field_orders', foEditId, row);
       foId = foEditId;
