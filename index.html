@@ -5848,7 +5848,7 @@ function openFieldOrderManage(id) {
       <button onclick="saveFieldOrderManage('${id}')" style="width:100%;padding:13px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:10px;">儲存</button>
 
       <div style="display:flex;gap:8px;margin-top:10px;">
-        <button onclick="editFieldOrder('${id}')" style="flex:1;padding:11px;background:var(--surface2);border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-weight:700;color:var(--text);cursor:pointer;font-family:inherit;">✏️ 修改完整內容</button>
+        ${(currentUser?.role === 'admin' || o.status === 'pending') ? `<button onclick="editFieldOrder('${id}')" style="flex:1;padding:11px;background:var(--surface2);border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-weight:700;color:var(--text);cursor:pointer;font-family:inherit;">✏️ 修改完整內容</button>` : ''}
         <button onclick="deleteFieldOrder('${id}')" style="flex:1;padding:11px;background:#FBEAEA;border:1.5px solid var(--danger);border-radius:8px;font-size:14px;font-weight:700;color:var(--danger);cursor:pointer;font-family:inherit;">🗑 刪除此單</button>
       </div>
     </div>`;
