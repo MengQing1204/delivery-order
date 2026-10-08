@@ -5682,6 +5682,7 @@ function renderFieldOrders(list) {
       }).join('');
       const st = statusInfo[o.status] || statusInfo.pending;
       return `<tr onclick="openFieldOrderManage('${o.id}')" style="cursor:pointer;border-bottom:1px solid var(--border);" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+        <td style="padding:12px 6px;text-align:center;vertical-align:top;" onclick="event.stopPropagation();"><input type="checkbox" class="fo-check" data-id="${o.id}" onclick="foOnCheck()" style="width:18px;height:18px;cursor:pointer;margin-top:2px;"></td>
         <td style="padding:12px 10px;font-size:14px;font-family:'DM Mono',monospace;font-weight:700;white-space:nowrap;vertical-align:top;">${escHtml(o.order_no||'')}</td>
         <td style="padding:12px 10px;font-size:14px;white-space:nowrap;vertical-align:top;">${o.order_date||''}</td>
         <td style="padding:12px 10px;font-size:15px;font-weight:700;vertical-align:top;">${escHtml(o.buyer_name||'')}<div style="font-size:13px;font-weight:400;color:var(--text2);">${escHtml(o.buyer_phone||'')}</div></td>
@@ -5693,10 +5694,17 @@ function renderFieldOrders(list) {
       </tr>`;
     }).join('');
     el.innerHTML = `
+      <div id="foSelectBar" style="display:none;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;margin:0 8px 8px;background:var(--accent-light);border:1.5px solid var(--accent);border-radius:10px;">
+        <span style="font-weight:800;color:var(--accent);">已選 <span id="foSelCount">0</span> 張</span>
+        <button onclick="foBatchRenumberModal()" style="padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">✏️ 批次改單號</button>
+        <button onclick="foExportSelectedErp()" style="padding:8px 16px;background:#3A6EA5;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">📤 匯鼎新（選取）</button>
+        <button onclick="foClearSelection()" style="padding:8px 14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:14px;cursor:pointer;font-family:inherit;">清除選取</button>
+      </div>
       <div style="overflow-x:auto;padding:0 8px 20px;">
         <table style="width:100%;border-collapse:collapse;background:var(--surface);border-radius:10px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,0.06);">
           <thead>
             <tr style="background:var(--surface2);border-bottom:2px solid var(--border);">
+              <th style="padding:12px 6px;text-align:center;white-space:nowrap;"><input type="checkbox" onclick="foToggleAll(this.checked)" style="width:18px;height:18px;cursor:pointer;"></th>
               <th style="padding:12px 10px;font-size:13px;text-align:left;white-space:nowrap;">單號</th>
               <th style="padding:12px 10px;font-size:13px;text-align:left;white-space:nowrap;">日期</th>
               <th style="padding:12px 10px;font-size:13px;text-align:left;">客戶</th>
@@ -5749,6 +5757,109 @@ function renderFieldOrders(list) {
       ${o.status!=='pending' ? `<div style="margin-top:6px;font-size:11px;color:var(--text2);">🔒 ${st.label}，內容已鎖定，如需修改請洽管理員</div>` : ''}
     </div>`;
   }).join('');
+}
+
+// ── 場外單批次選取 ──
+function foSelectedIds() {
+  return [...document.querySelectorAll('.fo-check:checked')].map(c => c.getAttribute('data-id'));
+}
+function foOnCheck() {
+  const n = foSelectedIds().length;
+  const bar = document.getElementById('foSelectBar');
+  const cnt = document.getElementById('foSelCount');
+  if (cnt) cnt.textContent = n;
+  if (bar) bar.style.display = n > 0 ? 'flex' : 'none';
+}
+function foToggleAll(checked) {
+  document.querySelectorAll('.fo-check').forEach(c => { c.checked = checked; });
+  foOnCheck();
+}
+function foClearSelection() {
+  document.querySelectorAll('.fo-check').forEach(c => { c.checked = false; });
+  const head = document.querySelector('#fieldOrdersList thead input[type=checkbox]');
+  if (head) head.checked = false;
+  foOnCheck();
+}
+function foExportSelectedErp() {
+  const ids = foSelectedIds();
+  if (!ids.length) { showToast('請先勾選場外單', 'error'); return; }
+  const sel = foAllOrders.filter(o => ids.includes(o.id));
+  if (!confirm(`要匯出勾選的 ${sel.length} 張場外單成鼎新客戶訂單格式嗎？`)) return;
+  exportFieldErpExcel(sel);
+}
+
+// 批次改單號：勾選多張 → 逐筆填新單號 → 一次存檔
+function foBatchRenumberModal() {
+  const ids = foSelectedIds();
+  if (!ids.length) { showToast('請先勾選場外單', 'error'); return; }
+  const sel = foAllOrders.filter(o => ids.includes(o.id));
+  const rows = sel.map(o => `
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:8px 6px;font-size:13px;vertical-align:top;">
+        <div style="font-family:'DM Mono',monospace;font-weight:700;">${escHtml(o.order_no||'')}</div>
+        <div style="font-size:12px;color:var(--text2);">${escHtml(o.buyer_name||'')} · ${o.order_date||''}</div>
+      </td>
+      <td style="padding:8px 6px;vertical-align:top;">
+        <input class="fo-newno" data-id="${o.id}" value="${escHtml(o.order_no||'')}" placeholder="2301-..." style="width:100%;min-width:150px;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:'DM Mono',monospace;">
+      </td>
+    </tr>`).join('');
+  const modal = document.createElement('div');
+  modal.id = 'foRenumberModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+  modal.innerHTML = `
+    <div style="background:var(--surface);border-radius:var(--radius);padding:20px;width:100%;max-width:520px;max-height:85vh;display:flex;flex-direction:column;box-shadow:var(--shadow-lg);">
+      <div style="font-size:18px;font-weight:800;margin-bottom:6px;">✏️ 批次改單號（${sel.length} 張）</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:12px;">把每張場外單的單號改成鼎新正確銷貨單號，改完一次存檔。</div>
+      <div style="overflow-y:auto;flex:1;border:1px solid var(--border);border-radius:8px;">
+        <table style="width:100%;border-collapse:collapse;">
+          <thead><tr style="background:var(--surface2);position:sticky;top:0;">
+            <th style="padding:8px 6px;font-size:12px;text-align:left;">原單號 / 客戶</th>
+            <th style="padding:8px 6px;font-size:12px;text-align:left;">新單號</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:16px;">
+        <button onclick="document.getElementById('foRenumberModal').remove()" style="flex:1;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-size:15px;cursor:pointer;font-family:inherit;">取消</button>
+        <button onclick="foBatchRenumberSave()" style="flex:1;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;">存檔</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+}
+
+async function foBatchRenumberSave() {
+  const inputs = [...document.querySelectorAll('#foRenumberModal .fo-newno')];
+  // 收集有變動的單
+  const changes = [];
+  const seen = {};
+  for (const inp of inputs) {
+    const id = inp.getAttribute('data-id');
+    const newNo = inp.value.trim();
+    const orig = foAllOrders.find(o => o.id === id);
+    if (!newNo) { showToast('有單號是空的，請填寫', 'error'); return; }
+    if (seen[newNo]) { showToast('有重複的新單號：' + newNo, 'error'); return; }
+    seen[newNo] = true;
+    if (orig && newNo !== orig.order_no) changes.push({ id, newNo });
+  }
+  if (!changes.length) { showToast('沒有變更的單號', 'error'); document.getElementById('foRenumberModal')?.remove(); return; }
+
+  document.getElementById('foRenumberModal')?.remove();
+  showLoading(true);
+  let ok = 0, fail = 0;
+  for (const c of changes) {
+    try {
+      // 檢查新單號是否已被別張占用
+      const dup = await sb.get('field_orders', `?order_no=eq.${encodeURIComponent(c.newNo)}&id=neq.${c.id}&select=id&limit=1`);
+      if (dup && dup.length) { fail++; continue; }
+      await sb.patch('field_orders', c.id, { order_no: c.newNo, updated_at: new Date().toISOString() });
+      ok++;
+    } catch(e) { fail++; console.error('renumber error', c, e); }
+  }
+  showLoading(false);
+  showToast(`✅ 已改 ${ok} 張${fail ? `，失敗 ${fail} 張（單號重複或錯誤）` : ''}`, fail ? 'error' : 'success');
+  foClearSelection();
+  openFieldOrderList();
 }
 
 // 管理員/店長：場外單處理（改單號、狀態、宅配品項分倉+追蹤碼）
