@@ -6123,12 +6123,38 @@ async function exportFieldErpExcel(orders) {
     const today = new Date();
     const dateStr = `${today.getFullYear()}${String(today.getMonth()+1).padStart(2,'0')}${String(today.getDate()).padStart(2,'0')}`;
 
-    // 欄位順序＝鼎新批次欄位設定 A～AD（單頭A-V、單身W-AD）
+    // ★ 欄位位置完全照鼎新「業務場外單」格式設定（A~Z）★
+    // 鼎新設定：第2列開始讀入、連續4列空白表結束 → 第1列是標題列
+    // 單頭 A-V（每個品項列都放一樣，避免被當空列結束）；單身 W-Z
+    // 空欄：E、R（鼎新沒押欄位）
+    // 欄位對應表（每格注解＝鼎新欄位編號）：
     const headers = [
-      '訂單單別','通路訂單編號','單據日期','客戶代號','客戶簡稱','部門代號','業務人員','出貨廠別',
-      '交易幣別','匯率','付款條件','客戶全名','收貨人','聯絡電話(一)','行動電話','送貨地址(一)',
-      '統一編號','發票聯數','載具類別','載具顯碼ID','載具隱碼ID','備註',
-      '序號','品號','品名','庫別','訂單數量','單價','金額','類型'
+      '訂單單別',       // A  TC001 單別（固定2201）
+      '通路訂單編號',   // B  TC093 通路訂單編號（場外單號）
+      '訂單日期',       // C  TC003 訂單日期 YMD
+      '客戶代號',       // D  TC004 客戶代號（手機）
+      '',               // E  （空，鼎新未押）
+      '部門代號',       // F  TC005 部門代號
+      '業務人員',       // G  TC006 業務人員
+      '出貨廠別',       // H  TC007 出貨廠別（固定00）
+      '交易幣別',       // I  TC008 交易幣別（NTD）
+      '匯率',           // J  TC009 匯率（1）
+      '付款條件',       // K  TC014 付款條件
+      '連絡人',         // L  TC018 連絡人
+      '收貨人',         // M  TC055 收貨人
+      '聯絡電話(一)',   // N  TC094 聯絡電話(一)
+      '行動電話',       // O  TC067 行動電話
+      '送貨地址(一)',   // P  TC010 送貨地址(一)
+      '統一編號',       // Q  TC124 統一編號
+      '',               // R  （空，鼎新未押；發票聯數為固定值7）
+      '載具類別號碼',   // S  TC135 載具類別號碼
+      '載具顯碼ID',     // T  TC133 載具顯碼ID
+      '載具隱碼ID',     // U  TC138 載具隱碼ID
+      '備註',           // V  TC015 備註
+      '品號',           // W  TD004 品號
+      '品名',           // X  TD005 品名
+      '庫別',           // Y  TD007 庫別
+      '訂單數量'        // Z  TD008 訂單數量
     ];
 
     let fileCount = 0;
@@ -6138,66 +6164,72 @@ async function exportFieldErpExcel(orders) {
       const hasCarrier = !!carrier;
       const items = (o.field_order_items && o.field_order_items.length) ? o.field_order_items : [{}];
 
+      // 單頭值（每個品項列都放一樣）
+      const H = {
+        type: '2201',                                    // A
+        srcNo: o.order_no || '',                         // B
+        date: (o.order_date || '').replace(/-/g,'/'),    // C  YYYY/MM/DD
+        custNo: (o.buyer_phone || '').replace(/\D/g,''), // D  客戶代號＝手機
+        dept: own.dept_code || '',                       // F
+        sales: o.staff?.erp_code || '',                  // G
+        factory: '00',                                   // H
+        cur: 'NTD',                                      // I
+        rate: '1',                                       // J
+        payCond: payCondMap[o.payment_type] || '',       // K
+        contact: o.buyer_name || '',                     // L  連絡人
+        receiver: o.buyer_name || '',                    // M  收貨人
+        tel: o.buyer_phone || '',                        // N  聯絡電話(一)
+        mobile: o.buyer_phone || '',                     // O  行動電話
+        addr: o.receiver_address || '',                  // P  送貨地址
+        taxId: o.tax_id || '',                           // Q  統一編號
+        carrierType: hasCarrier ? '3J0002' : '',         // S  載具類別號碼
+        carrierShow: hasCarrier ? carrier : '',          // T  載具顯碼ID
+        carrierHide: hasCarrier ? carrier : '',          // U  載具隱碼ID
+        note: o.note || ''                               // V  備註
+      };
+
       const rows = [headers];
-      items.forEach((it, idx) => {
-        // 單身：庫別
+      items.forEach((it) => {
+        // 單身：庫別（每品項各自帶）
         let wh = '';
         if (it.ship_type === 'picked') wh = own.warehouse_code || '';            // 現場已取 → 開單門市倉
         else if (it.ship_type === 'proxy') wh = storeById(it.proxy_store_id).warehouse_code || ''; // 門市代寄 → 代寄門市倉
-        else wh = 'B0003';                                                       // 宅配（delivery/wms/nankan）→ B0003
+        else wh = 'B0003';                                                       // 宅配 → B0003
 
         const qty = parseInt(it.quantity, 10) || 0;
-        const amt = parseInt(it.amount, 10) || 0;
-        const unitPrice = qty > 0 ? Math.round(amt / qty) : 0;
-        const isGift = amt === 0;
-
-        // 單頭欄位只放在第一列（鼎新單頭以第一列為準），其餘品項列單頭留空
-        const head = (idx === 0) ? {
-          type: '2201',                          // A 訂單單別（固定）
-          srcNo: o.order_no || '',               // B 通路訂單編號（場外單號）
-          date: (o.order_date || '').replace(/-/g,'/'), // C 單據日期
-          custNo: (o.buyer_phone || '').replace(/\D/g,''), // D 客戶代號＝手機號
-          custAbbr: '業務場外單專用',             // E 客戶簡稱（固定）
-          dept: own.dept_code || '',             // F 部門代號
-          sales: o.staff?.erp_code || '',        // G 業務人員
-          factory: '00',                         // H 出貨廠別（固定）
-          cur: 'NTD',                            // I 交易幣別
-          rate: '1',                             // J 匯率
-          payCond: payCondMap[o.payment_type] || '', // K 付款條件
-          fullName: o.buyer_name || '',          // L 客戶全名
-          receiver: o.buyer_name || '',          // M 收貨人
-          tel: o.buyer_phone || '',              // N 聯絡電話(一)
-          mobile: o.buyer_phone || '',           // O 行動電話
-          addr: o.receiver_address || '',        // P 送貨地址(一)
-          taxId: o.tax_id || '',                 // Q 統一編號
-          invoice: '7.電子發票',                 // R 發票聯數（固定）
-          carrierType: hasCarrier ? '3J0002' : '', // S 載具類別（有載具才填手機載具）
-          carrierShow: hasCarrier ? carrier : '',   // T 載具顯碼ID
-          carrierHide: hasCarrier ? carrier : '',   // U 載具隱碼ID
-          note: o.note || ''                     // V 備註
-        } : {
-          type:'',srcNo:'',date:'',custNo:'',custAbbr:'',dept:'',sales:'',factory:'',
-          cur:'',rate:'',payCond:'',fullName:'',receiver:'',tel:'',mobile:'',addr:'',
-          taxId:'',invoice:'',carrierType:'',carrierShow:'',carrierHide:'',note:''
-        };
 
         rows.push([
-          head.type, head.srcNo, head.date, head.custNo, head.custAbbr, head.dept, head.sales, head.factory,
-          head.cur, head.rate, head.payCond, head.fullName, head.receiver, head.tel, head.mobile, head.addr,
-          head.taxId, head.invoice, head.carrierType, head.carrierShow, head.carrierHide, head.note,
-          idx + 1,                               // W 序號
-          it.sku || '',                          // X 品號
-          it.product_name || '',                 // Y 品名
-          wh,                                    // Z 庫別
-          qty,                                   // AA 訂單數量
-          unitPrice,                             // AB 單價（金額÷數量）
-          amt,                                   // AC 金額
-          isGift ? '1.贈品量' : ''               // AD 類型（0元→贈品）
+          H.type,        // A 單別
+          H.srcNo,       // B 通路訂單編號
+          H.date,        // C 訂單日期
+          H.custNo,      // D 客戶代號
+          '',            // E （空）
+          H.dept,        // F 部門代號
+          H.sales,       // G 業務人員
+          H.factory,     // H 出貨廠別
+          H.cur,         // I 交易幣別
+          H.rate,        // J 匯率
+          H.payCond,     // K 付款條件
+          H.contact,     // L 連絡人
+          H.receiver,    // M 收貨人
+          H.tel,         // N 聯絡電話(一)
+          H.mobile,      // O 行動電話
+          H.addr,        // P 送貨地址
+          H.taxId,       // Q 統一編號
+          '',            // R （空）
+          H.carrierType, // S 載具類別號碼
+          H.carrierShow, // T 載具顯碼ID
+          H.carrierHide, // U 載具隱碼ID
+          H.note,        // V 備註
+          it.sku || '',          // W 品號
+          it.product_name || '', // X 品名
+          wh,                    // Y 庫別
+          qty                    // Z 訂單數量
         ]);
       });
 
       const ws = XLSX.utils.aoa_to_sheet(rows);
-      ws['!cols'] = headers.map(h => ({ wch: Math.max(8, h.length * 2) }));
+      ws['!cols'] = headers.map(h => ({ wch: Math.max(8, (h||'').length * 2 + 4) }));
       const wb = XLSX.utils.book_new();
       const safeNo = (o.order_no || ('order'+fileCount)).replace(/[\\/?*:[\]]/g,'');
       XLSX.utils.book_append_sheet(wb, ws, safeNo.slice(0,28));
