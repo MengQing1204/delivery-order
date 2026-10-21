@@ -1005,6 +1005,16 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
     </div>
   </div>
 </div>
+<div class="modal-overlay" id="foConfirmModal">
+  <div class="modal-sheet">
+    <div class="modal-title">📋 請確認場外單內容</div>
+    <div id="foConfirmContent"></div>
+    <div style="display:flex;gap:10px;margin-top:16px;">
+      <button onclick="closeFoConfirm()" style="flex:1;padding:14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:15px;font-family:inherit;background:var(--surface);cursor:pointer;">返回修改</button>
+      <button onclick="doSubmitFieldOrder()" style="flex:2;padding:14px;background:linear-gradient(135deg,var(--accent),#e8823a);color:#fff;border:none;border-radius:var(--radius);font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;">✓ 確認登記</button>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="cancelModal">
   <div class="modal-sheet">
     <div class="modal-title">❌ 取消訂單</div>
@@ -5537,8 +5547,66 @@ async function submitFieldOrder() {
     const conflict = (dup||[]).some(d => d.id !== foEditId);
     if (conflict) { showLoading(false); showToast(`單號「${orderNo}」已存在，請確認`, 'error'); return; }
   } catch(e){}
+  showLoading(false);
+
+  // 暫存通過驗證的資料，跳出確認視窗讓業務再看一眼（跟宅配單一樣）
+  pendingFoData = { orderNo, orderDate, storeId, buyerName, buyerPhone, taxId, carrier, payMethod, remitDate, transfer5, note, address };
+  showFoConfirmModal();
+}
+
+// 場外單確認視窗：把整張單攤出來讓業務再確認一次
+let pendingFoData = null;
+function showFoConfirmModal() {
+  const d = pendingFoData;
+  const storeName = foStoresCache.find(s=>s.id===d.storeId)?.name || '';
+  const payLabelMap = { atm_cash:'ATM匯款－無卡存款', atm_transfer:'ATM匯款－轉帳', store_card:'展場門市刷卡', hq_card:'總公司代刷', cod:'貨到付款' };
+  const shipMap = { picked:'現場已取', proxy:'門市代寄', delivery:'宅配' };
+  const total = foItems.reduce((s,it)=>s+(parseInt(it.amount)||0),0);
+  const itemsHtml = foItems.map(i => {
+    const proxyName = (i.ship_type==='proxy') ? '（'+(foStoresCache.find(s=>s.id===i.proxy_store_id)?.name||'未選門市')+'）' : '';
+    const giftTag = (parseInt(i.amount)===0) ? ' <span style="color:#B5721A;font-weight:700;">贈品</span>' : '';
+    return `<div style="display:flex;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);">
+      <div style="flex:1;min-width:0;"><div style="font-weight:600;">${escHtml(i.name)}${giftTag}</div>
+      <div style="font-size:12px;color:var(--text2);">${shipMap[i.ship_type]||''}${escHtml(proxyName)}</div></div>
+      <div style="text-align:right;white-space:nowrap;"><div style="font-weight:700;">×${i.qty}</div><div style="font-size:13px;color:var(--accent2);">$${(parseInt(i.amount)||0).toLocaleString()}</div></div>
+    </div>`;
+  }).join('');
+  const payExtra = d.payMethod==='atm_transfer' ? `　轉帳後5碼：${escHtml(d.transfer5)}` : d.payMethod==='atm_cash' ? `　匯款日：${escHtml(d.remitDate||'')}` : '';
+  document.getElementById('foConfirmContent').innerHTML = `
+    <div style="background:var(--surface2);border-radius:10px;padding:14px;margin-bottom:10px;">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:6px;">👤 客戶</div>
+      <div style="font-size:16px;font-weight:700;">${escHtml(d.buyerName)}　<span style="font-size:14px;font-weight:400;">${escHtml(d.buyerPhone)}</span></div>
+      ${d.address ? `<div style="font-size:13px;margin-top:5px;color:var(--accent);">${escHtml(d.address)}</div>` : '<div style="font-size:13px;margin-top:5px;color:var(--text2);">（現場取走，無地址）</div>'}
+      ${d.taxId ? `<div style="font-size:13px;margin-top:3px;">統編：${escHtml(d.taxId)}</div>` : ''}
+      ${d.carrier ? `<div style="font-size:13px;margin-top:3px;">載具：${escHtml(d.carrier)}</div>` : ''}
+    </div>
+    <div style="background:var(--surface2);border-radius:10px;padding:14px;margin-bottom:10px;">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:6px;">📋 單據</div>
+      <div style="font-size:13px;">門市：${escHtml(storeName)}</div>
+      <div style="font-size:13px;">單號：${escHtml(d.orderNo)}　日期：${escHtml(d.orderDate)}</div>
+      <div style="font-size:13px;">付款：${escHtml(payLabelMap[d.payMethod]||'')}${payExtra}</div>
+      ${d.note ? `<div style="font-size:13px;margin-top:3px;color:#B5721A;">備註：${escHtml(d.note)}</div>` : ''}
+    </div>
+    <div style="background:var(--surface2);border-radius:10px;padding:14px;">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:4px;">🛍 商品（${foItems.length} 項）</div>
+      ${itemsHtml}
+      <div style="display:flex;justify-content:space-between;padding-top:10px;margin-top:4px;font-weight:800;">
+        <span>總金額</span><span style="color:var(--accent2);font-size:17px;">$${total.toLocaleString()}</span>
+      </div>
+    </div>`;
+  document.getElementById('foConfirmModal').classList.add('show');
+}
+function closeFoConfirm() { document.getElementById('foConfirmModal').classList.remove('show'); }
+
+async function doSubmitFieldOrder() {
+  closeFoConfirm();
+  const d = pendingFoData;
+  const orderNo=d.orderNo, orderDate=d.orderDate, storeId=d.storeId, buyerName=d.buyerName,
+        buyerPhone=d.buyerPhone, taxId=d.taxId, carrier=d.carrier, payMethod=d.payMethod,
+        remitDate=d.remitDate, transfer5=d.transfer5, note=d.note, address=d.address;
 
   const total = foItems.reduce((s,it)=>s+(parseInt(it.amount)||0),0);
+  showLoading(true);
   try {
     // 付款方式換算（沿用現有欄位 payment_type大類 / payment_sub顯示文字）
     const payMap = {
