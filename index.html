@@ -1015,6 +1015,15 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
     </div>
   </div>
 </div>
+<div class="modal-overlay" id="foDoneModal">
+  <div class="modal-sheet">
+    <div id="foDoneContent"></div>
+    <div style="display:flex;gap:10px;margin-top:8px;">
+      <button onclick="foFinishList()" style="flex:1;padding:14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:15px;font-family:inherit;background:var(--surface);cursor:pointer;">完成，回清單</button>
+      <button id="foContinueBtn" data-store="" onclick="foContinueNext()" style="flex:2;padding:14px;background:linear-gradient(135deg,var(--accent),#e8823a);color:#fff;border:none;border-radius:var(--radius);font-size:15px;font-weight:800;font-family:inherit;cursor:pointer;">＋ 繼續登下一張</button>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="cancelModal">
   <div class="modal-sheet">
     <div class="modal-title">❌ 取消訂單</div>
@@ -2563,7 +2572,7 @@ async function loadMyOrders() {
     let query;
     if (role === 'admin') {
       // 管理員：全部訂單
-      query = `?order=order_no.desc&limit=500&select=*,order_items(*),stores(name,dept_code),staff(name)`;
+      query = `?order=created_at.desc&limit=500&select=*,order_items(*),stores(name,dept_code),staff(name)`;
       if (listTitleEl) listTitleEl.textContent = '全部訂單';
     } else if (role === 'manager') {
       // 店長/督導：管轄門市的訂單 + 自己開的單（兼業務時不漏單）
@@ -2572,11 +2581,11 @@ async function loadMyOrders() {
       if (storeIds.length) orConds.push(`store_id.in.(${storeIds.map(i=>`"${i}"`).join(',')})`);
       orConds.push(`staff_id.eq.${currentUser.id}`);
       const orFilter = `&or=(${orConds.join(',')})`;
-      query = `?order=order_no.desc&limit=500${orFilter}&select=*,order_items(*),stores(name,dept_code),staff(name)`;
+      query = `?order=created_at.desc&limit=500${orFilter}&select=*,order_items(*),stores(name,dept_code),staff(name)`;
       if (listTitleEl) listTitleEl.textContent = '管轄門市 + 我的訂單';
     } else {
       // 業務：只看自己的
-      query = `?staff_id=eq.${currentUser.id}&order=order_no.desc&limit=500&select=*,order_items(*),stores(name,dept_code)`;
+      query = `?staff_id=eq.${currentUser.id}&order=created_at.desc&limit=500&select=*,order_items(*),stores(name,dept_code)`;
       if (listTitleEl) listTitleEl.textContent = '我的訂單';
     }
     const orders = await sb.get('orders', query);
@@ -2678,7 +2687,7 @@ async function loadAdminOrdersByStores(storeIds) {
     if (currentUser?.role === 'manager') orConds.push(`staff_id.eq.${currentUser.id}`);
     if (!orConds.length) { adminAllOrders = []; renderAdminOrders(); showLoading(false); return; }
     const orders = await sb.get('orders',
-      `?order=order_no.desc&limit=500&or=(${orConds.join(',')})&select=*,order_items(*),stores(name),staff(name,phone)`
+      `?order=created_at.desc&limit=500&or=(${orConds.join(',')})&select=*,order_items(*),stores(name),staff(name,phone)`
     );
     adminAllOrders = orders || [];
     renderAdminOrders();
@@ -3147,7 +3156,7 @@ async function loadAdminOrders(staffIdFilter, storeIdFilter) {
   showLoading(true);
   try {
     const filter = staffIdFilter ? `&staff_id=eq.${staffIdFilter}` : storeIdFilter ? `&store_id=eq.${storeIdFilter}` : '';
-    const orders = await sb.get('orders', `?order=order_no.desc&limit=500${filter}&select=*,order_items(*),stores(name,dept_code,warehouse_code),staff(name,phone)`);
+    const orders = await sb.get('orders', `?order=created_at.desc&limit=500${filter}&select=*,order_items(*),stores(name,dept_code,warehouse_code),staff(name,phone)`);
     adminAllOrders = orders || [];
     renderAdminOrders();
   } catch(e) { showToast('載入失敗', 'error'); }
@@ -3202,8 +3211,8 @@ function renderAdminOrders() {
     el.innerHTML = `<div class="empty-state"><div class="icon">📋</div><p>${emptyMsg}</p></div>`;
     return;
   }
-  // 依「訂單單號」排序（大→小，最新在上，方便逐筆瀏覽不跳號）
-  filtered.sort((a, b) => (b.order_no || '').localeCompare(a.order_no || ''));
+  // 依「建立時間」排序（新→舊，最新建立的在最上面，不受單號格式混亂影響）
+  filtered.sort((a, b) => new Date(b.created_at||0) - new Date(a.created_at||0));
   const statusMap = { pending:'待處理', partial:'部分已拋', submitted:'已拋單', processing:'作業中', shipped:'已完成', cancelled:'已取消' };
   el.innerHTML = filtered.map(o => {
     const preview = (o.order_items||[]).map(i => `${isPreorderItem(i)?'⟨預⟩':''}${i.product_name} x${i.quantity}`).join('、');
@@ -5307,7 +5316,7 @@ function formatCarrier(input) {
   input.value = body ? '/' + body : '';
 }
 
-async function initFieldOrder() {
+async function initFieldOrder(keepStoreId) {
   foItems = [];
   foEditId = null;
   clearFoProof();
@@ -5333,6 +5342,11 @@ async function initFieldOrder() {
   foOnPayMethodChange();
   // 門市下拉
   await foLoadStores();
+  // 連續登單：保留上一張的門市
+  if (keepStoreId) {
+    const sel = document.getElementById('foStore');
+    if (sel && sel.querySelector(`option[value="${keepStoreId}"]`)) sel.value = keepStoreId;
+  }
   renderFoItems();
 }
 
@@ -5669,11 +5683,47 @@ async function doSubmitFieldOrder() {
       });
     }
     showLoading(false);
-    showToast(foEditId ? '✅ 場外單已更新！' : '✅ 場外單登記成功！', 'success');
+    const wasEdit = !!foEditId;
     foEditId = null;
-    initFieldOrder();
-    setTimeout(()=>openFieldOrderList(), 500);
+    if (wasEdit) {
+      // 編輯模式：維持原本行為，回清單
+      showToast('✅ 場外單已更新！', 'success');
+      initFieldOrder();
+      setTimeout(()=>openFieldOrderList(), 500);
+    } else {
+      // 新增模式：連續登單 → 跳成功視窗，問要不要繼續登下一張（保留門市）
+      showFoDoneModal(storeId, buyerName);
+    }
   } catch(e) { showLoading(false); showToast('儲存失敗：' + e.message, 'error'); }
+}
+
+// 登記成功後：連續登單選單
+function showFoDoneModal(lastStoreId, lastBuyer) {
+  const storeName = foStoresCache.find(s=>s.id===lastStoreId)?.name || '';
+  document.getElementById('foDoneContent').innerHTML = `
+    <div style="text-align:center;padding:4px 0 10px;">
+      <div style="font-size:42px;line-height:1;margin-bottom:8px;">✅</div>
+      <div style="font-size:17px;font-weight:800;">已登記：${escHtml(lastBuyer||'')}</div>
+      <div style="font-size:13px;color:var(--text2);margin-top:4px;">門市：${escHtml(storeName)}</div>
+    </div>`;
+  // 「繼續登下一張」按鈕帶著門市
+  const contBtn = document.getElementById('foContinueBtn');
+  if (contBtn) contBtn.setAttribute('data-store', lastStoreId || '');
+  document.getElementById('foDoneModal').classList.add('show');
+}
+function foContinueNext() {
+  const storeId = document.getElementById('foContinueBtn')?.getAttribute('data-store') || '';
+  document.getElementById('foDoneModal').classList.remove('show');
+  initFieldOrder(storeId);  // 保留門市，開新空白單，停在登記頁
+  // 捲回最上方，游標準備填下一筆
+  const body = document.querySelector('#fieldScreen .form-body');
+  if (body) body.scrollTop = 0;
+  try { document.getElementById('foBuyerName')?.focus(); } catch(e){}
+}
+function foFinishList() {
+  document.getElementById('foDoneModal').classList.remove('show');
+  initFieldOrder();
+  openFieldOrderList();
 }
 
 // ── 場外單列表 ──
