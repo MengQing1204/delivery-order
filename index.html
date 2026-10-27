@@ -3211,14 +3211,8 @@ function renderAdminOrders() {
     el.innerHTML = `<div class="empty-state"><div class="icon">📋</div><p>${emptyMsg}</p></div>`;
     return;
   }
-  // 排序：門市代號 → 銷售日期(早到晚) → 原單號（跟批次編號一致，方便對帳）
-  filtered.sort((a, b) => {
-    const da = a.stores?.dept_code || '', db = b.stores?.dept_code || '';
-    if (da !== db) return da.localeCompare(db);
-    const sa = a.sale_date || '', sb2 = b.sale_date || '';
-    if (sa !== sb2) return sa.localeCompare(sb2);
-    return (a.order_no || '').localeCompare(b.order_no || '');
-  });
+  // 清單顯示：依「建立時間」新→舊（最新建立的在最上面）
+  filtered.sort((a, b) => new Date(b.created_at||0) - new Date(a.created_at||0));
   const statusMap = { pending:'待處理', partial:'部分已拋', submitted:'已拋單', processing:'作業中', shipped:'已完成', cancelled:'已取消' };
   el.innerHTML = filtered.map(o => {
     const preview = (o.order_items||[]).map(i => `${isPreorderItem(i)?'⟨預⟩':''}${i.product_name} x${i.quantity}`).join('、');
@@ -4730,7 +4724,7 @@ async function doBatchChangeDate() {
   const prefix = `1203-${dateStr}`;
   showLoading(true);
   try {
-    // 流水號從 00001 開始；排序：門市代號 → 銷售日期(早到晚) → 原單號
+    // 流水號從 00001 開始；排序：門市代號 → 銷售日期(早到晚) → 機號 → POS序號
     let seq = 0;
     const selected = adminAllOrders.filter(o => ids.includes(o.id))
       .sort((a,b) => {
@@ -4740,7 +4734,13 @@ async function doBatchChangeDate() {
         const sa = a.sale_date || '';
         const sb2 = b.sale_date || '';
         if (sa !== sb2) return sa.localeCompare(sb2);
-        return (a.order_no || '').localeCompare(b.order_no || '');
+        const ta = a.pos_terminal || '';
+        const tb = b.pos_terminal || '';
+        if (ta !== tb) return ta.localeCompare(tb);
+        // POS序號：數字比大小（補零對齊，避免 9 排在 10 後面）
+        const pa = String(a.pos_no || '').padStart(8,'0');
+        const pb = String(b.pos_no || '').padStart(8,'0');
+        return pa.localeCompare(pb);
       });
     let okCount = 0;
     for (const o of selected) {
@@ -4758,7 +4758,7 @@ async function doBatchChangeDate() {
       const r = await sb.patch('orders', o.id, { order_no: finalNo, updated_at: new Date().toISOString() });
       if (r && !r.error) okCount++;
     }
-    await logAdminAction('batch_renumber', 'order', ids[0], prefix, `批次自動編ERP單號：${okCount} 張，前綴 ${prefix}，依門市→銷售日排序，從00001起`);
+    await logAdminAction('batch_renumber', 'order', ids[0], prefix, `批次自動編ERP單號：${okCount} 張，前綴 ${prefix}，依門市→銷售日→機號→POS序號排序，從00001起`);
     showLoading(false);
     showToast(`✅ 已編號 ${okCount} 張訂單（${prefix}00001 起）`, 'success');
     clearSelection();
