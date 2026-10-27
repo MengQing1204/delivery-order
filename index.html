@@ -3211,8 +3211,14 @@ function renderAdminOrders() {
     el.innerHTML = `<div class="empty-state"><div class="icon">📋</div><p>${emptyMsg}</p></div>`;
     return;
   }
-  // 依「建立時間」排序（新→舊，最新建立的在最上面，不受單號格式混亂影響）
-  filtered.sort((a, b) => new Date(b.created_at||0) - new Date(a.created_at||0));
+  // 排序：門市代號 → 銷售日期(早到晚) → 原單號（跟批次編號一致，方便對帳）
+  filtered.sort((a, b) => {
+    const da = a.stores?.dept_code || '', db = b.stores?.dept_code || '';
+    if (da !== db) return da.localeCompare(db);
+    const sa = a.sale_date || '', sb2 = b.sale_date || '';
+    if (sa !== sb2) return sa.localeCompare(sb2);
+    return (a.order_no || '').localeCompare(b.order_no || '');
+  });
   const statusMap = { pending:'待處理', partial:'部分已拋', submitted:'已拋單', processing:'作業中', shipped:'已完成', cancelled:'已取消' };
   el.innerHTML = filtered.map(o => {
     const preview = (o.order_items||[]).map(i => `${isPreorderItem(i)?'⟨預⟩':''}${i.product_name} x${i.quantity}`).join('、');
