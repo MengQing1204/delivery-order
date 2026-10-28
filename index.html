@@ -824,7 +824,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
     </div>
     <div class="form-section">
       <div class="form-section-title">🧾 訂購人資訊</div>
-      <div class="form-row"><label class="form-label">實際銷售日期 <span class="req">*</span> <span style="font-size:11px;color:var(--text2);font-weight:400;">（展場較晚登入可改成實際銷售那天）</span></label><input class="form-input" id="saleDate" type="date" style="cursor:pointer;max-width:100%;box-sizing:border-box;-webkit-appearance:none;"></div>
+      <div class="form-row" style="background:#FFF2F2;border:2px solid #D9342B;border-radius:10px;padding:12px;"><label class="form-label" style="font-size:18px;font-weight:800;color:#D9342B;">⚠️ 實際銷售日期 <span class="req">*</span><div style="font-size:12px;color:#D9342B;font-weight:600;margin-top:2px;">※ 請務必確認！這是「實際賣出那天」，不是今天登入的日期</div></label><input class="form-input" id="saleDate" type="date" style="cursor:pointer;max-width:100%;box-sizing:border-box;-webkit-appearance:none;font-size:20px;font-weight:800;color:#D9342B;border:2px solid #D9342B;background:#fff;"></div>
       <div class="form-row"><label class="form-label">訂購人姓名 <span class="req">*</span></label><input class="form-input" id="buyerName" placeholder="請輸入訂購人姓名" type="text"></div>
       <div class="form-row"><label class="form-label">訂購人電話 <span class="req">*</span></label><input class="form-input" id="buyerPhone" placeholder="請輸入10碼手機號碼" type="tel" inputmode="numeric" maxlength="10" oninput="validatePhone(this)"><div class="field-hint" id="buyerPhoneHint"></div></div>
     </div>
