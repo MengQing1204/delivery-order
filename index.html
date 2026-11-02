@@ -961,27 +961,45 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
     <button class="admin-tab" onclick="setAdminTab('cancelled',this)">已取消</button>
   </div>
   <!-- 多選工具列 -->
-  <div id="batchToolbar" style="display:none;padding:10px 14px;background:var(--accent);color:#fff;border-radius:8px;margin:8px 14px 0;flex-direction:column;gap:8px;">
+  <style>
+    #batchToolbar .bt-btn{display:inline-flex;align-items:center;gap:7px;border:none;border-radius:10px;padding:9px 14px 9px 9px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit;transition:transform .08s,box-shadow .15s;box-shadow:0 1px 3px rgba(0,0,0,.12);}
+    #batchToolbar .bt-btn:hover{transform:translateY(-1px);box-shadow:0 3px 8px rgba(0,0,0,.2);}
+    #batchToolbar .bt-btn:active{transform:translateY(0);}
+    #batchToolbar .bt-num{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;font-size:13px;font-weight:800;flex-shrink:0;}
+    #batchToolbar .bt-flow{background:#fff;color:#8a5a1a;}
+    #batchToolbar .bt-flow .bt-num{background:#E0A042;color:#fff;}
+    #batchToolbar .bt-flow.primary{background:#2E5A4B;color:#fff;}
+    #batchToolbar .bt-flow.primary .bt-num{background:#fff;color:#2E5A4B;}
+    #batchToolbar .bt-other{background:rgba(255,255,255,.9);color:#5a4a2a;}
+    #batchToolbar .bt-other .bt-num{background:#B89050;color:#fff;}
+    #batchToolbar .bt-del{background:#D9342B;color:#fff;}
+    #batchToolbar .bt-del .bt-num{background:#fff;color:#D9342B;}
+    #batchToolbar .bt-arrow{color:#fff;font-size:18px;font-weight:800;opacity:.75;flex-shrink:0;}
+    #batchToolbar .bt-rowlabel{font-size:12px;font-weight:800;letter-spacing:.03em;color:#fff;white-space:nowrap;display:flex;align-items:center;gap:5px;}
+  </style>
+  <div id="batchToolbar" style="display:none;padding:14px 16px;background:linear-gradient(135deg,#E0A042,#D4912E);color:#fff;border-radius:14px;margin:8px 14px 0;flex-direction:column;gap:12px;box-shadow:0 4px 16px rgba(212,145,46,.3);">
     <div style="display:flex;align-items:center;gap:8px;">
-      <span id="batchCount" style="font-weight:700;font-size:14px;"></span>
+      <span id="batchCount" style="font-weight:800;font-size:15px;background:rgba(255,255,255,.22);padding:4px 12px;border-radius:999px;"></span>
       <div style="flex:1;"></div>
-      <button onclick="clearSelection()" style="background:rgba(255,255,255,0.15);border:none;border-radius:6px;padding:6px 10px;color:#fff;font-size:13px;cursor:pointer;">✕ 取消選取</button>
+      <button onclick="clearSelection()" style="background:rgba(255,255,255,0.18);border:none;border-radius:8px;padding:7px 12px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">✕ 取消選取</button>
     </div>
     <!-- 第一列：拋單流程（照順序做）-->
-    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-      <span style="font-size:12px;font-weight:700;opacity:.9;white-space:nowrap;">🚀 拋單流程：</span>
-      <button onclick="batchChangeDate()" style="background:rgba(255,255,255,0.2);border:none;border-radius:6px;padding:6px 12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">1️⃣ 批次編ERP單號</button>
-      <span style="opacity:.7;">→</span>
-      <button onclick="batchAction('erp')" style="background:rgba(255,255,255,0.95);border:none;border-radius:6px;padding:6px 12px;color:var(--accent2);font-size:13px;font-weight:700;cursor:pointer;">2️⃣ 匯出鼎新</button>
-      <span style="opacity:.7;">→</span>
-      <button onclick="batchAction('push')" style="background:rgba(255,255,255,0.2);border:none;border-radius:6px;padding:6px 12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">3️⃣ 批次拋單</button>
+    <div style="background:rgba(255,255,255,.12);border-radius:12px;padding:11px 13px;">
+      <div class="bt-rowlabel" style="margin-bottom:9px;">🚀 拋單流程（照 1→2→3 順序做）</div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <button onclick="batchChangeDate()" class="bt-btn bt-flow"><span class="bt-num">1</span>批次編ERP單號</button>
+        <span class="bt-arrow">→</span>
+        <button onclick="batchAction('erp')" class="bt-btn bt-flow"><span class="bt-num">2</span>匯出鼎新</button>
+        <span class="bt-arrow">→</span>
+        <button onclick="batchAction('push')" class="bt-btn bt-flow primary"><span class="bt-num">3</span>批次拋單</button>
+      </div>
     </div>
     <!-- 第二列：其他操作 -->
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-      <span style="font-size:12px;font-weight:700;opacity:.9;white-space:nowrap;">🔧 其他操作：</span>
-      <button onclick="batchAction('csv')" style="background:rgba(255,255,255,0.2);border:none;border-radius:6px;padding:6px 12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">4️⃣ 匯出CSV</button>
-      <button onclick="batchAction('status')" style="background:rgba(255,255,255,0.2);border:none;border-radius:6px;padding:6px 12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">5️⃣ 更新狀態</button>
-      <button onclick="batchAction('delete')" style="background:rgba(220,50,50,0.7);border:none;border-radius:6px;padding:6px 12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">6️⃣ 批次刪除</button>
+      <span class="bt-rowlabel" style="margin-right:2px;">🔧 其他操作</span>
+      <button onclick="batchAction('csv')" class="bt-btn bt-other"><span class="bt-num">4</span>匯出CSV</button>
+      <button onclick="batchAction('status')" class="bt-btn bt-other"><span class="bt-num">5</span>更新狀態</button>
+      <button onclick="batchAction('delete')" class="bt-btn bt-del"><span class="bt-num">6</span>批次刪除</button>
     </div>
   </div>
   <!-- 全選列 -->
