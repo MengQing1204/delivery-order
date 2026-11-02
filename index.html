@@ -965,24 +965,24 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
     #batchToolbar{--bt-amber:#C98A2E;--bt-amber-soft:#FBF3E4;--bt-brand:#2E5A4B;--bt-red:#C8463C;}
     @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) #batchToolbar{--bt-amber:#E0A64B;--bt-amber-soft:#2B2213;--bt-brand:#7FBFA7;--bt-red:#E58A8A;}}
     :root[data-theme="dark"] #batchToolbar{--bt-amber:#E0A64B;--bt-amber-soft:#2B2213;--bt-brand:#7FBFA7;--bt-red:#E58A8A;}
-    #batchToolbar .bt-cols{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;}
-    #batchToolbar .bt-zone{flex:1;min-width:200px;border:1px solid var(--border);border-radius:11px;padding:11px 13px;}
+    #batchToolbar .bt-cols{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;}
+    #batchToolbar .bt-zone{flex:0 0 auto;border:1px solid var(--border);border-radius:11px;padding:10px 12px;}
     #batchToolbar .bt-zone.flow{border-color:color-mix(in srgb,var(--bt-amber) 40%,var(--border));background:var(--bt-amber-soft);}
-    #batchToolbar .bt-label{font-size:12px;font-weight:800;color:var(--text2);letter-spacing:.02em;margin-bottom:10px;display:flex;align-items:center;gap:5px;}
+    #batchToolbar .bt-label{font-size:11.5px;font-weight:800;color:var(--text2);letter-spacing:.02em;margin-bottom:8px;display:flex;align-items:center;gap:5px;}
     #batchToolbar .bt-zone.flow .bt-label{color:var(--bt-amber);}
-    #batchToolbar .bt-vcol{display:flex;flex-direction:column;align-items:stretch;gap:5px;}
-    #batchToolbar .bt-btn{display:inline-flex;align-items:center;gap:8px;width:100%;justify-content:flex-start;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px 14px 11px 10px;font-size:14px;font-weight:700;color:var(--text);cursor:pointer;font-family:inherit;transition:border-color .12s,box-shadow .12s;}
+    #batchToolbar .bt-vcol{display:flex;flex-direction:column;align-items:stretch;gap:3px;}
+    #batchToolbar .bt-btn{display:inline-flex;align-items:center;gap:6px;width:100%;justify-content:flex-start;white-space:nowrap;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:5px 10px 5px 5px;font-size:12px;font-weight:700;color:var(--text);cursor:pointer;font-family:inherit;transition:border-color .12s,box-shadow .12s;}
     #batchToolbar .bt-btn:hover{border-color:var(--bt-brand);box-shadow:0 2px 6px rgba(0,0,0,.08);}
-    #batchToolbar .bt-num{display:inline-flex;align-items:center;justify-content:center;width:21px;height:21px;border-radius:50%;background:var(--bt-amber);color:#fff;font-size:12px;font-weight:800;flex-shrink:0;}
+    #batchToolbar .bt-num{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:var(--bt-amber);color:#fff;font-size:10px;font-weight:800;flex-shrink:0;}
     #batchToolbar .bt-zone:not(.flow) .bt-num{background:var(--text2);}
     #batchToolbar .bt-btn.primary{background:var(--bt-brand);border-color:var(--bt-brand);color:#fff;}
     #batchToolbar .bt-btn.primary .bt-num{background:#fff;color:var(--bt-brand);}
     #batchToolbar .bt-btn.danger{border-color:color-mix(in srgb,var(--bt-red) 40%,var(--border));color:var(--bt-red);}
     #batchToolbar .bt-btn.danger .bt-num{background:var(--bt-red);color:#fff;}
     #batchToolbar .bt-btn.danger:hover{border-color:var(--bt-red);}
-    #batchToolbar .bt-arr{color:var(--bt-amber);font-size:15px;font-weight:800;opacity:.6;text-align:center;line-height:1;}
+    #batchToolbar .bt-arr{color:var(--bt-amber);font-size:10px;font-weight:800;opacity:.5;text-align:center;line-height:1;}
   </style>
-  <div id="batchToolbar" style="display:none;padding:13px 14px;background:var(--surface);border:1px solid var(--border);border-radius:14px;margin:8px 14px 0;flex-direction:column;gap:12px;box-shadow:0 1px 4px rgba(0,0,0,.06);">
+  <div id="batchToolbar" style="display:none;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:14px;margin:8px 14px 0;flex-direction:column;gap:10px;box-shadow:0 1px 4px rgba(0,0,0,.06);width:fit-content;max-width:100%;">
     <div style="display:flex;align-items:center;gap:8px;">
       <span id="batchCount" style="font-weight:800;font-size:14px;color:var(--accent2);background:var(--accent-light);padding:4px 12px;border-radius:999px;"></span>
       <div style="flex:1;"></div>
