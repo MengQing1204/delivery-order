@@ -965,47 +965,47 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
     #batchToolbar{--bt-amber:#C98A2E;--bt-amber-soft:#FBF3E4;--bt-brand:#2E5A4B;--bt-red:#C8463C;}
     @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) #batchToolbar{--bt-amber:#E0A64B;--bt-amber-soft:#2B2213;--bt-brand:#7FBFA7;--bt-red:#E58A8A;}}
     :root[data-theme="dark"] #batchToolbar{--bt-amber:#E0A64B;--bt-amber-soft:#2B2213;--bt-brand:#7FBFA7;--bt-red:#E58A8A;}
-    #batchToolbar .bt-cols{display:flex;flex-direction:column;gap:8px;align-items:stretch;}
-    #batchToolbar .bt-zone{border:1px solid var(--border);border-radius:11px;padding:10px 12px;}
+    #batchToolbar .bt-cols{display:flex;flex-direction:row;gap:10px;align-items:stretch;flex-wrap:wrap;}
+    #batchToolbar .bt-zone{flex:1 1 170px;min-width:150px;border:1px solid var(--border);border-radius:11px;padding:11px 13px;}
     #batchToolbar .bt-zone.flow{border-color:color-mix(in srgb,var(--bt-amber) 40%,var(--border));background:var(--bt-amber-soft);}
     #batchToolbar .bt-label{font-size:11.5px;font-weight:800;color:var(--text2);letter-spacing:.02em;margin-bottom:8px;display:flex;align-items:center;gap:5px;}
     #batchToolbar .bt-zone.flow .bt-label{color:var(--bt-amber);}
     #batchToolbar .bt-vcol{display:flex;flex-direction:column;align-items:stretch;gap:3px;}
     #batchToolbar .bt-hrow{display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
-    #batchToolbar .bt-btn{display:inline-flex;align-items:center;gap:6px;justify-content:flex-start;white-space:nowrap;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:6px 12px 6px 6px;font-size:12.5px;font-weight:700;color:var(--text);cursor:pointer;font-family:inherit;transition:border-color .12s,box-shadow .12s;}
+    #batchToolbar .bt-btn{display:inline-flex;align-items:center;gap:7px;justify-content:flex-start;white-space:nowrap;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:8px 12px 8px 7px;font-size:13px;font-weight:700;color:var(--text);cursor:pointer;font-family:inherit;transition:border-color .12s,box-shadow .12s;}
     #batchToolbar .bt-vcol .bt-btn{width:100%;}
     #batchToolbar .bt-btn:hover{border-color:var(--bt-brand);box-shadow:0 2px 6px rgba(0,0,0,.08);}
-    #batchToolbar .bt-num{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:var(--bt-amber);color:#fff;font-size:10px;font-weight:800;flex-shrink:0;}
+    #batchToolbar .bt-num{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;border-radius:50%;background:var(--bt-amber);color:#fff;font-size:11px;font-weight:800;flex-shrink:0;}
     #batchToolbar .bt-zone:not(.flow) .bt-num{background:var(--text2);}
     #batchToolbar .bt-btn.primary{background:var(--bt-brand);border-color:var(--bt-brand);color:#fff;}
     #batchToolbar .bt-btn.primary .bt-num{background:#fff;color:var(--bt-brand);}
     #batchToolbar .bt-btn.danger{border-color:color-mix(in srgb,var(--bt-red) 40%,var(--border));color:var(--bt-red);}
     #batchToolbar .bt-btn.danger .bt-num{background:var(--bt-red);color:#fff;}
     #batchToolbar .bt-btn.danger:hover{border-color:var(--bt-red);}
-    #batchToolbar .bt-arr{color:var(--bt-amber);font-size:10px;font-weight:800;opacity:.5;text-align:center;line-height:1;}
+    #batchToolbar .bt-arr{color:var(--bt-amber);font-size:12px;font-weight:800;opacity:.55;text-align:center;line-height:1;}
   </style>
-  <div id="batchToolbar" style="display:none;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:14px;margin:8px 14px 0;flex-direction:column;gap:10px;box-shadow:0 1px 4px rgba(0,0,0,.06);width:fit-content;max-width:100%;">
+  <div id="batchToolbar" style="display:none;padding:13px 14px;background:var(--surface);border:1px solid var(--border);border-radius:14px;margin:8px 14px 0;flex-direction:column;gap:11px;box-shadow:0 1px 4px rgba(0,0,0,.06);width:100%;max-width:440px;">
     <div style="display:flex;align-items:center;gap:8px;">
       <span id="batchCount" style="font-weight:800;font-size:14px;color:var(--accent2);background:var(--accent-light);padding:4px 12px;border-radius:999px;"></span>
       <div style="flex:1;"></div>
       <button onclick="clearSelection()" style="background:transparent;border:1px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--text2);font-size:13px;cursor:pointer;font-family:inherit;">✕ 取消選取</button>
     </div>
     <div class="bt-cols">
-      <!-- 拋單流程（橫向 1→2→3）-->
+      <!-- 左欄：拋單流程（直式 1↓2↓3）-->
       <div class="bt-zone flow">
-        <div class="bt-label">🚀 拋單流程（照 1 → 2 → 3 順序做）</div>
-        <div class="bt-hrow">
+        <div class="bt-label">🚀 拋單流程（由上往下做）</div>
+        <div class="bt-vcol">
           <button onclick="batchChangeDate()" class="bt-btn"><span class="bt-num">1</span>批次編ERP單號</button>
-          <span class="bt-arr">→</span>
+          <span class="bt-arr">↓</span>
           <button onclick="batchAction('erp')" class="bt-btn"><span class="bt-num">2</span>匯出鼎新</button>
-          <span class="bt-arr">→</span>
+          <span class="bt-arr">↓</span>
           <button onclick="batchAction('push')" class="bt-btn primary"><span class="bt-num">3</span>批次拋單</button>
         </div>
       </div>
-      <!-- 其他操作（橫向）-->
+      <!-- 右欄：其他操作（直式）-->
       <div class="bt-zone">
         <div class="bt-label">🔧 其他操作</div>
-        <div class="bt-hrow">
+        <div class="bt-vcol">
           <button onclick="batchAction('csv')" class="bt-btn"><span class="bt-num">4</span>匯出CSV</button>
           <button onclick="batchAction('status')" class="bt-btn"><span class="bt-num">5</span>更新狀態</button>
           <button onclick="batchAction('delete')" class="bt-btn danger"><span class="bt-num">6</span>批次刪除</button>
