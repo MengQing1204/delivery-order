@@ -5122,6 +5122,8 @@ function onStockSearch(val) {
   const list = document.getElementById('stockResultList');
   if (!val.trim()) { list.innerHTML = ''; return; }
   stockSearchDebounce2 = setTimeout(async () => {
+    // 保險：白名單若空，即時重載一次（庫存查詢才顯示得出可預購）
+    if (!preorderWhitelist || preorderWhitelist.size === 0) { await loadPreorderWhitelist(); }
     const lower = val.toLowerCase();
     const matched2 = allProducts.filter(p =>
       p.product_name?.toLowerCase().includes(lower) || p.sku?.toLowerCase().includes(lower)
@@ -5145,16 +5147,20 @@ function onStockSearch(val) {
     // 全部送 ibiza 取得即時庫存（不依賴靜態 stock）
     const stockMap = await ibizaGetStock(filtered.map(p => p.sku));
 
-    // ibiza 回傳後，依即時庫存重新排序：有庫存在上，無庫存在下
+    // ibiza 回傳後，依即時庫存重新排序：有庫存在上 → 可預購（無庫存但白名單）→ 無庫存在下
     const withStock = filtered.filter(p => (stockMap?.[p.sku] ?? 0) > 0).sort((a,b) => a.sku.localeCompare(b.sku));
-    const noStock   = filtered.filter(p => (stockMap?.[p.sku] ?? 0) <= 0).sort((a,b) => a.sku.localeCompare(b.sku));
+    const preOrder  = filtered.filter(p => (stockMap?.[p.sku] ?? 0) <= 0 && isPreorderable(p.sku)).sort((a,b) => a.sku.localeCompare(b.sku));
+    const noStock   = filtered.filter(p => (stockMap?.[p.sku] ?? 0) <= 0 && !isPreorderable(p.sku)).sort((a,b) => a.sku.localeCompare(b.sku));
 
-    list.innerHTML = [...withStock, ...noStock].map(p => {
+    list.innerHTML = [...withStock, ...preOrder, ...noStock].map(p => {
       const s = stockMap?.[p.sku] ?? 0;
-      const color = s > 10 ? '#2a8c5a' : s > 0 ? '#c87a2a' : '#c82a2a';
-      const text = s > 0 ? `可用 ${s}` : '無庫存';
+      const canPreorder = s <= 0 && isPreorderable(p.sku);
+      const color = s > 10 ? '#2a8c5a' : s > 0 ? '#c87a2a' : (canPreorder ? '#C8881C' : '#c82a2a');
+      const text = s > 0 ? `可用 ${s}` : (canPreorder ? '可預購' : '無庫存');
+      // 無庫存但可預購 → 不要半透明（它可以賣）；真的無庫存才淡化
+      const dim = (s <= 0 && !canPreorder) ? 'opacity:0.55;' : '';
       return `
-        <div style="background:#fff;border-radius:10px;padding:14px 16px;margin-bottom:8px;box-shadow:0 2px 8px rgba(0,0,0,0.06);display:flex;justify-content:space-between;align-items:center;${s<=0?'opacity:0.55;':''}">
+        <div style="background:#fff;border-radius:10px;padding:14px 16px;margin-bottom:8px;box-shadow:0 2px 8px rgba(0,0,0,0.06);display:flex;justify-content:space-between;align-items:center;${dim}">
           <div style="min-width:0;flex:1;">
             <div style="font-size:17px;font-weight:500;color:#1a1a18;">${escHtml(p.product_name)}</div>
             <div style="font-size:13px;color:#4A6058;font-family:'DM Mono',monospace;margin-top:3px;">${p.sku}</div>
