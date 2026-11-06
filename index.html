@@ -1239,12 +1239,15 @@ async function loadPreorderWhitelist() {
   try {
     const rows = await sb.get('preorder_whitelist', '?is_active=eq.true&select=sku');
     if (Array.isArray(rows)) {
-      preorderWhitelist = new Set(rows.map(r => r.sku));
-      console.log(`可預購白名單載入：${preorderWhitelist.size} 筆`);
+      // 品號正規化：去前後空格、轉大寫，避免隱藏字元造成比對不到
+      preorderWhitelist = new Set(rows.map(r => String(r.sku||'').trim().toUpperCase()));
+      console.log(`可預購白名單載入：${preorderWhitelist.size} 筆`, [...preorderWhitelist]);
     }
   } catch(e) { console.log('白名單載入失敗', e); }
 }
-function isPreorderable(sku) { return preorderWhitelist.has(sku); }
+function isPreorderable(sku) {
+  return preorderWhitelist.has(String(sku||'').trim().toUpperCase());
+}
 const PREORDER_BADGE = '<span class="preorder-badge">預</span>';
 const PREORDER_BADGE_SM = '<span class="preorder-badge sm">預</span>';
 function isPreorderItem(it) { return it?.item_type === 'preorder'; }
@@ -1497,7 +1500,11 @@ function onProductSearch(val) {
   const dd = document.getElementById('productDropdown');
   if (!val.trim()) { dd.style.display = 'none'; return; }
   if (formItems.length >= 20) { showToast('最多只能選20項商品'); dd.style.display = 'none'; return; }
-  searchDebounce = setTimeout(() => renderDropdownFromLocal(val.trim()), 200);
+  searchDebounce = setTimeout(async () => {
+    // 保險：白名單若空，即時重載一次（避免登入時沒載到導致可預購抓不到）
+    if (!preorderWhitelist || preorderWhitelist.size === 0) { await loadPreorderWhitelist(); }
+    renderDropdownFromLocal(val.trim());
+  }, 200);
 }
 
 function renderDropdown(filtered, stockMap, inputEl) {
