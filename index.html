@@ -3259,8 +3259,15 @@ function renderAdminOrders() {
     el.innerHTML = `<div class="empty-state"><div class="icon">📋</div><p>${emptyMsg}</p></div>`;
     return;
   }
-  // 清單顯示：依「建立時間」新→舊（最新建立的在最上面）
-  filtered.sort((a, b) => new Date(b.created_at||0) - new Date(a.created_at||0));
+  // 清單顯示：依「訂單單號」大→小（最大號在上）；沒單號的排最後、用建立時間新→舊
+  filtered.sort((a, b) => {
+    const na = (a.order_no || '').trim();
+    const nb = (b.order_no || '').trim();
+    if (na && nb) return nb.localeCompare(na);     // 兩邊都有單號 → 單號大→小
+    if (na && !nb) return -1;                       // 有單號的排前面
+    if (!na && nb) return 1;
+    return new Date(b.created_at||0) - new Date(a.created_at||0); // 都沒單號 → 建立時間新→舊
+  });
   const statusMap = { pending:'待處理', partial:'部分已拋', submitted:'已拋單', processing:'作業中', shipped:'已完成', cancelled:'已取消' };
   el.innerHTML = filtered.map(o => {
     const preview = (o.order_items||[]).map(i => `${isPreorderItem(i)?'⟨預⟩':''}${i.product_name} x${i.quantity}`).join('、');
