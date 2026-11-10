@@ -3229,8 +3229,8 @@ function renderAdminOrders() {
   if (adminCurrentTab === 'nankan') {
     base = base.filter(o => isNankanOrder(o) && o.status !== 'cancelled');
   } else if (adminCurrentTab === 'pending') {
-    // 待處理排除南崁單（它們獨立在南崁倉分頁處理）
-    base = base.filter(o => o.status === 'pending' && !isNankanOrder(o));
+    // 待處理：含南崁單，一起照單號排（南崁倉分頁仍另外保留）
+    base = base.filter(o => o.status === 'pending');
   } else if (adminCurrentTab !== 'all') {
     base = base.filter(o => o.status === adminCurrentTab);
   }
