@@ -5199,7 +5199,8 @@ function copyText(text) { navigator.clipboard.writeText(text).then(() => showToa
 // ═══════════════════════════════════════════
 let foItems = [];              // 品項：{sku,name,qty,amount,ship_type,proxy_store_id,proxy_store_name}
 let foSearchDebounce = null;
-let foStoresCache = [];        // 門市清單（代寄選門市用）
+let foStoresCache = [];        // 門市清單（代寄下拉用，只含啟用中）
+let foAllStoresCache = [];     // 全部門市（含停用）— 查代寄門市名用，避免停用門市顯示「未指定」
 let foEditId = null;           // 編輯中的場外單 id（null=新增）
 let foProofFile = null;        // 待上傳的匯款截圖檔案（第1張）
 let foProofUrl = null;         // 已上傳/既有的匯款截圖網址（第1張）
@@ -5373,7 +5374,7 @@ async function editFieldOrder(id) {
   foItems = (o.field_order_items||[]).map(it => ({
     sku: it.sku, name: it.product_name, qty: it.quantity, amount: it.amount,
     ship_type: it.ship_type, proxy_store_id: it.proxy_store_id||'',
-    proxy_store_name: foStoresCache.find(s=>s.id===it.proxy_store_id)?.name||''
+    proxy_store_name: foStoreName(it.proxy_store_id)
   }));
   renderFoItems();
   showToast('編輯模式：修改後按確認即更新','success');
@@ -5421,10 +5422,19 @@ async function initFieldOrder(keepStoreId) {
   renderFoItems();
 }
 
+// 查門市名（含停用門市）：代寄門市若被停用，一樣要顯示得出名字
+function foStoreName(id) {
+  if (!id) return '';
+  return foAllStoresCache.find(s=>s.id===id)?.name
+      || foStoresCache.find(s=>s.id===id)?.name
+      || '';
+}
 async function foLoadStores() {
   try {
     const stores = await sb.get('stores', '?is_active=eq.true&order=name.asc');
     foStoresCache = stores || [];
+    // 另載全部門市（含停用）供查名用
+    try { foAllStoresCache = await sb.get('stores', '?select=id,name') || []; } catch(e) {}
     const sel = document.getElementById('foStore');
     if (sel) {
       sel.innerHTML = '<option value="">請選擇門市</option>' + foStoresCache.map(s=>`<option value="${s.id}">${escHtml(s.name)} 場外單</option>`).join('');
@@ -5648,7 +5658,7 @@ function showFoConfirmModal() {
   const shipMap = { picked:'現場已取', proxy:'門市代寄', delivery:'宅配' };
   const total = foItems.reduce((s,it)=>s+(parseInt(it.amount)||0),0);
   const itemsHtml = foItems.map(i => {
-    const proxyName = (i.ship_type==='proxy') ? '（'+(foStoresCache.find(s=>s.id===i.proxy_store_id)?.name||'未選門市')+'）' : '';
+    const proxyName = (i.ship_type==='proxy') ? '（'+(foStoreName(i.proxy_store_id)||'未選門市')+'）' : '';
     const giftTag = (parseInt(i.amount)===0) ? ' <span style="color:#B5721A;font-weight:700;">贈品</span>' : '';
     return `<div style="display:flex;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);">
       <div style="flex:1;min-width:0;"><div style="font-weight:600;">${escHtml(i.name)}${giftTag}</div>
@@ -5803,6 +5813,8 @@ async function openFieldOrderList() {
   showScreen('fieldListScreen');
   showLoading(true);
   try {
+    // 載入全部門市（含停用）供代寄門市名顯示用
+    if (!foAllStoresCache.length) { try { foAllStoresCache = await sb.get('stores', '?select=id,name') || []; } catch(e) {} }
     const role = currentUser?.role;
     let filter = '?order=order_no.desc&limit=500&select=*,field_order_items(*),stores!store_id(name,dept_code,warehouse_code),staff(name,erp_code)';
     if (role === 'admin') {}
@@ -5855,7 +5867,7 @@ function renderFieldOrders(list) {
         const ship = shipMapS[i.ship_type] || '';
         let shipNote = '';
         if (i.ship_type === 'proxy') {
-          const pname = foStoresCache.find(s=>s.id===i.proxy_store_id)?.name || '未指定門市';
+          const pname = foStoreName(i.proxy_store_id)||'未指定門市';
           shipNote = `<span style="color:#E0A042;font-weight:700;">📮 代寄：${escHtml(pname)}</span>`;
         } else if (i.ship_type === 'delivery' || i.ship_type === 'wms' || i.ship_type === 'nankan') {
           const wh = i.actual_warehouse === 'wms' ? '委外/新竹' : i.actual_warehouse === 'nankan' ? '南崁/黑貓' : '未分倉';
@@ -5918,7 +5930,7 @@ function renderFieldOrders(list) {
     const preview = items.map(i => {
       let note = '';
       if (i.ship_type === 'proxy') {
-        const pname = foStoresCache.find(s=>s.id===i.proxy_store_id)?.name || '未指定';
+        const pname = foStoreName(i.proxy_store_id)||'未指定';
         note = ` <span style="color:#E0A042;font-weight:700;">📮${escHtml(pname)}</span>`;
       } else if (i.ship_type==='delivery'||i.ship_type==='wms'||i.ship_type==='nankan') {
         const courier = i.actual_warehouse === 'nankan' ? '黑貓' : i.actual_warehouse === 'wms' ? '新竹' : '';
@@ -6085,7 +6097,7 @@ function openFieldOrderManage(id) {
   const payExtra = o.remit_date ? `　匯款日：${o.remit_date}` : (o.transfer_last5 ? `　轉帳後5碼：${o.transfer_last5}` : '');
   // 完整明細（給管理員照著打鼎新）
   const detailRows = items.map((it,idx) => {
-    const proxyName = it.proxy_store_id ? (foStoresCache.find(s=>s.id===it.proxy_store_id)?.name||'') : '';
+    const proxyName = it.proxy_store_id ? (foStoreName(it.proxy_store_id)) : '';
     const shipTxt = shipMap[it.ship_type] || '' ;
     const whTxt = it.actual_warehouse==='wms' ? '（WMS/新竹）' : it.actual_warehouse==='nankan' ? '（南崁/黑貓）' : '';
     return `<tr style="border-bottom:1px solid var(--border);">
@@ -6260,7 +6272,7 @@ function exportFieldOrderCSV() {
   foAllOrders.forEach(o => {
     const items = o.field_order_items || [{}];
     items.forEach(it => {
-      const proxyName = it.proxy_store_id ? (foStoresCache.find(s=>s.id===it.proxy_store_id)?.name||'') : '';
+      const proxyName = it.proxy_store_id ? (foStoreName(it.proxy_store_id)) : '';
       rows.push([o.order_no,o.order_date,o.stores?.name||'',o.staff?.name||'',o.buyer_name,o.buyer_phone,o.receiver_address||'',o.tax_id||'',o.invoice_carrier||'',it.product_name||'',it.sku||'',it.quantity||'',it.amount||'',shipMap[it.ship_type]||'',proxyName,whMap[it.actual_warehouse]||'',it.tracking_no||'',o.payment_sub||o.payment_type||'',o.remit_date||'',o.transfer_last5||'',o.total_amount||'',stMap[o.status]||'待處理',o.note||'']);
     });
   });
